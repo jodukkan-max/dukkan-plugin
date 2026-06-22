@@ -1,0 +1,992 @@
+body{
+font-family: Arial;
+background:#f4f6f9;
+margin:0;
+}
+
+.wpldp-wrapper{
+width:100%;
+}
+
+/* TOP wpldp-tabs */
+
+.wpldp-tabs{
+display:flex;
+gap:30px;
+padding:15px 30px;
+background:white;
+border-bottom:1px solid #e2e2e2;
+}
+
+.wpldp-tabs .tab{
+padding:10px;
+cursor:pointer;
+color:#555;
+}
+
+.wpldp-tabs .tab.active{
+color:#ff5a00;
+border-bottom:3px solid #ff5a00;
+}
+
+
+
+/* LAYOUT */
+
+.wpldp-content{
+display:flex;
+/* height:calc(100vh - 60px); */
+}
+
+/* wpldp-sidebar */
+
+.wpldp-sidebar{
+width:300px;
+background:#f1f3f6;
+padding:20px;
+border-right:1px solid #ddd;
+}
+
+.wpldp-subtitle{
+color:#777;
+font-size:13px;
+margin-bottom:15px;
+}
+
+.wpldp-new-group{
+background:#ff5a00;
+color:white;
+border:none;
+padding:12px;
+width:100%;
+border-radius:6px;
+cursor:pointer;
+margin-bottom:20px;
+font-size:15px;
+}
+
+
+/* GROUP */
+
+.wpldp-group{
+background:white;
+padding:12px;
+border-radius:8px;
+margin-bottom:15px;
+    box-shadow: 0 1px 3px 0 var(--tw-shadow-color, rgb(0 0 0 / 0.1)), 0 1px 2px -1px var(--tw-shadow-color, rgb(0 0 0 / 0.1));
+}
+.wpldp-group.active {
+    background-color: #E8F4F8;
+    border-color: #E8F4F8;
+}
+
+.wpldp-group-top{
+display:flex;
+justify-content:space-between;
+align-items:center;
+}
+
+.wpldp-group-actions{
+margin-top:8px;
+color:#888;
+display:flex;
+gap:12px;
+}
+
+.wpldp-group-actions i{
+cursor:pointer;
+}
+
+
+/* TOGGLE */
+
+.wpldp-switch{
+position:relative;
+display:inline-block;
+width:40px;
+height:20px;
+}
+
+.wpldp-switch input{
+display:none;
+}
+
+.wpldp-slider{
+position:absolute;
+cursor:pointer;
+top:0;
+left:0;
+right:0;
+bottom:0;
+background:#ccc;
+transition:.3s;
+border-radius:20px;
+}
+
+.wpldp-slider:before{
+position:absolute;
+content:"";
+height:16px;
+width:16px;
+left:2px;
+bottom:2px;
+background:white;
+transition:.3s;
+border-radius:50%;
+}
+
+input:checked + .wpldp-slider{
+background:#4CAF50;
+}
+
+input:checked + .wpldp-slider:before{
+transform:translateX(20px);
+}
+
+
+
+/* MAIN PANEL */
+
+.wpldp-main{
+flex:1;
+padding:20px;
+}
+
+.empty-box{
+background:white;
+height:80%;
+display:flex;
+flex-direction:column;
+justify-content:center;
+align-items:center;
+border-radius:10px;
+}
+
+.wpldp-icon{
+font-size:40px;
+color:#aaa;
+margin-bottom:10px;
+}
+
+.empty-box h2{
+margin:10px 0;
+}
+
+.empty-box p{
+color:#777;
+}
+.create-btn{
+background:#ff5a00;
+color:white;
+border:none;
+padding:12px 20px;
+border-radius:6px;
+margin-top:20px;
+cursor:pointer;
+font-size:15px;
+}
+.wpldp-tab-panel{
+display:none;
+}
+
+.wpldp-tab-panel.active{
+display:block;
+}
+
+.dukkan-store-settings{
+background:#fff;
+padding:24px;
+}
+
+.dukkan-store-settings__header{
+border-bottom:1px solid #e2e2e2;
+margin-bottom:20px;
+padding-bottom:16px;
+}
+
+.dukkan-store-settings__header h2{
+margin:0 0 6px;
+}
+
+.dukkan-store-settings__header p{
+color:#666;
+margin:0;
+}
+
+.dukkan-store-settings__form{
+max-width:760px;
+}
+
+.dukkan-store-settings__field{
+align-items:center;
+border-bottom:1px solid #eef0f2;
+display:flex;
+gap:24px;
+justify-content:space-between;
+padding:18px 0;
+}
+
+.dukkan-store-settings__field-label p{
+color:#777;
+font-size:13px;
+margin:6px 0 0;
+}
+
+.dukkan-store-settings__field-control{
+flex:0 0 auto;
+}
+
+.dukkan-store-settings .submit{
+margin-top:20px;
+}
+
+
+
+
+/*--------------------------*/
+.dukkan-dashboard{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+}
+
+/* Top Banner */
+
+.dukkan-top-banner{
+    background:#eef3f7;
+    padding:12px 20px;
+    font-size:14px;
+}
+
+/* Layout */
+
+.dukkan-dashboard-layout{
+    display:flex;
+    margin-top:20px;
+}
+
+/* wpldp-sidebar */
+
+.dukkan-wpldp-sidebar{
+    width:260px;
+}
+
+.dukkan-brand{
+    display:flex;
+    align-items:center;
+    margin-bottom:25px;
+}
+.dukkan-brand{
+    margin-bottom:25px;
+}
+
+.dukkan-brand-logo{
+    height:38px;
+    width:auto;
+    display:block;
+}
+
+.dukkan-logo{
+    background:#ff6b00;
+    color:#fff;
+    width:34px;
+    height:34px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:8px;
+    font-weight:bold;
+    margin-right:10px;
+}
+
+.dukkan-brand-text{
+    font-size:22px;
+    font-weight:600;
+}
+
+.dukkan-wpldp-sidebar-section h3{
+    margin:0;
+}
+
+.dukkan-wpldp-sidebar-section p{
+    color:#6b7280;
+    font-size:13px;
+}
+
+
+/* Menu */
+
+.dukkan-menu{
+    margin-top:20px;
+}
+
+.dukkan-menu-item{
+    background:#f7f7f7;
+    padding:16px;
+    border-radius:10px;
+    margin-bottom:12px;
+    cursor:pointer;
+}
+
+.dukkan-menu-item.active{
+    background:#e8f4f8;
+}
+
+.dukkan-menu-item strong{
+    display:block;
+}
+
+.dukkan-menu-item span{
+    font-size:12px;
+    color:#6b7280;
+}
+
+
+/* Content */
+
+.dukkan-content{
+    flex:1;
+    padding-left:40px;
+}
+
+.dukkan-content h2{
+    font-size:26px;
+}
+
+.dukkan-desc{
+    color:#6b7280;
+    margin-bottom:25px;
+}
+
+
+/* Plugin Grid */
+
+.dukkan-plugin-grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:25px;
+}
+
+.dukkan-plugin-card{
+    border:2px solid #e5e7eb;
+    padding:30px;
+    text-align:center;
+    background:#fff;
+}
+
+.dukkan-plugin-card:hover {
+    border-color: #ff6b00;
+}
+
+.dukkan-plugin-card img{
+    height: auto;
+    margin-bottom: 15px;
+    max-width: 70%;
+}
+
+.dukkan-plugin-card h4{
+    margin-bottom:10px;
+}
+
+.dukkan-plugin-card p{
+    font-size:13px;
+    color:#6b7280;
+}
+
+.dukkan-ai{
+    color:#16a34a;
+    font-weight:600;
+    margin-top:15px;
+}
+
+/* AI MANAGEMENT */
+
+.dukkan-ai-management{
+    border:1px solid #f59e0b;
+    background:#f8fafc;
+    padding:30px;
+    margin-top:40px;
+}
+
+.dukkan-ai-header{
+    display:flex;
+    gap:20px;
+}
+
+.dukkan-ai-icon{
+    width:80px;
+    height:60px;
+    background:#ff6b00;
+    color:#fff;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:20px;
+    border-radius:10px;
+}
+
+.dukkan-ai-text h3{
+    margin-bottom:5px;
+}
+
+.dukkan-ai-text p{
+    color:#6b7280;
+}
+
+/* FEATURES */
+
+.dukkan-ai-features{
+    display:flex;
+    gap:80px;
+    margin-top:25px;
+}
+
+.dukkan-ai-feature{
+    display:flex;
+    gap:10px;
+    align-items:center;
+}
+
+.dukkan-ai-feature strong{
+    display:block;
+}
+
+.dukkan-ai-feature p{
+    margin:0;
+    color:#6b7280;
+    font-size:13px;
+}
+
+.dukkan-ai-feature .wpldp-icon{
+    width: 25px;
+    height: 25px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 20px;
+    font-size: 15px;
+}
+
+.wpldp-icon.green{
+    background:#dcfce7;
+    color:#16a34a;
+}
+
+.wpldp-icon.blue{
+    background:#dbeafe;
+    color:#2563eb;
+}
+
+.wpldp-icon.orange{
+    background:#fed7aa;
+    color:#f97316;
+}
+
+
+/* VIEW PLUGINS */
+
+.dukkan-view-plugins{
+    text-align:center;
+    margin:30px 0;
+}
+
+.dukkan-view-plugins a{
+    color:#ff6b00;
+    font-size:16px;
+    text-decoration:none;
+}
+
+
+/* DIVIDER */
+
+.dukkan-divider{
+    margin:40px 0;
+    border:none;
+    border-top:1px solid #e5e7eb;
+}
+
+
+/* METRICS */
+
+.dukkan-app-metrics h3{
+    margin-bottom:20px;
+}
+
+.dukkan-metrics-grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:25px;
+}
+
+.dukkan-metric-card{
+    border:1px solid #e5e7eb;
+    padding:20px;
+    display:flex;
+    gap:15px;
+    justify-content: space-between;
+}
+.dukkan-metric-card .dukkan-mc-left h4 {
+    margin-bottom: 0;
+}
+.dukkan-metric-card .dukkan-mc-left p {
+    margin-top: 5px;
+}
+
+.dukkan-metric-icon{
+    width:55px;
+    height:55px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:6px;
+    font-size:20px;
+}
+
+.dukkan-metric-icon.orange{
+    background:#fde7d0;
+    color:#f97316;
+}
+
+.dukkan-metric-icon.yellow{
+    background:#fef3c7;
+    color:#d97706;
+}
+
+.dukkan-metric-icon.green{
+    background:#dcfce7;
+    color:#16a34a;
+}
+
+.dukkan-metric-number{
+    font-size:22px;
+    font-weight:600;
+    display:block;
+}
+
+
+/* wpldp-tabs */
+
+.dukkan-tab{
+    display:none;
+}
+
+.dukkan-tab.active{
+    display:block;
+}
+
+
+/* dukkan main page download app tab */
+/* DOWNLOAD SECTION */
+
+.dukkan-download-wpldp-wrapper{
+    display:flex;
+    align-items:center;
+    gap:30px;
+}
+
+/* PHONE MOCKUP */
+
+.dukkan-phone-mockup {
+    width: 260px;
+    height: 400px;
+    background: #fff;
+    border: 8px solid #0f172a;
+    border-radius: 35px;
+    position: relative;
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15);
+}
+
+.dukkan-phone-notch {
+    width: 120px;
+    height: 25px;
+    background: #0f172a;
+    border-radius: 0 0 20px 20px;
+    position: absolute;
+    top: -1px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.dukkan-phone-screen{
+    padding:20px;
+    padding-top: 50px;
+}
+
+.dukkan-phone-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:20px;
+}
+
+.dukkan-phone-title{
+    font-weight:600;
+    color:#1f2937;
+}
+
+.dukkan-phone-orange{
+    width:22px;
+    height:22px;
+    background:#ff6b00;
+    border-radius:50%;
+}
+
+/* STATS */
+
+.dukkan-phone-stats{
+    display:flex;
+    gap:10px;
+    margin-bottom:15px;
+}
+
+.dukkan-phone-box{
+    flex:1;
+    background:#fff;
+    border:1px solid #e5e7eb;
+    padding:12px;
+    text-align:center;
+}
+
+.dukkan-phone-box strong{
+    font-size:18px;
+}
+
+.dukkan-phone-box span{
+    display:block;
+    font-size:12px;
+    color:#6b7280;
+}
+
+/* CARDS */
+
+.dukkan-phone-card{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    border:1px solid #e5e7eb;
+    background:#fff;
+    padding:10px;
+    margin-top:10px;
+}
+
+.dukkan-card-icon{
+    width:40px;
+    height:40px;
+    border-radius:6px;
+}
+
+.dukkan-card-icon.green{
+    background:#cde8d5;
+}
+
+.dukkan-card-icon.yellow{
+    background:#ead8b8;
+}
+
+
+/* RIGHT SIDE */
+
+.dukkan-download-content{
+    max-width:630px;
+}
+
+.dukkan-download-content h2{
+    font-size:28px;
+    margin-bottom:10px;
+}
+
+.dukkan-download-desc{
+    color:#6b7280;
+    margin-bottom:20px;
+}
+
+
+/* FEATURES */
+
+.dukkan-download-features{
+    list-style:none;
+    padding:0;
+    margin-bottom:25px;
+}
+
+.dukkan-download-features li{
+    margin-bottom:10px;
+    padding-left:30px;
+    position:relative;
+}
+
+.dukkan-download-features li:before{
+    content:"✓";
+    position:absolute;
+    left:0;
+    color:#16a34a;
+    font-weight:bold;
+}
+
+
+/* STORE BUTTONS */
+
+.dukkan-download-buttons{
+    display:flex;
+    gap:15px;
+}
+
+.dukkan-store-btn{
+    background:#000;
+    color:#fff;
+    text-decoration:none;
+    padding:12px 18px;
+    font-size:13px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+}
+
+.dukkan-store-btn i{
+    font-size:22px;
+}
+
+/* QUICK LINKS */
+
+.dukkan-quick-links h2{
+    font-size:28px;
+    margin-bottom:5px;
+}
+
+.dukkan-links-desc{
+    color:#6b7280;
+    margin-bottom:25px;
+}
+
+
+/* GRID */
+
+.dukkan-links-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:18px;
+}
+
+
+/* CARD */
+
+.dukkan-link-card{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:20px 24px;
+    border:2px solid #e5e7eb;
+    text-decoration:none;
+    color:#0f172a;
+    font-size:18px;
+    background:#fff;
+    transition:all .2s ease;
+}
+
+.dukkan-link-card i{
+    color:#6b7280;
+}
+
+
+/* HOVER BORDER */
+
+.dukkan-link-card:hover{
+    border-color:#ff6b00;
+}
+
+/* FEATURES SECTION */
+
+.dukkan-features-section h2{
+    font-size:28px;
+    margin-bottom:25px;
+}
+
+
+/* GRID */
+
+.dukkan-features-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:25px;
+}
+
+
+/* CARD */
+
+.dukkan-feature-card{
+    border:2px solid #e5e7eb;
+    padding:28px;
+    background:#fff;
+    transition:all .2s ease;
+}
+
+.dukkan-feature-card:hover{
+    border-color:#ff6b00;
+}
+
+.dukkan-feature-card h3{
+    margin-top:15px;
+    font-size:20px;
+}
+
+.dukkan-feature-card p{
+    color:#6b7280;
+    margin-top:10px;
+    line-height:1.6;
+}
+
+
+/* ICON BOX */
+
+.dukkan-feature-icon{
+    width:52px;
+    height:52px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:4px;
+    font-size:22px;
+}
+
+
+/* ICON COLORS */
+
+.dukkan-feature-icon.product{
+    background:#fbe4d5;
+    color:#ff6b00;
+}
+
+.dukkan-feature-icon.orders{
+    background:#dbeafe;
+    color:#2563eb;
+}
+
+.dukkan-feature-icon.analytics{
+    background:#d1fae5;
+    color:#059669;
+}
+
+.dukkan-feature-icon.coupons{
+    background:#ede9fe;
+    color:#7c3aed;
+}
+
+/* BULK EDIT */
+
+.dukkan-feature-icon.bulk{
+    background:#fce7f3;
+    color:#ec4899;
+}
+
+
+/* CATEGORIES */
+
+.dukkan-feature-icon.categories{
+    background:#ccfbf1;
+    color:#0d9488;
+}
+
+/* SECTION TITLE */
+.wpldp-sub-section h4{
+margin:15px 0 10px;
+font-size:18px;
+color:#1d4f5f;
+}
+
+
+#wpldp-toast{
+position:fixed;
+top:20px;
+left:50%;
+transform:translateX(-50%) translateY(-20px);
+background:#fff;
+padding:14px 22px;
+display:flex;
+align-items:center;
+gap:12px;
+box-shadow:0 8px 25px rgba(0,0,0,0.15);
+opacity:0;
+visibility:hidden;
+z-index:999999;
+transition:all .25s ease;
+}
+
+#wpldp-toast.show{
+opacity:1;
+visibility:visible;
+transform:translateX(-50%) translateY(0);
+}
+
+.wpldp-toast-icon{
+background:#111;
+color:#fff;
+width:22px;
+height:22px;
+display:flex;
+align-items:center;
+justify-content:center;
+font-size:14px;
+}
+
+.wpldp-toast-text{
+font-size:16px;
+font-weight:500;
+}
+
+.wpldp-toast.wpldp-success .wpldp-toast-icon{
+background:#16a34a;
+}
+
+.wpldp-toast.wpldp-error .wpldp-toast-icon{
+background:#dc2626;
+}
+
+.wpldp-toast.wpldp-warning .wpldp-toast-icon{
+background:#f59e00;
+}
+
+.wpldp-toast.wpldp-success .wpldp-toast-text{
+color:#16a34a;
+}
+.wpldp-toast.wpldp-error .wpldp-toast-text{
+color:#dc2626;
+}
+.wpldp-toast.wpldp-warning .wpldp-toast-text{
+color:#f59e00;
+}
+
+.wpldp-tab-panel.active.wpldp-processing-request {
+    pointer-events: none;
+    opacity: 0.5;
+}
+
+#wpldp-loader {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.7);
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    justify-content: center;
+    z-index: 999999;
+    height: 100vh;
+    width: 100%;
+}
+#wpldp-loader .wpldp-loader-spinner {
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #ff5a00;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    animation: spin 1s linear infinite;
+}
+#wpldp-loader .wpldp-loader-text {
+    margin-top: 10px;
+    font-size: 14px;
+    color: #555;
+}
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
