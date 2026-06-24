@@ -1,0 +1,227 @@
+# Dukkan Plugin — Cursor Rules
+#
+# Strict conventions for this WordPress plugin.
+# All generated code must follow these directives exactly.
+
+---
+
+## Language & PHP Version
+
+- **PHP 7.4+** — use typed class properties where feasible, return type declarations, and
+  modern syntax (null coalescing `??`, arrow functions where appropriate).
+- Use `[]` short array syntax exclusively.
+- Prefer `??` (null coalescing) and `?:` (elvis) over verbose `isset()` ternaries when
+  the default is falsy-safe.
+- Do NOT add `declare(strict_types=1)` to existing files — the codebase currently does
+  not use it. Only use it in new files where it won't break the existing call chain.
+
+## OOP Design
+
+- **Every feature is a dedicated class** placed in the correct directory:
+  - `admin/` — admin UI, settings pages, AJAX handlers, WooCommerce integrations.
+  - `api/` — REST API endpoint classes.
+  - `public/` — frontend-facing classes.
+- **One class per file** — filename matches the class name exactly.
+- Classes must follow the WordPress-style naming convention:
+  `Dukkan_Plugin_{Component}` with optional suffix (e.g. `Dukkan_Plugin_Order_Status_API`).
+- Every class file has a standard docblock with `@package` (`Dukkan_Plugin`), `@subpackage`,
+  `@author`, and `@since` tags.
+- Constructor accepts `( $plugin_name, $version )` and stores them as private properties.
+- Hooks are registered in the constructor — either directly (`add_action` / `add_filter`)
+  or deferred through `Dukkan_Plugin_Loader::add_action()` / `add_filter()` (prefer the
+  loader for enqueue hooks to guarantee correct execution order).
+- Use constants for option keys, slugs, and configuration values (e.g.
+  `const OPTION_KEY = 'dukkan_custom_order_statuses'`).
+- Keep the `const SLUG_MAX_LENGTH = 20` class constant for WooCommerce slug limits.
+
+## Directory Structure
+
+```
+dukkan-plugin/
+├── dukkan-plugin.php          # Bootstrap: defines constants, requires core class, calls run()
+├── includes/
+│   ├── class-dukkan-plugin.php          # Core orchestrator — instantiates all components
+│   ├── class-dukkan-plugin-loader.php   # Hook registration system
+│   ├── class-dukkan-plugin-i18n.php     # Text-domain loading
+│   ├── class-dukkan-plugin-activator.php
+│   └── class-dukkan-plugin-deactivator.php
+├── admin/
+│   ├── class-dukkan-plugin-admin.php           # Admin menu, enqueue, tab content actions
+│   ├── class-dukkan-plugin-store-settings.php  # Store settings tab + field rendering + save
+│   ├── class-dukkan-plugin-woocommerce.php      # WooCommerce custom status registration
+│   ├── class-dukkan-plugin-order-status.php     # Order status CRUD + AJAX handlers + tab
+│   ├── class-dukkan-plugin-product-addon.php
+│   ├── css/
+│   │   └── dukkan-plugin-admin.css
+│   ├── js/
+│   │   └── dukkan-plugin-admin.js
+│   └── partials/
+│       ├── dukkan-settings-main.php              # Tab navigation + panel rendering
+│       ├── dukkan-order-status-settings.php      # Order status UI (modal + sortable list)
+│       └── ...
+├── api/
+│   ├── class-dukkan-plugin-general.php
+│   ├── class-dukkan-plugin-order-status-api.php  # REST API for order statuses
+│   └── ...
+└── public/
+    └── ...
+```
+
+## Tab System (Dukkan Settings Page)
+
+The settings page uses a **filter + action** tab system:
+
+1. **Define tabs** via `apply_filters( 'dukkan_settings_tabs', array )` in
+   `admin/partials/dukkan-settings-main.php`. Each tab is `'tab_id' => [ 'title' => '', 'icon' => '' ]`.
+2. **Add a new tab** by hooking into `dukkan_settings_tabs` filter:
+   ```php
+   add_filter( 'dukkan_settings_tabs', array( $this, 'add_order_status_tab' ) );
+   public function add_order_status_tab( $tabs ) {
+       $tabs['order_status'] = array(
+           'title' => __( 'Order Status', 'dukkan-plugin' ),
+           'icon'  => 'fa-solid fa-truck-fast',
+       );
+       return $tabs;
+   }
+   ```
+3. **Render tab content** by hooking into `dukkan_settings_tab_content_{tab_id}` action:
+   ```php
+   add_action( 'dukkan_settings_tab_content_order_status', array( $this, 'render_tab_content' ) );
+   ```
+4. Tabs switch client-side (no page reload) via `.tab` click handler in
+   `admin/js/dukkan-plugin-admin.js`. The active tab is determined server-side by
+   `?tab=` query parameter for initial load.
+
+## AJAX Handlers
+
+- Register handlers on `wp_ajax_{action}` and optionally `wp_ajax_nopriv_{action}`.
+- **Always verify the nonce** using the shared `wpldp_nonce`:
+  ```php
+  check_ajax_referer( 'wpldp_nonce', 'nonce' );
+  ```
+- **Always check capability** — for admin operations use `current_user_can( 'manage_options' )`.
+- Return JSON via `wp_send_json_success( $data )` / `wp_send_json_error( $data, $http_code )`.
+- AJAX action names follow the pattern: `dukkan_os_{action}` or `wpldp_{action}`.
+- JS sends requests through `$.post( wpldp_ajax.url, { action, nonce: wpldp_ajax.nonce, ...data } )`.
+- The `wpldp_ajax` object is localized in `Dukkan_Plugin_Admin::enqueue_scripts()`.
+
+## REST API
+
+- Hook into `rest_api_init` and call `register_rest_route()`.
+- Namespace pattern: `dukkan-{resource}/v1`.
+- Every endpoint must have a `permission_callback` — never use `'__return_true'` for
+  write operations. For admin operations use `current_user_can( 'manage_options' )`.
+- Use `WP_REST_Server::READABLE`, `CREATABLE`, `EDITABLE`, `DELETABLE` constants for methods.
+- Define `args` schema with `required`, `type`, `sanitize_callback`, and `description`.
+- Return `WP_Error` with appropriate HTTP status codes (400 validation, 403 forbidden,
+  404 not found, 409 conflict).
+- Register the API class in `Dukkan_Plugin::load_dependencies()` and instantiate in a
+  dedicated `define_*_api_hooks()` method.
+
+## Security
+
+- **Input**: Always `wp_unslash()` before `sanitize_text_field()` / `sanitize_title()` /
+  `sanitize_key()` on `$_GET` and `$_POST` values.
+- **Output**: Always escape — `esc_html()`, `esc_attr()`, `esc_url()`, `esc_html__()`,
+  `esc_attr_e()`, `wp_kses_post()`.
+- **Nonces**: Use `wp_create_nonce( 'wpldp_nonce' )` for AJAX. Use named nonces for
+  admin-post handlers like `dukkan_add_order_status`.
+- **Capabilities**: Gate admin operations behind `manage_options`. Gate public-facing
+  operations behind appropriate WC capabilities (e.g. `wc_rest_check_manager_permissions`).
+
+## Data Storage
+
+- **Use WordPress Options API** — `get_option()`, `update_option()`, `delete_option()`.
+  Do NOT create custom database tables.
+- Store structured data as arrays serialized into a single option key.
+- For ordered collections, store as indexed arrays (not associative by slug) to preserve
+  user-defined ordering.
+- Option keys should be prefixed with `dukkan_` (e.g. `dukkan_custom_order_statuses`).
+- Use `update_option( key, value, 'no' )` — do NOT autoload large datasets automatically;
+  only autoload small configuration values.
+
+## WooCommerce Integration
+
+- Check `class_exists( 'WooCommerce' )` before registering WooCommerce hooks.
+- Custom order statuses are registered via `register_post_status()` on the `init` hook.
+  Status keys are prefixed with `wc-` (WordPress post status convention for WC).
+- Add statuses to the WC admin dropdown via `add_filter( 'wc_order_statuses', ... )`.
+- Slug validation: maximum **20 characters** (`const SLUG_MAX_LENGTH = 20`), lowercase letters,
+  numbers, and hyphens only (use `sanitize_title()`).
+- Each `register_post_status()` call must include: `label`, `public`, `exclude_from_search`,
+  `show_in_admin_all_list`, `show_in_admin_status_list`, and `label_count` (use `_n_noop`).
+- Use `_x()` for status labels with context `'Order status'` and `_n_noop()` for label counts.
+- User-managed statuses should be stored separately from the built-in status toggle.
+
+## UI / Styling Conventions
+
+### Colors (from existing design system)
+- **Primary orange**: `#ff5a00` — buttons, tab active indicator, focus rings, hover accents
+- **Primary hover**: `#e04d00`
+- **Text primary**: `#1d2327`
+- **Text secondary**: `#6b7280`
+- **Borders**: `#e5e7eb` (cards), `#f0f0f1` (section dividers), `#e2e2e2` (tab bar)
+- **Success green**: `#16a34a`
+- **Error red**: `#dc2626`
+- **Warning yellow**: `#f59e0b`
+
+### Layout Patterns
+- Cards use `border-radius: 8px` with `box-shadow: 0 1px 3px rgba(0,0,0,0.08)`.
+- Buttons use `border-radius: 6px`, `#ff5a00` background, white text, hover darkens to `#e04d00`.
+- Modal overlays: `background: rgba(0,0,0,0.4)`, `z-index: 160000`.
+- Modals: `z-index: 160001`, centered with `transform: translate(-50%, -50%)`, fade-in animation.
+- Empty states: centered with a circular icon container (`background: #fde7d0; color: #ff5a00`).
+
+### CSS Class Naming
+- Use BEM-style naming with the `dukkan-` prefix: `.dukkan-os__header`, `.dukkan-os__item-drag`.
+- Modifier classes use `--`: `.dukkan-os__item-btn--edit`, `.dukkan-os__modal-save--danger`.
+
+### JavaScript
+- jQuery-based (`(function( $ ) { ... })( jQuery )`).
+- Toast notifications via `window.showToast( message, type )` where type is `'success'`,
+  `'error'`, or `'warning'`.
+- i18n strings passed via `wp_localize_script()` under `wpldp_ajax.os_i18n`.
+- jQuery UI Sortable for drag-and-drop (handle: `.dukkan-os__item-drag`).
+
+## Plugin Loader Pattern
+
+The `Dukkan_Plugin` class (in `includes/class-dukkan-plugin.php`) is the orchestrator:
+
+1. `load_dependencies()` — `require_once` all component class files.
+2. Constructor calls dedicated `define_*_hooks()` methods that instantiate components.
+3. Components that need deferred hook registration (enqueue scripts, etc.) use
+   `$this->loader->add_action()` / `$this->loader->add_filter()`.
+4. Components that self-register hooks (tabs, AJAX, REST API) register them directly
+   in their own constructors.
+5. `run()` method calls `$this->loader->run()` to register all deferred hooks.
+
+## Translation / i18n
+
+- Text domain: `'dukkan-plugin'`.
+- Use `__( 'string', 'dukkan-plugin' )`, `esc_html__()`, `esc_attr_e()`, etc.
+- For labels with context: `_x( 'string', 'context', 'dukkan-plugin' )`.
+- For pluralizable strings: `_n_noop( 'singular', 'plural', 'dukkan-plugin' )`.
+- Ensure `/* translators: %d: description */` comments precede `sprintf()` with placeholders.
+
+## File Organization for New Features
+
+When adding a new feature (e.g. order status management), create these files:
+
+| File | Purpose |
+|------|---------|
+| `admin/class-dukkan-plugin-{feature}.php` | Admin class — tab registration, AJAX handlers, business logic |
+| `admin/partials/dukkan-{feature}-settings.php` | Tab content — HTML/PHP template |
+| `api/class-dukkan-plugin-{feature}-api.php` | REST API endpoints (if needed) |
+| Updates to `admin/css/dukkan-plugin-admin.css` | Feature-specific CSS |
+| Updates to `admin/js/dukkan-plugin-admin.js` | Feature-specific JS |
+| Updates to `includes/class-dukkan-plugin.php` | `require_once` + instantiation |
+
+## Never
+
+- Never commit secrets, API keys, or credentials to any file.
+- Never use `__return_true` as a `permission_callback` for write endpoints.
+- Never create custom database tables — use WordPress options API.
+- Never use `echo` directly in class methods — use template partials with `require`.
+- Never hardcode English strings in JavaScript — pass them via `wp_localize_script()`.
+- Never skip nonce verification on AJAX or form handlers.
+- Never use `extract()` or `global` inside functions/methods.
