@@ -990,3 +990,144 @@ color:#f59e00;
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
+
+
+/* ==========================================================================
+   Order Status Management
+   ========================================================================== */
+
+.dukkan-order-status {
+    background: #fff;
+    padding: 24px;
+}
+
+.dukkan-order-status__header {
+    border-bottom: 1px solid #e2e2e2;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+}
+
+.dukkan-order-status__header h2 {
+    margin: 0 0 6px;
+}
+
+.dukkan-order-status__header p {
+    color: #666;
+    margin: 0;
+}
+
+/* Two-column layout */
+.dukkan-order-status__layout {
+    display: flex;
+    gap: 30px;
+}
+
+.dukkan-order-status__form-panel {
+    flex: 0 0 400px;
+    max-width: 400px;
+}
+
+.dukkan-order-status__list-panel {
+    flex: 1;
+    min-width: 0;
+}
+
+/* Card */
+.dukkan-order-status__card {
+    border: 1px solid #e2e2e2;
+    border-radius: 6px;
+    background: #fff;
+}
+
+.dukkan-order-status__card-header {
+    border-bottom: 1px solid #e2e2e2;
+    padding: 14px 20px;
+    background: #f9f9f9;
+}
+
+.dukkan-order-status__card-header h3 {
+    margin: 0;
+    font-size: 15px;
+}
+
+.dukkan-order-status__card-body {
+    padding: 20px;
+}
+
+/* Form fields */
+.dukkan-order-status__field {
+    margin-bottom: 18px;
+}
+
+.dukkan-order-status__field label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.dukkan-order-status__field .required {
+    color: #dc2626;
+}
+
+.dukkan-order-status__field input[type="text"] {
+    width: 100%;
+    max-width: 100%;
+}
+
+.dukkan-order-status__field .description {
+    color: #777;
+    font-size: 12px;
+    margin: 6px 0 0;
+}
+
+.dukkan-order-status__actions {
+    margin-top: 8px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+/* Table */
+.dukkan-order-status__table {
+    margin: 0;
+}
+
+.dukkan-order-status__table td,
+.dukkan-order-status__table th {
+    padding: 10px 12px;
+    vertical-align: middle;
+}
+
+.dukkan-order-status__table code {
+    background: #f0f0f1;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 12px;
+}
+
+.dukkan-order-status__actions-cell {
+    white-space: nowrap;
+}
+
+.dukkan-order-status__actions-cell .button {
+    margin-right: 4px;
+}
+
+/* Empty state */
+.dukkan-order-status__empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: #888;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+    .dukkan-order-status__layout {
+        flex-direction: column;
+    }
+
+    .dukkan-order-status__form-panel {
+        flex: 0 0 auto;
+        max-width: 100%;
+    }
+}

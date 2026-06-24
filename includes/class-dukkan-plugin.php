@@ -81,6 +81,7 @@ class Dukkan_Plugin {
 		$this->define_general_api_hooks();
 		$this->define_translatepress_api_hooks();
 		$this->define_product_addon_api_hooks();
+		$this->define_order_status_api_hooks();
 		$this->define_admin_hooks();
 		$this->define_public_hooks();
 
@@ -142,6 +143,11 @@ class Dukkan_Plugin {
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'api/class-dukkan-plugin-product-addon-api.php';
 
 		/**
+		 * The class responsible for defining order status REST API endpoints.
+		 */
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'api/class-dukkan-plugin-order-status-api.php';
+
+		/**
 		 * The class responsible for defining all actions that occur in the admin area.
 		 */
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'admin/class-dukkan-plugin-admin.php';
@@ -155,6 +161,11 @@ class Dukkan_Plugin {
 		 * The class responsible for defining WooCommerce-related admin functionality.
 		 */
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'admin/class-dukkan-plugin-woocommerce.php';
+
+		/**
+		 * The class responsible for custom order status management in the admin area.
+		 */
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'admin/class-dukkan-plugin-order-status.php';
 
 		/**
 		 * The class responsible for defining all actions that occur in the product-addon area.
@@ -258,6 +269,17 @@ class Dukkan_Plugin {
 	}
 
 	/**
+	 * Register all of the hooks related to the order status API functionality
+	 * of the plugin.
+	 *
+	 * @since    1.0.0
+	 * @access   private
+	 */
+	private function define_order_status_api_hooks() {
+		$order_status_api = new Dukkan_Plugin_Order_Status_API( $this->get_plugin_name(), $this->get_version() );
+	}
+
+	/**
 	 * Register all of the hooks related to the admin area functionality
 	 * of the plugin.
 	 *
@@ -274,6 +296,8 @@ class Dukkan_Plugin {
 		$plugin_store_settings = new Dukkan_Plugin_Store_Settings( $this->get_plugin_name(), $this->get_version() );
 
 		$plugin_woocommerce = new Dukkan_Plugin_WooCommerce( $this->get_plugin_name(), $this->get_version() );
+
+		$plugin_order_status = new Dukkan_Plugin_Order_Status( $this->get_plugin_name(), $this->get_version() );
 
 		$plugin_product_addon = new Dukkan_Plugin_Product_Addon( $this->get_plugin_name(), $this->get_version() );
 		$this->loader->add_action( 'admin_enqueue_scripts', $plugin_product_addon, 'enqueue_styles' );

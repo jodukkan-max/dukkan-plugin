@@ -20,12 +20,20 @@
 class Dukkan_Plugin_WooCommerce {
 
 	/**
-	 * Option key for enabling custom order statuses.
+	 * Option key for enabling built-in custom order statuses.
 	 *
 	 * @since 1.0.0
 	 * @var string
 	 */
 	const ORDER_STATUS_SETTING = 'dukkan_woo_order_status';
+
+	/**
+	 * Option key that holds user-managed custom order statuses.
+	 *
+	 * @since 1.0.0
+	 * @var string
+	 */
+	const USER_STATUSES_OPTION = 'dukkan_custom_order_statuses';
 
 	/**
 	 * The ID of this plugin.
@@ -62,12 +70,16 @@ class Dukkan_Plugin_WooCommerce {
 	}
 
 	/**
-	 * Register WooCommerce hooks when WooCommerce is active and the feature is enabled.
+	 * Register WooCommerce hooks when WooCommerce is active.
+	 *
+	 * User-managed statuses are always registered regardless of the
+	 * built-in status toggle. The built-in toggle only gates the three
+	 * hardcoded statuses below.
 	 *
 	 * @since 1.0.0
 	 */
 	public function register_hooks() {
-		if ( ! class_exists( 'WooCommerce' ) || ! $this->is_custom_order_status_enabled() ) {
+		if ( ! class_exists( 'WooCommerce' ) ) {
 			return;
 		}
 
@@ -78,56 +90,19 @@ class Dukkan_Plugin_WooCommerce {
 	/**
 	 * Register custom WooCommerce order statuses.
 	 *
+	 * Registers both the built-in statuses (gated by the store-settings
+	 * toggle) and all user-managed statuses from the Dukkan Order Status tab.
+	 *
 	 * @since 1.0.0
 	 */
 	public function register_custom_order_statuses() {
-		register_post_status(
-			'wc-ready-delivery',
-			array(
-				'label'                     => _x( 'Ready For Delivery', 'Order status', 'dukkan-plugin' ),
-				'public'                    => true,
-				'exclude_from_search'       => false,
-				'show_in_admin_all_list'    => true,
-				'show_in_admin_status_list' => true,
-				'label_count'               => _n_noop(
-					'Ready For Delivery (%s)',
-					'Ready For Delivery (%s)',
-					'dukkan-plugin'
-				),
-			)
-		);
+		// Built-in statuses (only when toggle is enabled).
+		if ( $this->is_custom_order_status_enabled() ) {
+			$this->register_builtin_statuses();
+		}
 
-		register_post_status(
-			'wc-out-for-delivery',
-			array(
-				'label'                     => _x( 'Out For Delivery', 'Order status', 'dukkan-plugin' ),
-				'public'                    => true,
-				'exclude_from_search'       => false,
-				'show_in_admin_all_list'    => true,
-				'show_in_admin_status_list' => true,
-				'label_count'               => _n_noop(
-					'Out For Delivery (%s)',
-					'Out For Delivery (%s)',
-					'dukkan-plugin'
-				),
-			)
-		);
-
-		register_post_status(
-			'wc-with-carrier',
-			array(
-				'label'                     => _x( 'With Carrier', 'Order status', 'dukkan-plugin' ),
-				'public'                    => true,
-				'exclude_from_search'       => false,
-				'show_in_admin_all_list'    => true,
-				'show_in_admin_status_list' => true,
-				'label_count'               => _n_noop(
-					'With Carrier (%s)',
-					'With Carrier (%s)',
-					'dukkan-plugin'
-				),
-			)
-		);
+		// User-managed statuses from the Dukkan Order Status UI / API.
+		$this->register_user_managed_statuses();
 	}
 
 	/**
@@ -138,15 +113,92 @@ class Dukkan_Plugin_WooCommerce {
 	 * @return array
 	 */
 	public function add_custom_order_statuses( $statuses ) {
-		$statuses['wc-ready-delivery'] = _x( 'Ready For Delivery', 'Order status', 'dukkan-plugin' );
-		$statuses['wc-out-for-delivery'] = _x( 'Out For Delivery', 'Order status', 'dukkan-plugin' );
-		$statuses['wc-with-carrier'] = _x( 'With Carrier', 'Order status', 'dukkan-plugin' );
+		// Built-in statuses.
+		if ( $this->is_custom_order_status_enabled() ) {
+			$statuses['wc-ready-delivery']   = _x( 'Ready For Delivery', 'Order status', 'dukkan-plugin' );
+			$statuses['wc-out-for-delivery'] = _x( 'Out For Delivery', 'Order status', 'dukkan-plugin' );
+			$statuses['wc-with-carrier']     = _x( 'With Carrier', 'Order status', 'dukkan-plugin' );
+		}
+
+		// User-managed statuses.
+		$user_statuses = get_option( self::USER_STATUSES_OPTION, array() );
+		if ( is_array( $user_statuses ) ) {
+			foreach ( $user_statuses as $data ) {
+				$slug                 = 'wc-' . sanitize_title( $data['slug'] );
+				$statuses[ $slug ]    = sanitize_text_field( $data['name'] );
+			}
+		}
 
 		return $statuses;
 	}
 
+	// -------------------------------------------------------------------------
+	// Private helpers
+	// -------------------------------------------------------------------------
+
 	/**
-	 * Check whether custom order statuses are enabled in Dukkan store settings.
+	 * Register the three built-in Dukkan order statuses.
+	 *
+	 * @since 1.0.0
+	 */
+	private function register_builtin_statuses() {
+		$builtins = array(
+			'ready-delivery'    => _x( 'Ready For Delivery', 'Order status', 'dukkan-plugin' ),
+			'out-for-delivery'  => _x( 'Out For Delivery', 'Order status', 'dukkan-plugin' ),
+			'with-carrier'      => _x( 'With Carrier', 'Order status', 'dukkan-plugin' ),
+		);
+
+		foreach ( $builtins as $slug_part => $label ) {
+			$key = 'wc-' . $slug_part;
+			register_post_status( $key, array(
+				'label'                     => $label,
+				'public'                    => true,
+				'exclude_from_search'       => false,
+				'show_in_admin_all_list'    => true,
+				'show_in_admin_status_list' => true,
+				/* translators: %s: order count */
+				'label_count'               => _n_noop(
+					$label . ' (%s)',
+					$label . ' (%s)',
+					'dukkan-plugin'
+				),
+			) );
+		}
+	}
+
+	/**
+	 * Register all user-managed custom order statuses from the option.
+	 *
+	 * @since 1.0.0
+	 */
+	private function register_user_managed_statuses() {
+		$user_statuses = get_option( self::USER_STATUSES_OPTION, array() );
+		if ( ! is_array( $user_statuses ) ) {
+			return;
+		}
+
+		foreach ( $user_statuses as $data ) {
+			$slug  = 'wc-' . sanitize_title( $data['slug'] );
+			$label = sanitize_text_field( $data['name'] );
+
+			register_post_status( $slug, array(
+				'label'                     => $label,
+				'public'                    => true,
+				'exclude_from_search'       => false,
+				'show_in_admin_all_list'    => true,
+				'show_in_admin_status_list' => true,
+				/* translators: %s: order count */
+				'label_count'               => _n_noop(
+					$label . ' (%s)',
+					$label . ' (%s)',
+					'dukkan-plugin'
+				),
+			) );
+		}
+	}
+
+	/**
+	 * Check whether built-in custom order statuses are enabled in Dukkan store settings.
 	 *
 	 * @since  1.0.0
 	 * @return bool
