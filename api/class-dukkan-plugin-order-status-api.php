@@ -37,6 +37,11 @@ class Dukkan_Plugin_Order_Status_API {
 	 */
 	const OPTION_KEY = 'dukkan_custom_order_statuses';
 
+	 /**
+     * Namespace for the API.
+     */
+    const NAMESPACE = 'wc/v3';
+
 	/**
 	 * The ID of this plugin.
 	 *
@@ -75,17 +80,16 @@ class Dukkan_Plugin_Order_Status_API {
 	 * @since 1.0.0
 	 */
 	public function register_routes() {
-		$namespace = 'dukkan-order-status/v1';
 
 		// GET    /statuses              — list all
-		register_rest_route( $namespace, '/statuses', array(
+		register_rest_route( self::NAMESPACE, '/statuses', array(
 			'methods'             => WP_REST_Server::READABLE,
 			'callback'            => array( $this, 'list_statuses' ),
 			'permission_callback' => array( $this, 'check_permission' ),
 		) );
 
 		// POST   /statuses              — create
-		register_rest_route( $namespace, '/statuses', array(
+		register_rest_route( self::NAMESPACE, '/statuses', array(
 			'methods'             => WP_REST_Server::CREATABLE,
 			'callback'            => array( $this, 'create_status' ),
 			'permission_callback' => array( $this, 'check_permission' ),
@@ -93,14 +97,14 @@ class Dukkan_Plugin_Order_Status_API {
 		) );
 
 		// GET    /statuses/{slug}       — single
-		register_rest_route( $namespace, '/statuses/(?P<slug>[a-zA-Z0-9_-]+)', array(
+		register_rest_route( self::NAMESPACE, '/statuses/(?P<slug>[a-zA-Z0-9_-]+)', array(
 			'methods'             => WP_REST_Server::READABLE,
 			'callback'            => array( $this, 'get_status' ),
 			'permission_callback' => array( $this, 'check_permission' ),
 		) );
 
 		// PUT    /statuses/{slug}       — update
-		register_rest_route( $namespace, '/statuses/(?P<slug>[a-zA-Z0-9_-]+)', array(
+		register_rest_route( self::NAMESPACE, '/statuses/(?P<slug>[a-zA-Z0-9_-]+)', array(
 			'methods'             => WP_REST_Server::EDITABLE,
 			'callback'            => array( $this, 'update_status' ),
 			'permission_callback' => array( $this, 'check_permission' ),
@@ -108,7 +112,7 @@ class Dukkan_Plugin_Order_Status_API {
 		) );
 
 		// DELETE /statuses/{slug}       — delete
-		register_rest_route( $namespace, '/statuses/(?P<slug>[a-zA-Z0-9_-]+)', array(
+		register_rest_route( self::NAMESPACE, '/statuses/(?P<slug>[a-zA-Z0-9_-]+)', array(
 			'methods'             => WP_REST_Server::DELETABLE,
 			'callback'            => array( $this, 'delete_status' ),
 			'permission_callback' => array( $this, 'check_permission' ),
