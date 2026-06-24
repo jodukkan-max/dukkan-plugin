@@ -120,21 +120,22 @@ class Dukkan_Plugin_Order_Status_API {
 	// -------------------------------------------------------------------------
 
 	/**
-	 * Permission callback — only users with manage_options capability.
-	 *
-	 * @since  1.0.0
-	 * @return bool|WP_Error
-	 */
-	public function check_permission() {
-		if ( ! current_user_can( 'manage_options' ) ) {
-			return new WP_Error(
-				'rest_forbidden',
-				__( 'You do not have permission to manage order statuses.', 'dukkan-plugin' ),
-				array( 'status' => 403 )
-			);
-		}
-		return true;
-	}
+     * Permission callback — requires WooCommerce API read access.
+     *
+     * @param WP_REST_Request $request
+     * @return bool|WP_Error
+     */
+    public function check_permission( WP_REST_Request $request ) {
+        if ( ! wc_rest_check_manager_permissions( 'settings', 'read' ) ) {
+            return new WP_Error(
+                'woocommerce_rest_cannot_view',
+                __( 'Sorry, you cannot view this resource.', 'your-plugin' ),
+                array( 'status' => rest_authorization_required_code() )
+            );
+        }
+
+        return true;
+    }
 
 	// -------------------------------------------------------------------------
 	// Endpoints
