@@ -104,11 +104,30 @@ class Dukkan_Plugin_Admin {
 		// WooCommerce / WP Select2
 		wp_enqueue_script('selectWoo'); // safer than select2
 		
-		wp_enqueue_script( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'js/dukkan-plugin-admin.js', array( 'jquery', 'selectWoo' ), $this->version, false );
+		wp_enqueue_script( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'js/dukkan-plugin-admin.js', array( 'jquery', 'jquery-ui-sortable', 'selectWoo' ), $this->version, false );
 
 		wp_localize_script($this->plugin_name, 'wpldp_ajax', [
 			'url' => admin_url('admin-ajax.php'),
-			'nonce' => wp_create_nonce('wpldp_nonce')
+			'nonce' => wp_create_nonce('wpldp_nonce'),
+			'os_i18n' => [
+				'add_title'          => __( 'Add New Order Status', 'dukkan-plugin' ),
+				'edit_title'         => __( 'Edit Order Status', 'dukkan-plugin' ),
+				'name_required'      => __( 'Status name is required.', 'dukkan-plugin' ),
+				'slug_required'      => __( 'Status slug is required.', 'dukkan-plugin' ),
+				'slug_max'           => __( 'Status slug must be 20 characters or fewer.', 'dukkan-plugin' ),
+				'save_btn'           => __( 'Save Status', 'dukkan-plugin' ),
+				'saving'             => __( 'Saving…', 'dukkan-plugin' ),
+				'deleting'           => __( 'Deleting…', 'dukkan-plugin' ),
+				'added'              => __( 'Order status added.', 'dukkan-plugin' ),
+				'updated'            => __( 'Order status updated.', 'dukkan-plugin' ),
+				'deleted'            => __( 'Order status deleted.', 'dukkan-plugin' ),
+				'order_saved'        => __( 'Order saved.', 'dukkan-plugin' ),
+				'edit'               => __( 'Edit', 'dukkan-plugin' ),
+				'delete'             => __( 'Delete', 'dukkan-plugin' ),
+				'delete_confirm'     => __( 'Delete Order Status', 'dukkan-plugin' ),
+				'delete_msg'         => __( 'Are you sure you want to delete this order status? This action cannot be undone.', 'dukkan-plugin' ),
+				'cancel'             => __( 'Cancel', 'dukkan-plugin' ),
+			],
 		]);
 
 	}

@@ -993,141 +993,429 @@ color:#f59e00;
 
 
 /* ==========================================================================
-   Order Status Management
+   Order Status Management — Modern UI
    ========================================================================== */
 
-.dukkan-order-status {
+.dukkan-os {
     background: #fff;
-    padding: 24px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    overflow: hidden;
 }
 
-.dukkan-order-status__header {
-    border-bottom: 1px solid #e2e2e2;
-    margin-bottom: 20px;
-    padding-bottom: 16px;
-}
-
-.dukkan-order-status__header h2 {
-    margin: 0 0 6px;
-}
-
-.dukkan-order-status__header p {
-    color: #666;
-    margin: 0;
-}
-
-/* Two-column layout */
-.dukkan-order-status__layout {
+/* Header */
+.dukkan-os__header {
     display: flex;
-    gap: 30px;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 24px 28px;
+    border-bottom: 1px solid #f0f0f1;
 }
 
-.dukkan-order-status__form-panel {
-    flex: 0 0 400px;
-    max-width: 400px;
+.dukkan-os__header-left h2 {
+    margin: 0 0 4px;
+    font-size: 20px;
+    color: #1d2327;
 }
 
-.dukkan-order-status__list-panel {
+.dukkan-os__header-left p {
+    margin: 0;
+    color: #6b7280;
+    font-size: 13px;
+}
+
+.dukkan-os__header-right {
+    flex-shrink: 0;
+}
+
+/* Add Button — matches plugin orange */
+.dukkan-os__add-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #ff5a00;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s ease, box-shadow 0.2s ease;
+    line-height: 1.4;
+}
+
+.dukkan-os__add-btn:hover {
+    background: #e04d00;
+    box-shadow: 0 2px 8px rgba(255,90,0,0.25);
+}
+
+.dukkan-os__add-btn i {
+    font-size: 13px;
+}
+
+/* List Wrapper */
+.dukkan-os__list-wrap {
+    padding: 0 28px 28px;
+}
+
+/* Empty State */
+.dukkan-os__empty {
+    text-align: center;
+    padding: 60px 20px;
+}
+
+.dukkan-os__empty-icon {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 20px;
+    background: #fde7d0;
+    color: #ff5a00;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+}
+
+.dukkan-os__empty h3 {
+    margin: 0 0 8px;
+    font-size: 16px;
+    color: #1d2327;
+}
+
+.dukkan-os__empty p {
+    margin: 0;
+    color: #6b7280;
+    font-size: 13px;
+}
+
+/* Status List */
+.dukkan-os__list {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Status Item — card style matching .wpldp-group */
+.dukkan-os__item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 14px 16px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.dukkan-os__item + .dukkan-os__item {
+    margin-top: 8px;
+}
+
+.dukkan-os__item:hover {
+    border-color: #ff5a00;
+    box-shadow: 0 1px 4px rgba(255,90,0,0.1);
+}
+
+.dukkan-os__item.ui-sortable-helper {
+    box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+    border-color: #ff5a00;
+    background: #fff;
+}
+
+.dukkan-os__item.ui-sortable-placeholder {
+    visibility: visible !important;
+    background: #fef3c7;
+    border: 2px dashed #f59e0b;
+    border-radius: 8px;
+    min-height: 58px;
+}
+
+/* Drag Handle */
+.dukkan-os__item-drag {
+    color: #9ca3af;
+    cursor: grab;
+    padding: 4px 2px;
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.dukkan-os__item-drag:active {
+    cursor: grabbing;
+}
+
+/* Item Content */
+.dukkan-os__item-content {
     flex: 1;
     min-width: 0;
 }
 
-/* Card */
-.dukkan-order-status__card {
-    border: 1px solid #e2e2e2;
+.dukkan-os__item-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1d2327;
+    margin-bottom: 3px;
+}
+
+.dukkan-os__item-slug code {
+    background: #f3f4f6;
+    color: #6b7280;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-family: monospace;
+}
+
+/* Item Actions */
+.dukkan-os__item-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.dukkan-os__item-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: 1px solid #e5e7eb;
     border-radius: 6px;
     background: #fff;
+    color: #6b7280;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-size: 13px;
 }
 
-.dukkan-order-status__card-header {
-    border-bottom: 1px solid #e2e2e2;
-    padding: 14px 20px;
-    background: #f9f9f9;
+.dukkan-os__item-btn:hover {
+    border-color: #d1d5db;
+    color: #374151;
 }
 
-.dukkan-order-status__card-header h3 {
-    margin: 0;
-    font-size: 15px;
+.dukkan-os__item-btn--edit:hover {
+    background: #dbeafe;
+    border-color: #93c5fd;
+    color: #2563eb;
 }
 
-.dukkan-order-status__card-body {
-    padding: 20px;
-}
-
-/* Form fields */
-.dukkan-order-status__field {
-    margin-bottom: 18px;
-}
-
-.dukkan-order-status__field label {
-    display: block;
-    font-weight: 600;
-    margin-bottom: 6px;
-}
-
-.dukkan-order-status__field .required {
+.dukkan-os__item-btn--delete:hover {
+    background: #fee2e2;
+    border-color: #fca5a5;
     color: #dc2626;
 }
 
-.dukkan-order-status__field input[type="text"] {
-    width: 100%;
-    max-width: 100%;
+/* ==========================================================================
+   Modal
+   ========================================================================== */
+
+.dukkan-os__modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 160000;
 }
 
-.dukkan-order-status__field .description {
-    color: #777;
-    font-size: 12px;
-    margin: 6px 0 0;
+.dukkan-os__modal-overlay.active {
+    display: block;
 }
 
-.dukkan-order-status__actions {
-    margin-top: 8px;
+.dukkan-os__modal {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    z-index: 160001;
+    width: 480px;
+    max-width: 90vw;
+    overflow: hidden;
+}
+
+.dukkan-os__modal.active {
+    display: block;
+    animation: dukkanOsFadeIn 0.2s ease;
+}
+
+@keyframes dukkanOsFadeIn {
+    from { opacity: 0; transform: translate(-50%, -48%); }
+    to { opacity: 1; transform: translate(-50%, -50%); }
+}
+
+.dukkan-os__modal-header {
     display: flex;
-    gap: 10px;
     align-items: center;
+    justify-content: space-between;
+    padding: 18px 24px;
+    border-bottom: 1px solid #f0f0f1;
 }
 
-/* Table */
-.dukkan-order-status__table {
+.dukkan-os__modal-header h3 {
     margin: 0;
+    font-size: 16px;
+    color: #1d2327;
 }
 
-.dukkan-order-status__table td,
-.dukkan-order-status__table th {
-    padding: 10px 12px;
-    vertical-align: middle;
+.dukkan-os__modal-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: none;
+    color: #9ca3af;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 14px;
+    transition: all 0.15s ease;
 }
 
-.dukkan-order-status__table code {
-    background: #f0f0f1;
-    padding: 2px 6px;
-    border-radius: 3px;
+.dukkan-os__modal-close:hover {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.dukkan-os__modal-body {
+    padding: 24px;
+}
+
+/* Modal Fields */
+.dukkan-os__field {
+    margin-bottom: 20px;
+}
+
+.dukkan-os__field label {
+    display: block;
+    font-weight: 600;
+    font-size: 13px;
+    color: #1d2327;
+    margin-bottom: 6px;
+}
+
+.dukkan-os__required {
+    color: #ef4444;
+    margin-left: 2px;
+}
+
+.dukkan-os__field input[type="text"] {
+    width: 100%;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 14px;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    line-height: 1.5;
+}
+
+.dukkan-os__field input[type="text"]:focus {
+    border-color: #ff5a00;
+    box-shadow: 0 0 0 2px rgba(255,90,0,0.15);
+    outline: none;
+}
+
+.dukkan-os__field-hint {
+    margin: 5px 0 0;
     font-size: 12px;
+    color: #9ca3af;
 }
 
-.dukkan-order-status__actions-cell {
-    white-space: nowrap;
+.dukkan-os__field-error {
+    display: none;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 6px;
+    padding: 10px 14px;
+    margin-bottom: 20px;
+    font-size: 13px;
+    color: #dc2626;
 }
 
-.dukkan-order-status__actions-cell .button {
-    margin-right: 4px;
+.dukkan-os__field-error.active {
+    display: block;
 }
 
-/* Empty state */
-.dukkan-order-status__empty {
-    text-align: center;
-    padding: 40px 20px;
-    color: #888;
+/* Modal Actions */
+.dukkan-os__modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding-top: 4px;
 }
 
-/* Responsive */
-@media (max-width: 900px) {
-    .dukkan-order-status__layout {
+.dukkan-os__modal-save {
+    display: inline-flex;
+    align-items: center;
+    background: #ff5a00;
+    color: #fff;
+    border: none;
+    padding: 8px 20px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.dukkan-os__modal-save:hover {
+    background: #e04d00;
+}
+
+.dukkan-os__modal-save--danger {
+    background: #dc2626;
+}
+
+.dukkan-os__modal-save--danger:hover {
+    background: #b91c1c;
+}
+
+.dukkan-os__modal-save:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Delete Modal specific */
+.dukkan-os__delete-msg {
+    margin: 0 0 20px;
+    font-size: 14px;
+    color: #4b5563;
+    line-height: 1.5;
+}
+
+/* Loading spinner on save button */
+.dukkan-os__modal-save .dukkan-os__spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: dukkanOsSpin 0.6s linear infinite;
+    margin-right: 6px;
+}
+
+@keyframes dukkanOsSpin {
+    to { transform: rotate(360deg); }
+}
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+
+@media (max-width: 600px) {
+    .dukkan-os__header {
         flex-direction: column;
+        gap: 14px;
     }
 
-    .dukkan-order-status__form-panel {
-        flex: 0 0 auto;
-        max-width: 100%;
+    .dukkan-os__modal {
+        width: 95vw;
     }
 }

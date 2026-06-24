@@ -11,10 +11,10 @@
  */
 
 /**
- * Manages custom WooCommerce order statuses — add, edit, update, delete.
+ * Manages custom WooCommerce order statuses — add, edit, update, delete, reorder.
  *
- * Stores custom statuses in a WordPress option keyed by slug and exposes
- * admin-post.php handlers for the Dukkan settings UI.
+ * Stores custom statuses in a WordPress option as an ordered array and exposes
+ * AJAX handlers for the Dukkan settings UI.
  *
  * @package    Dukkan_Plugin
  * @subpackage Dukkan_Plugin/admin
@@ -69,9 +69,13 @@ class Dukkan_Plugin_Order_Status {
 
 		add_filter( 'dukkan_settings_tabs', array( $this, 'add_order_status_tab' ) );
 		add_action( 'dukkan_settings_tab_content_order_status', array( $this, 'render_tab_content' ) );
-		add_action( 'admin_post_dukkan_add_order_status', array( $this, 'handle_add' ) );
-		add_action( 'admin_post_dukkan_update_order_status', array( $this, 'handle_update' ) );
-		add_action( 'admin_post_dukkan_delete_order_status', array( $this, 'handle_delete' ) );
+
+		// AJAX handlers.
+		add_action( 'wp_ajax_dukkan_os_list', array( $this, 'ajax_list' ) );
+		add_action( 'wp_ajax_dukkan_os_add', array( $this, 'ajax_add' ) );
+		add_action( 'wp_ajax_dukkan_os_update', array( $this, 'ajax_update' ) );
+		add_action( 'wp_ajax_dukkan_os_delete', array( $this, 'ajax_delete' ) );
+		add_action( 'wp_ajax_dukkan_os_reorder', array( $this, 'ajax_reorder' ) );
 	}
 
 	// -------------------------------------------------------------------------
@@ -103,12 +107,7 @@ class Dukkan_Plugin_Order_Status {
 	 * @since 1.0.0
 	 */
 	public function render_tab_content() {
-		$statuses     = $this->get_all_statuses();
-		$edit_slug    = isset( $_GET['edit'] ) ? sanitize_text_field( wp_unslash( $_GET['edit'] ) ) : '';
-		$edit_status  = $edit_slug && isset( $statuses[ $edit_slug ] ) ? $statuses[ $edit_slug ] : null;
-		$notice       = isset( $_GET['dukkan_os_msg'] ) ? sanitize_text_field( wp_unslash( $_GET['dukkan_os_msg'] ) ) : '';
-		$notice_type  = isset( $_GET['dukkan_os_type'] ) ? sanitize_text_field( wp_unslash( $_GET['dukkan_os_type'] ) ) : 'success';
-
+		$statuses = $this->get_all_statuses();
 		require plugin_dir_path( __FILE__ ) . 'partials/dukkan-order-status-settings.php';
 	}
 
@@ -117,18 +116,25 @@ class Dukkan_Plugin_Order_Status {
 	// -------------------------------------------------------------------------
 
 	/**
-	 * Retrieve all custom order statuses from the options table.
+	 * Retrieve all custom order statuses as an ordered array.
 	 *
 	 * @since  1.0.0
-	 * @return array<string, array{name: string, slug: string}>
+	 * @return array<int, array{name: string, slug: string}>
 	 */
 	public function get_all_statuses() {
 		$statuses = get_option( self::OPTION_KEY, array() );
-		return is_array( $statuses ) ? $statuses : array();
+		if ( ! is_array( $statuses ) ) {
+			return array();
+		}
+		// Support both legacy associative and new indexed formats.
+		if ( $this->is_assoc( $statuses ) ) {
+			return array_values( $statuses );
+		}
+		return $statuses;
 	}
 
 	/**
-	 * Persist the full statuses array.
+	 * Persist the statuses array.
 	 *
 	 * @since 1.0.0
 	 * @param array $statuses
@@ -146,11 +152,26 @@ class Dukkan_Plugin_Order_Status {
 	 * @return bool
 	 */
 	private function slug_exists( $slug, $exclude = '' ) {
-		$statuses = $this->get_all_statuses();
-		if ( ! isset( $statuses[ $slug ] ) ) {
+		foreach ( $this->get_all_statuses() as $status ) {
+			if ( $status['slug'] === $slug && $slug !== $exclude ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Detect if an array is associative.
+	 *
+	 * @since  1.0.0
+	 * @param  array $arr
+	 * @return bool
+	 */
+	private function is_assoc( $arr ) {
+		if ( array() === $arr ) {
 			return false;
 		}
-		return $exclude !== $slug;
+		return array_keys( $arr ) !== range( 0, count( $arr ) - 1 );
 	}
 
 	// -------------------------------------------------------------------------
@@ -198,124 +219,145 @@ class Dukkan_Plugin_Order_Status {
 	}
 
 	// -------------------------------------------------------------------------
-	// CRUD Handlers
+	// AJAX Handlers
 	// -------------------------------------------------------------------------
 
 	/**
-	 * Handle adding a new custom order status.
+	 * Verify AJAX nonce and capability.
 	 *
 	 * @since 1.0.0
 	 */
-	public function handle_add() {
-		$this->verify_capability_and_nonce( 'dukkan_add_order_status' );
-
-		$name = isset( $_POST['dukkan_os_name'] ) ? sanitize_text_field( wp_unslash( $_POST['dukkan_os_name'] ) ) : '';
-		$slug = isset( $_POST['dukkan_os_slug'] ) ? sanitize_text_field( wp_unslash( $_POST['dukkan_os_slug'] ) ) : '';
-
-		$result = $this->validate( $name, $slug );
-		if ( ! $result['valid'] ) {
-			$this->redirect_with_notice( join( ', ', $result['errors'] ), 'error' );
+	private function verify_ajax() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'dukkan-plugin' ) ), 403 );
 		}
-
-		$statuses = $this->get_all_statuses();
-		$statuses[ $result['sanitized']['slug'] ] = array(
-			'name' => $result['sanitized']['name'],
-			'slug' => $result['sanitized']['slug'],
-		);
-		$this->save_statuses( $statuses );
-
-		$this->redirect_with_notice( __( 'Order status added successfully.', 'dukkan-plugin' ), 'success' );
+		check_ajax_referer( 'wpldp_nonce', 'nonce' );
 	}
 
 	/**
-	 * Handle updating an existing custom order status.
+	 * AJAX: list all statuses.
 	 *
 	 * @since 1.0.0
 	 */
-	public function handle_update() {
-		$this->verify_capability_and_nonce( 'dukkan_update_order_status' );
+	public function ajax_list() {
+		$this->verify_ajax();
+		wp_send_json_success( $this->get_all_statuses() );
+	}
 
-		$old_slug = isset( $_POST['dukkan_os_old_slug'] ) ? sanitize_text_field( wp_unslash( $_POST['dukkan_os_old_slug'] ) ) : '';
-		$name     = isset( $_POST['dukkan_os_name'] ) ? sanitize_text_field( wp_unslash( $_POST['dukkan_os_name'] ) ) : '';
-		$slug     = isset( $_POST['dukkan_os_slug'] ) ? sanitize_text_field( wp_unslash( $_POST['dukkan_os_slug'] ) ) : '';
+	/**
+	 * AJAX: add a new status.
+	 *
+	 * @since 1.0.0
+	 */
+	public function ajax_add() {
+		$this->verify_ajax();
+
+		$name = isset( $_POST['name'] ) ? sanitize_text_field( wp_unslash( $_POST['name'] ) ) : '';
+		$slug = isset( $_POST['slug'] ) ? sanitize_text_field( wp_unslash( $_POST['slug'] ) ) : '';
+
+		$result = $this->validate( $name, $slug );
+		if ( ! $result['valid'] ) {
+			wp_send_json_error( array( 'message' => join( ', ', $result['errors'] ) ), 400 );
+		}
+
+		$statuses   = $this->get_all_statuses();
+		$statuses[] = $result['sanitized'];
+		$this->save_statuses( $statuses );
+
+		wp_send_json_success( $result['sanitized'] );
+	}
+
+	/**
+	 * AJAX: update an existing status.
+	 *
+	 * @since 1.0.0
+	 */
+	public function ajax_update() {
+		$this->verify_ajax();
+
+		$old_slug = isset( $_POST['old_slug'] ) ? sanitize_text_field( wp_unslash( $_POST['old_slug'] ) ) : '';
+		$name     = isset( $_POST['name'] ) ? sanitize_text_field( wp_unslash( $_POST['name'] ) ) : '';
+		$slug     = isset( $_POST['slug'] ) ? sanitize_text_field( wp_unslash( $_POST['slug'] ) ) : '';
 
 		$statuses = $this->get_all_statuses();
-		if ( ! isset( $statuses[ $old_slug ] ) ) {
-			$this->redirect_with_notice( __( 'Order status not found.', 'dukkan-plugin' ), 'error' );
+		$found    = false;
+
+		foreach ( $statuses as $i => $status ) {
+			if ( $status['slug'] === $old_slug ) {
+				$found = $i;
+				break;
+			}
+		}
+
+		if ( false === $found ) {
+			wp_send_json_error( array( 'message' => __( 'Order status not found.', 'dukkan-plugin' ) ), 404 );
 		}
 
 		$result = $this->validate( $name, $slug, $old_slug );
 		if ( ! $result['valid'] ) {
-			$this->redirect_with_notice( join( ', ', $result['errors'] ), 'error' );
+			wp_send_json_error( array( 'message' => join( ', ', $result['errors'] ) ), 400 );
 		}
 
-		unset( $statuses[ $old_slug ] );
-		$statuses[ $result['sanitized']['slug'] ] = array(
-			'name' => $result['sanitized']['name'],
-			'slug' => $result['sanitized']['slug'],
-		);
+		$statuses[ $found ] = $result['sanitized'];
 		$this->save_statuses( $statuses );
 
-		$this->redirect_with_notice( __( 'Order status updated successfully.', 'dukkan-plugin' ), 'success' );
+		wp_send_json_success( $result['sanitized'] );
 	}
 
 	/**
-	 * Handle deleting a custom order status.
+	 * AJAX: delete a status.
 	 *
 	 * @since 1.0.0
 	 */
-	public function handle_delete() {
-		$this->verify_capability_and_nonce( 'dukkan_delete_order_status' );
+	public function ajax_delete() {
+		$this->verify_ajax();
 
-		$slug = isset( $_GET['slug'] ) ? sanitize_text_field( wp_unslash( $_GET['slug'] ) ) : '';
+		$slug     = isset( $_POST['slug'] ) ? sanitize_text_field( wp_unslash( $_POST['slug'] ) ) : '';
+		$statuses = $this->get_all_statuses();
+
+		foreach ( $statuses as $i => $status ) {
+			if ( $status['slug'] === $slug ) {
+				unset( $statuses[ $i ] );
+				$this->save_statuses( array_values( $statuses ) );
+				wp_send_json_success( array( 'deleted' => true, 'slug' => $slug ) );
+			}
+		}
+
+		wp_send_json_error( array( 'message' => __( 'Order status not found.', 'dukkan-plugin' ) ), 404 );
+	}
+
+	/**
+	 * AJAX: reorder statuses via drag-and-drop.
+	 *
+	 * @since 1.0.0
+	 */
+	public function ajax_reorder() {
+		$this->verify_ajax();
+
+		$order = isset( $_POST['order'] ) ? wp_unslash( $_POST['order'] ) : array();
+		if ( ! is_array( $order ) ) {
+			wp_send_json_error( array( 'message' => __( 'Invalid order data.', 'dukkan-plugin' ) ), 400 );
+		}
 
 		$statuses = $this->get_all_statuses();
-		if ( ! isset( $statuses[ $slug ] ) ) {
-			$this->redirect_with_notice( __( 'Order status not found.', 'dukkan-plugin' ), 'error' );
+
+		// Build slug → data map.
+		$map = array();
+		foreach ( $statuses as $status ) {
+			$map[ $status['slug'] ] = $status;
 		}
 
-		unset( $statuses[ $slug ] );
-		$this->save_statuses( $statuses );
-
-		$this->redirect_with_notice( __( 'Order status deleted successfully.', 'dukkan-plugin' ), 'success' );
-	}
-
-	// -------------------------------------------------------------------------
-	// Helpers
-	// -------------------------------------------------------------------------
-
-	/**
-	 * Verify manage_options capability and admin referer nonce.
-	 *
-	 * @since 1.0.0
-	 * @param string $action The nonce action.
-	 */
-	private function verify_capability_and_nonce( $action ) {
-		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'dukkan-plugin' ) );
+		// Rebuild in the new order.
+		$reordered = array();
+		foreach ( $order as $slug ) {
+			$slug = sanitize_text_field( $slug );
+			if ( isset( $map[ $slug ] ) ) {
+				$reordered[] = $map[ $slug ];
+			}
 		}
-		check_admin_referer( $action, 'dukkan_os_nonce' );
-	}
 
-	/**
-	 * Redirect back to the Order Status tab with a notice.
-	 *
-	 * @since 1.0.0
-	 * @param string $message
-	 * @param string $type    success|error
-	 */
-	private function redirect_with_notice( $message, $type = 'success' ) {
-		wp_safe_redirect(
-			add_query_arg(
-				array(
-					'page'            => 'dukkan-settings',
-					'tab'             => 'order_status',
-					'dukkan_os_msg'  => rawurlencode( $message ),
-					'dukkan_os_type' => $type,
-				),
-				admin_url( 'admin.php' )
-			)
-		);
-		exit;
+		$this->save_statuses( $reordered );
+
+		wp_send_json_success( array( 'reordered' => true ) );
 	}
 }
