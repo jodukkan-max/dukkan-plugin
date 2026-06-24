@@ -88,14 +88,7 @@ class Dukkan_Plugin_Store_Settings {
 	 * @return array
 	 */
 	public function get_fields() {
-		$fields = array(
-			'dukkan_woo_order_status' => array(
-				'type'        => 'checkbox',
-				'label'       => __( 'Dukkan Woo Order Status', 'dukkan-plugin' ),
-				'description' => __( 'Enable Dukkan WooCommerce order status handling.', 'dukkan-plugin' ),
-				'default'     => 'no',
-			),
-		);
+		$fields = array();
 
 		return apply_filters( 'dukkan_store_settings_fields', $fields );
 	}

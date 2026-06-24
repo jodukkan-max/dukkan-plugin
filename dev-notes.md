@@ -30,6 +30,13 @@
 - [x] Created `ARCHITECTURE.md` — living blueprint covering all features, hooks, routes, options, and data flows
 - [x] Created `dev-notes.md` — this file
 
+### Milestone 4: Remove built-in statuses, seed defaults
+
+- [x] Rewrote `admin/class-dukkan-plugin-woocommerce.php` — removed all built-in status logic (ORDER_STATUS_SETTING constant, register_builtin_statuses, is_custom_order_status_enabled). Now only registers user-managed statuses from the option.
+- [x] Removed `dukkan_woo_order_status` checkbox field from `admin/class-dukkan-plugin-store-settings.php` — toggle no longer needed since all statuses are user-managed.
+- [x] Updated `includes/class-dukkan-plugin-activator.php` — `seed_default_statuses()` adds Ready For Delivery, Out For Delivery, and With Carrier as default entries in `dukkan_custom_order_statuses` on first activation. Uses `add_option()` so existing data is never overwritten.
+- [x] Updated `ARCHITECTURE.md` and `dev-notes.md` to reflect the change.
+
 ---
 
 ## Current To-Do
@@ -40,7 +47,7 @@
 - [ ] **Test REST API endpoints** — verify all 5 routes with authentication
 - [ ] **Test edge cases** — empty slug, duplicate slug, 20-char limit, slug update with same name, delete last status, concurrent operations
 - [ ] **Test WooCommerce integration** — verify statuses appear in order status dropdown, status counts work, status transitions allowed
-- [ ] **Test backward compatibility** — verify existing built-in statuses still work when toggle is enabled
+- [ ] **Test activation flow** — verify 3 default delivery statuses appear in the Order Status tab on fresh activation; verify existing statuses are not overwritten on reactivation
 
 ### Future Enhancements
 
@@ -67,3 +74,5 @@
 - Auto-slug generation debounced at 300ms, only for new statuses (not edits)
 - Toast notifications use existing `showToast()` utility
 - All AJAX operations verify `wpldp_nonce` nonce and `manage_options` capability
+- No built-in/toggle-gated statuses — all statuses are user-managed via the Order Status tab
+- Default delivery statuses (Ready For Delivery, Out For Delivery, With Carrier) are seeded by `Dukkan_Plugin_Activator::seed_default_statuses()` on first activation via `add_option()` — existing data is never overwritten

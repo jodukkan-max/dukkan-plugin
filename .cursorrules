@@ -151,7 +151,12 @@ The settings page uses a **filter + action** tab system:
 - Each `register_post_status()` call must include: `label`, `public`, `exclude_from_search`,
   `show_in_admin_all_list`, `show_in_admin_status_list`, and `label_count` (use `_n_noop`).
 - Use `_x()` for status labels with context `'Order status'` and `_n_noop()` for label counts.
-- User-managed statuses should be stored separately from the built-in status toggle.
+- No built-in or toggle-gated statuses — all statuses are user-managed via the
+  `dukkan_custom_order_statuses` option. Default statuses are seeded by the activator:
+  ```php
+  add_option( 'dukkan_custom_order_statuses', $defaults, '', 'no' );
+  ```
+- The `Dukkan_Plugin_WooCommerce` class only has one constant: `USER_STATUSES_OPTION`.
 
 ## UI / Styling Conventions
 

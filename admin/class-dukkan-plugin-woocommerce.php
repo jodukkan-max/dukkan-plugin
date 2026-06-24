@@ -11,21 +11,17 @@
  */
 
 /**
- * Manages Dukkan WooCommerce extensions.
+ * Registers user-managed custom WooCommerce order statuses.
+ *
+ * All statuses are read from the `dukkan_custom_order_statuses` option —
+ * there are no built-in statuses. Default statuses are seeded on plugin
+ * activation by Dukkan_Plugin_Activator.
  *
  * @package    Dukkan_Plugin
  * @subpackage Dukkan_Plugin/admin
  * @author     Atul Goyal <hello@wplogist.com>
  */
 class Dukkan_Plugin_WooCommerce {
-
-	/**
-	 * Option key for enabling built-in custom order statuses.
-	 *
-	 * @since 1.0.0
-	 * @var string
-	 */
-	const ORDER_STATUS_SETTING = 'dukkan_woo_order_status';
 
 	/**
 	 * Option key that holds user-managed custom order statuses.
@@ -40,7 +36,7 @@ class Dukkan_Plugin_WooCommerce {
 	 *
 	 * @since    1.0.0
 	 * @access   private
-	 * @var      string    $plugin_name    The ID of this plugin.
+	 * @var      string
 	 */
 	private $plugin_name;
 
@@ -49,7 +45,7 @@ class Dukkan_Plugin_WooCommerce {
 	 *
 	 * @since    1.0.0
 	 * @access   private
-	 * @var      string    $version    The current version of this plugin.
+	 * @var      string
 	 */
 	private $version;
 
@@ -72,10 +68,6 @@ class Dukkan_Plugin_WooCommerce {
 	/**
 	 * Register WooCommerce hooks when WooCommerce is active.
 	 *
-	 * User-managed statuses are always registered regardless of the
-	 * built-in status toggle. The built-in toggle only gates the three
-	 * hardcoded statuses below.
-	 *
 	 * @since 1.0.0
 	 */
 	public function register_hooks() {
@@ -88,90 +80,14 @@ class Dukkan_Plugin_WooCommerce {
 	}
 
 	/**
-	 * Register custom WooCommerce order statuses.
+	 * Register all user-managed custom WooCommerce order statuses.
 	 *
-	 * Registers both the built-in statuses (gated by the store-settings
-	 * toggle) and all user-managed statuses from the Dukkan Order Status tab.
+	 * Reads statuses from the `dukkan_custom_order_statuses` option and
+	 * registers each via register_post_status() with the `wc-` prefix.
 	 *
 	 * @since 1.0.0
 	 */
 	public function register_custom_order_statuses() {
-		// Built-in statuses (only when toggle is enabled).
-		if ( $this->is_custom_order_status_enabled() ) {
-			$this->register_builtin_statuses();
-		}
-
-		// User-managed statuses from the Dukkan Order Status UI / API.
-		$this->register_user_managed_statuses();
-	}
-
-	/**
-	 * Add custom statuses to WooCommerce's order status list.
-	 *
-	 * @since  1.0.0
-	 * @param  array $statuses Existing WooCommerce order statuses.
-	 * @return array
-	 */
-	public function add_custom_order_statuses( $statuses ) {
-		// Built-in statuses.
-		if ( $this->is_custom_order_status_enabled() ) {
-			$statuses['wc-ready-delivery']   = _x( 'Ready For Delivery', 'Order status', 'dukkan-plugin' );
-			$statuses['wc-out-for-delivery'] = _x( 'Out For Delivery', 'Order status', 'dukkan-plugin' );
-			$statuses['wc-with-carrier']     = _x( 'With Carrier', 'Order status', 'dukkan-plugin' );
-		}
-
-		// User-managed statuses.
-		$user_statuses = get_option( self::USER_STATUSES_OPTION, array() );
-		if ( is_array( $user_statuses ) ) {
-			foreach ( $user_statuses as $data ) {
-				$slug                 = 'wc-' . sanitize_title( $data['slug'] );
-				$statuses[ $slug ]    = sanitize_text_field( $data['name'] );
-			}
-		}
-
-		return $statuses;
-	}
-
-	// -------------------------------------------------------------------------
-	// Private helpers
-	// -------------------------------------------------------------------------
-
-	/**
-	 * Register the three built-in Dukkan order statuses.
-	 *
-	 * @since 1.0.0
-	 */
-	private function register_builtin_statuses() {
-		$builtins = array(
-			'ready-delivery'    => _x( 'Ready For Delivery', 'Order status', 'dukkan-plugin' ),
-			'out-for-delivery'  => _x( 'Out For Delivery', 'Order status', 'dukkan-plugin' ),
-			'with-carrier'      => _x( 'With Carrier', 'Order status', 'dukkan-plugin' ),
-		);
-
-		foreach ( $builtins as $slug_part => $label ) {
-			$key = 'wc-' . $slug_part;
-			register_post_status( $key, array(
-				'label'                     => $label,
-				'public'                    => true,
-				'exclude_from_search'       => false,
-				'show_in_admin_all_list'    => true,
-				'show_in_admin_status_list' => true,
-				/* translators: %s: order count */
-				'label_count'               => _n_noop(
-					$label . ' (%s)',
-					$label . ' (%s)',
-					'dukkan-plugin'
-				),
-			) );
-		}
-	}
-
-	/**
-	 * Register all user-managed custom order statuses from the option.
-	 *
-	 * @since 1.0.0
-	 */
-	private function register_user_managed_statuses() {
 		$user_statuses = get_option( self::USER_STATUSES_OPTION, array() );
 		if ( ! is_array( $user_statuses ) ) {
 			return;
@@ -198,19 +114,22 @@ class Dukkan_Plugin_WooCommerce {
 	}
 
 	/**
-	 * Check whether built-in custom order statuses are enabled in Dukkan store settings.
+	 * Add custom statuses to WooCommerce's order status list.
 	 *
 	 * @since  1.0.0
-	 * @return bool
+	 * @param  array $statuses Existing WooCommerce order statuses.
+	 * @return array
 	 */
-	private function is_custom_order_status_enabled() {
-		$settings = get_option( Dukkan_Plugin_Store_Settings::OPTION_NAME, array() );
-
-		if ( ! is_array( $settings ) ) {
-			return false;
+	public function add_custom_order_statuses( $statuses ) {
+		$user_statuses = get_option( self::USER_STATUSES_OPTION, array() );
+		if ( is_array( $user_statuses ) ) {
+			foreach ( $user_statuses as $data ) {
+				$slug              = 'wc-' . sanitize_title( $data['slug'] );
+				$statuses[ $slug ] = sanitize_text_field( $data['name'] );
+			}
 		}
 
-		return isset( $settings[ self::ORDER_STATUS_SETTING ] ) && 'yes' === $settings[ self::ORDER_STATUS_SETTING ];
+		return $statuses;
 	}
 
 }

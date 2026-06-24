@@ -171,11 +171,10 @@ dukkan_store_settings
 
 ### Fields
 
-| Field ID | Type | Default | Description |
-|----------|------|---------|-------------|
-| `dukkan_woo_order_status` | checkbox | `no` | Enable Dukkan WooCommerce order status handling |
-
-Fields are filterable via `dukkan_store_settings_fields`.
+No default fields. The `dukkan_store_settings_fields` filter allows other
+components to register fields dynamically. The old `dukkan_woo_order_status`
+toggle has been removed — all order statuses are now user-managed via the
+Order Status tab.
 
 ### Form Handling
 
@@ -198,31 +197,26 @@ Fields are filterable via `dukkan_store_settings_fields`.
 
 ---
 
-## 7. Feature: WooCommerce Order Statuses
+## 7. Feature: WooCommerce Order Status Registration
 
 **Class:** `Dukkan_Plugin_WooCommerce`  
 **File:** `admin/class-dukkan-plugin-woocommerce.php`
 
-### Constants
+### Constant
 
 | Constant | Value |
 |----------|-------|
-| `ORDER_STATUS_SETTING` | `dukkan_woo_order_status` |
 | `USER_STATUSES_OPTION` | `dukkan_custom_order_statuses` |
 
-### Built-in Statuses (gated by store toggle)
+### Behaviour
 
-| Slug | Label |
-|------|-------|
-| `wc-ready-delivery` | Ready For Delivery |
-| `wc-out-for-delivery` | Out For Delivery |
-| `wc-with-carrier` | With Carrier |
+All custom order statuses are read from the `dukkan_custom_order_statuses` option.
+There are **no built-in statuses** — the three delivery statuses (Ready For Delivery,
+Out For Delivery, With Carrier) are seeded as default entries in the option by
+`Dukkan_Plugin_Activator::seed_default_statuses()` on first activation.
 
-### User-Managed Statuses (always registered when WC is active)
-
-Read from `dukkan_custom_order_statuses` option. Each status has `{name, slug}`.
-Registered via `register_post_status()` on `init` with `wc-` prefix.
-Added to WC admin via `wc_order_statuses` filter.
+Each status is registered via `register_post_status()` on `init` with the `wc-`
+prefix, and added to the WC admin dropdown via the `wc_order_statuses` filter.
 
 ### Hooks
 
@@ -507,12 +501,23 @@ Client → GET/POST/PUT/DELETE /wp-json/dukkan-order-status/v1/statuses[/{slug}]
 ```
 WordPress init
   → Dukkan_Plugin_WooCommerce::register_custom_order_statuses()
-  → is_custom_order_status_enabled() ? register_builtin_statuses() : skip
-  → register_user_managed_statuses()
-    → get_option( 'dukkan_custom_order_statuses' )
-    → foreach: register_post_status( 'wc-{slug}', { label, public, ...label_count } )
+  → get_option( 'dukkan_custom_order_statuses' )
+  → foreach: register_post_status( 'wc-{slug}', { label, public, ...label_count } )
   → add_filter( 'wc_order_statuses' ) adds all to admin dropdown
 ```
+
+### Activation (Default Status Seeding)
+
+```
+Plugin activation
+  → Dukkan_Plugin_Activator::activate()
+  → seed_default_statuses()
+  → add_option( 'dukkan_custom_order_statuses', [
+        { name: 'Ready For Delivery', slug: 'ready-delivery' },
+        { name: 'Out For Delivery',  slug: 'out-for-delivery' },
+        { name: 'With Carrier',      slug: 'with-carrier' },
+    ], '', 'no' )
+  → add_option() is a no-op if the option already exists
 
 ---
 
