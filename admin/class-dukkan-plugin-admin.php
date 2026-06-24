@@ -63,8 +63,10 @@ class Dukkan_Plugin_Admin {
 	 *
 	 * @since    1.0.0
 	 */
-	public function enqueue_styles() {
-
+	public function enqueue_styles($hook_suffix) {
+		if ($hook_suffix !== 'toplevel_page_dukkan-settings') {
+			return;
+		}
 		/**
 		 * This function is provided for demonstration purposes only.
 		 *
@@ -87,8 +89,10 @@ class Dukkan_Plugin_Admin {
 	 *
 	 * @since    1.0.0
 	 */
-	public function enqueue_scripts() {
-
+	public function enqueue_scripts($hook_suffix) {
+		if ($hook_suffix !== 'toplevel_page_dukkan-settings') {
+			return;
+		}
 		/**
 		 * This function is provided for demonstration purposes only.
 		 *
