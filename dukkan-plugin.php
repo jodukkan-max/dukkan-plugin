@@ -16,7 +16,7 @@
  * Plugin Name:       Dukkan Plugin
  * Plugin URI:        https://dukkanjo.com
  * Description:       Dukkan Plugin
- * Version:           1.0.0
+ * Version:           1.0.1
  * Author:            Atul Goyal
  * Author URI:        https://dukkanjo.com/
  * License:           GPL-2.0+
@@ -35,7 +35,7 @@ if ( ! defined( 'WPINC' ) ) {
  * Start at version 1.0.0 and use SemVer - https://semver.org
  * Rename this for your plugin and update it as you release new versions.
  */
-define( 'DUKKAN_PLUGIN_VERSION', '1.0.0' );
+define( 'DUKKAN_PLUGIN_VERSION', '1.0.1' );
 
 define( 'DUKKAN_PLUGIN_PATH', plugin_dir_path( __FILE__ ) );
 define( 'DUKKAN_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
