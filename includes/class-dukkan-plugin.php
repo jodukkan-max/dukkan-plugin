@@ -173,6 +173,11 @@ class Dukkan_Plugin {
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'admin/class-dukkan-plugin-product-addon.php';
 
 		/**
+		 * The class responsible for dynamic product pricing functionality in the admin area.
+		 */
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'admin/class-dukkan-plugin-dynamic-pricing.php';
+
+		/**
 		 * The class responsible for defining all actions that occur in the public-facing
 		 * side of the site.
 		 */
@@ -302,6 +307,8 @@ class Dukkan_Plugin {
 		$plugin_product_addon = new Dukkan_Plugin_Product_Addon( $this->get_plugin_name(), $this->get_version() );
 		$this->loader->add_action( 'admin_enqueue_scripts', $plugin_product_addon, 'enqueue_styles' );
 		$this->loader->add_action( 'admin_enqueue_scripts', $plugin_product_addon, 'enqueue_scripts' );
+
+		$plugin_dynamic_pricing = new Dukkan_Plugin_Dynamic_Pricing( $this->get_plugin_name(), $this->get_version() );
 
 	}
 

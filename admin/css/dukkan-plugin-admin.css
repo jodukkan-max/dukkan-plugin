@@ -1419,3 +1419,503 @@ color:#f59e00;
         width: 95vw;
     }
 }
+
+/* ==========================================================================
+   Dynamic Pricing & Discounts — Modern UI
+   ========================================================================== */
+
+.dukkan-dp {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    overflow: hidden;
+}
+
+/* Header */
+.dukkan-dp__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 24px 28px;
+    border-bottom: 1px solid #f0f0f1;
+}
+
+.dukkan-dp__header-left h2 {
+    margin: 0 0 4px;
+    font-size: 20px;
+    color: #1d2327;
+}
+
+.dukkan-dp__header-left p {
+    margin: 0;
+    color: #6b7280;
+    font-size: 13px;
+}
+
+.dukkan-dp__header-right {
+    flex-shrink: 0;
+}
+
+/* Add Button */
+.dukkan-dp__add-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #ff5a00;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s ease, box-shadow 0.2s ease;
+    line-height: 1.4;
+}
+
+.dukkan-dp__add-btn:hover {
+    background: #e04d00;
+    box-shadow: 0 2px 8px rgba(255,90,0,0.25);
+}
+
+.dukkan-dp__add-btn i {
+    font-size: 13px;
+}
+
+/* List Wrapper */
+.dukkan-dp__list-wrap {
+    padding: 0 28px 28px;
+}
+
+/* Empty State */
+.dukkan-dp__empty {
+    text-align: center;
+    padding: 60px 20px;
+}
+
+.dukkan-dp__empty-icon {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 20px;
+    background: #fde7d0;
+    color: #ff5a00;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+}
+
+.dukkan-dp__empty h3 {
+    margin: 0 0 8px;
+    font-size: 16px;
+    color: #1d2327;
+}
+
+.dukkan-dp__empty p {
+    margin: 0;
+    color: #6b7280;
+    font-size: 13px;
+}
+
+/* Rule List */
+.dukkan-dp__list {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Rule Item */
+.dukkan-dp__item {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 16px 18px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.dukkan-dp__item + .dukkan-dp__item {
+    margin-top: 8px;
+}
+
+.dukkan-dp__item:hover {
+    border-color: #ff5a00;
+    box-shadow: 0 1px 4px rgba(255,90,0,0.1);
+}
+
+.dukkan-dp__item-main {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+}
+
+.dukkan-dp__item-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.dukkan-dp__item-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1d2327;
+    margin-bottom: 6px;
+}
+
+.dukkan-dp__item-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.dukkan-dp__item-badge {
+    display: inline-flex;
+    align-items: center;
+    background: #fef3c7;
+    color: #92400e;
+    padding: 2px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.dukkan-dp__item-scope {
+    color: #6b7280;
+    font-size: 12px;
+}
+
+.dukkan-dp__toggle {
+    flex-shrink: 0;
+}
+
+/* Rule Item Actions */
+.dukkan-dp__item-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #f3f4f6;
+}
+
+.dukkan-dp__item-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    background: #fff;
+    color: #6b7280;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-size: 13px;
+}
+
+.dukkan-dp__item-btn:hover {
+    border-color: #d1d5db;
+    color: #374151;
+}
+
+.dukkan-dp__item-btn--edit:hover {
+    background: #dbeafe;
+    border-color: #93c5fd;
+    color: #2563eb;
+}
+
+.dukkan-dp__item-btn--copy:hover {
+    background: #fef3c7;
+    border-color: #fcd34d;
+    color: #92400e;
+}
+
+.dukkan-dp__item-btn--delete:hover {
+    background: #fee2e2;
+    border-color: #fca5a5;
+    color: #dc2626;
+}
+
+/* ==========================================================================
+   Dynamic Pricing — Modal
+   ========================================================================== */
+
+.dukkan-dp__modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 160000;
+}
+
+.dukkan-dp__modal-overlay.active {
+    display: block;
+}
+
+.dukkan-dp__modal {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    z-index: 160001;
+    width: 580px;
+    max-width: 90vw;
+    max-height: 85vh;
+    overflow: hidden;
+}
+
+.dukkan-dp__modal.active {
+    display: flex;
+    flex-direction: column;
+    animation: dukkanDpFadeIn 0.2s ease;
+}
+
+@keyframes dukkanDpFadeIn {
+    from { opacity: 0; transform: translate(-50%, -48%); }
+    to { opacity: 1; transform: translate(-50%, -50%); }
+}
+
+.dukkan-dp__modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 24px;
+    border-bottom: 1px solid #f0f0f1;
+    flex-shrink: 0;
+}
+
+.dukkan-dp__modal-header h3 {
+    margin: 0;
+    font-size: 16px;
+    color: #1d2327;
+}
+
+.dukkan-dp__modal-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: none;
+    color: #9ca3af;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 14px;
+    transition: all 0.15s ease;
+}
+
+.dukkan-dp__modal-close:hover {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.dukkan-dp__modal-body {
+    padding: 24px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+/* Modal Fields */
+.dukkan-dp__field {
+    margin-bottom: 18px;
+}
+
+.dukkan-dp__field label {
+    display: block;
+    font-weight: 600;
+    font-size: 13px;
+    color: #1d2327;
+    margin-bottom: 6px;
+}
+
+.dukkan-dp__required {
+    color: #ef4444;
+    margin-left: 2px;
+}
+
+.dukkan-dp__field input[type="text"],
+.dukkan-dp__field input[type="number"],
+.dukkan-dp__field input[type="date"],
+.dukkan-dp__field select,
+.dukkan-dp__field textarea {
+    width: 100%;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 14px;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    line-height: 1.5;
+    font-family: inherit;
+}
+
+.dukkan-dp__field input[type="text"]:focus,
+.dukkan-dp__field input[type="number"]:focus,
+.dukkan-dp__field input[type="date"]:focus,
+.dukkan-dp__field select:focus,
+.dukkan-dp__field textarea:focus {
+    border-color: #ff5a00;
+    box-shadow: 0 0 0 2px rgba(255,90,0,0.15);
+    outline: none;
+}
+
+.dukkan-dp__field textarea {
+    resize: vertical;
+}
+
+.dukkan-dp__field-hint {
+    margin: 5px 0 0;
+    font-size: 12px;
+    color: #9ca3af;
+}
+
+.dukkan-dp__field--inline {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 0;
+    border-bottom: 1px solid #f0f0f1;
+}
+
+.dukkan-dp__field--inline label {
+    margin-bottom: 0;
+}
+
+.dukkan-dp__field--half {
+    flex: 1;
+}
+
+.dukkan-dp__field-row {
+    display: flex;
+    gap: 16px;
+}
+
+/* Field Group */
+.dukkan-dp__field-group {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 18px;
+    margin-bottom: 18px;
+}
+
+.dukkan-dp__field-group-title {
+    margin: 0 0 14px;
+    font-size: 14px;
+    color: #374151;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.dukkan-dp__field-group-title i {
+    color: #9ca3af;
+    font-size: 13px;
+}
+
+.dukkan-dp__field-group .dukkan-dp__field:last-child {
+    margin-bottom: 0;
+}
+
+/* Modal Error */
+.dukkan-dp__modal-error {
+    display: none;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 6px;
+    padding: 10px 14px;
+    margin-bottom: 20px;
+    font-size: 13px;
+    color: #dc2626;
+}
+
+.dukkan-dp__modal-error.active {
+    display: block;
+}
+
+/* Modal Actions */
+.dukkan-dp__modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 16px 24px;
+    border-top: 1px solid #f0f0f1;
+    flex-shrink: 0;
+}
+
+.dukkan-dp__modal-cancel {
+    display: inline-flex;
+    align-items: center;
+    background: #fff;
+    color: #374151;
+    border: 1px solid #d1d5db;
+    padding: 8px 20px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.dukkan-dp__modal-cancel:hover {
+    background: #f9fafb;
+}
+
+.dukkan-dp__modal-save {
+    display: inline-flex;
+    align-items: center;
+    background: #ff5a00;
+    color: #fff;
+    border: none;
+    padding: 8px 20px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.dukkan-dp__modal-save:hover {
+    background: #e04d00;
+}
+
+.dukkan-dp__modal-save--danger {
+    background: #dc2626;
+}
+
+.dukkan-dp__modal-save--danger:hover {
+    background: #b91c1c;
+}
+
+.dukkan-dp__modal-save:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Delete Modal */
+.dukkan-dp__delete-modal {
+    width: 440px;
+}
+
+.dukkan-dp__delete-msg {
+    margin: 0;
+    font-size: 14px;
+    color: #4b5563;
+    line-height: 1.5;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+    .dukkan-dp__header {
+        flex-direction: column;
+        gap: 14px;
+    }
+
+    .dukkan-dp__modal {
+        width: 95vw;
+    }
+}
