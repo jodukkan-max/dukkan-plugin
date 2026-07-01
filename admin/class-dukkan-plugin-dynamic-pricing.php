@@ -126,7 +126,7 @@ class Dukkan_Plugin_Dynamic_Pricing {
 		?>
 		<div class="dukkan-dp__rule" data-rule-id="<?php echo esc_attr( $rule_id ); ?>">
 			<!-- Card Header -->
-			<div class="dukkan-dp__rule-header">
+			<div class="dukkan-dp__rule-header" data-toggle-collapse>
 				<div class="dukkan-dp__rule-drag">
 					<i class="fa-solid fa-grip-vertical"></i>
 				</div>
@@ -167,11 +167,14 @@ class Dukkan_Plugin_Dynamic_Pricing {
 					<button type="button" class="dukkan-dp__rule-icon-btn dukkan-dp__rule-icon-btn--danger" data-remove title="<?php esc_attr_e( 'Remove rule', 'dukkan-plugin' ); ?>">
 						<i class="fa-solid fa-trash-can"></i>
 					</button>
+					<button type="button" class="dukkan-dp__rule-icon-btn dukkan-dp__rule-toggle-btn" data-toggle-collapse title="<?php esc_attr_e( 'Toggle details', 'dukkan-plugin' ); ?>">
+						<i class="fa-solid fa-chevron-down dukkan-dp__rule-toggle-icon"></i>
+					</button>
 				</div>
 			</div>
 
 			<!-- Card Body -->
-			<div class="dukkan-dp__rule-body">
+			<div class="dukkan-dp__rule-body dukkan-dp__rule-body--collapsed">
 				<!-- Method -->
 				<div class="dukkan-dp__field">
 					<label><?php esc_html_e( 'Method', 'dukkan-plugin' ); ?></label>

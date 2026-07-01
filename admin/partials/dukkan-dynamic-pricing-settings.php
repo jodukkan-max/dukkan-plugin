@@ -18,17 +18,21 @@
     <!-- Rule List (sortable) -->
     <div class="dukkan-dp__list" id="dukkan-dp-list">
         <?php if ( ! empty( $rules ) ) : ?>
-            <?php foreach ( $rules as $rule_id => $rule ) : ?>
-                <?php $this->render_rule_card( $rule_id, $rule ); ?>
+            <?php foreach ( $rules as $rule ) : ?>
+                <?php $this->render_rule_card( $rule['id'] ?? '', $rule ); ?>
             <?php endforeach; ?>
         <?php endif; ?>
     </div>
 
-    <!-- Add Rule Button -->
+    <!-- Footer Actions -->
     <div class="dukkan-dp__footer">
         <button type="button" class="dukkan-dp__add-rule-btn" id="dukkan-dp-add-rule">
             <i class="fa-solid fa-plus"></i>
             <?php esc_html_e( 'Add Rule', 'dukkan-plugin' ); ?>
+        </button>
+        <button type="button" class="dukkan-dp__save-all-btn" id="dukkan-dp-save-all">
+            <i class="fa-solid fa-floppy-disk"></i>
+            <?php esc_html_e( 'Save All Rules', 'dukkan-plugin' ); ?>
         </button>
     </div>
 </div>

@@ -137,6 +137,8 @@ class Dukkan_Plugin_Admin {
 				'edit_title'            => __( 'Edit Pricing Rule', 'dukkan-plugin' ),
 				'save_btn'              => __( 'Save Rule', 'dukkan-plugin' ),
 				'saving'                => __( 'Saving…', 'dukkan-plugin' ),
+				'save_all'              => __( 'Save All Rules', 'dukkan-plugin' ),
+				'saved_all'             => __( 'All pricing rules saved.', 'dukkan-plugin' ),
 				'deleting'              => __( 'Deleting…', 'dukkan-plugin' ),
 				'added'                 => __( 'Pricing rule added.', 'dukkan-plugin' ),
 				'updated'               => __( 'Pricing rule updated.', 'dukkan-plugin' ),

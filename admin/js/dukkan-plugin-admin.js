@@ -410,11 +410,19 @@
 			$template: $('#dukkan-dp-rule-template'),
 
 			/**
+			 * Safely read the rule-id as a string. jQuery .data() can auto-parse
+			 * numeric-like values, so we always force to string.
+			 */
+			ruleId: function ($rule) {
+				return String($rule.data('rule-id') || $rule.attr('data-rule-id') || '');
+			},
+
+			/**
 			 * Collect data from a rule card into an object.
 			 */
 			collectRuleData: function ($rule) {
 				return {
-					id: $rule.data('rule-id') || '',
+					id: dp.ruleId($rule),
 					method: $rule.find('[data-method]').val() || 'simple_adjustment',
 					note: $rule.find('[data-note]').val() || '',
 					description: $rule.find('[data-description]').val() || '',
@@ -554,7 +562,7 @@
 			 * Remove a rule card.
 			 */
 			removeRule: function ($rule) {
-				var ruleId = $rule.data('rule-id');
+				var ruleId = dp.ruleId($rule);
 				if (!ruleId || ruleId.indexOf('temp_') === 0) {
 					$rule.slideUp(200, function () { $(this).remove(); });
 					return;
@@ -569,7 +577,7 @@
 			 * Duplicate a rule card.
 			 */
 			duplicateRule: function ($rule) {
-				var ruleId = $rule.data('rule-id');
+				var ruleId = dp.ruleId($rule);
 
 				// For temp rules, just clone client-side.
 				if (ruleId && ruleId.indexOf('temp_') === 0) {
@@ -651,7 +659,7 @@
 		dp.$list.on('change', '[data-method]', function () {
 			var $rule = $(this).closest('.dukkan-dp__rule');
 			dp.updateMethodLabel($rule);
-			var ruleId = $rule.data('rule-id');
+			var ruleId = dp.ruleId($rule);
 			if (ruleId && ruleId.indexOf('temp_') !== 0) {
 				dp.debouncedSave(ruleId);
 			}
@@ -660,7 +668,7 @@
 		// ---- Any field change triggers debounced save for persisted rules ----
 		dp.$list.on('change input', '[data-apply-with], [data-adjustment-type], [data-adjustment-amount], [data-note], [data-description]', function () {
 			var $rule = $(this).closest('.dukkan-dp__rule');
-			var ruleId = $rule.data('rule-id');
+			var ruleId = dp.ruleId($rule);
 			if (ruleId && ruleId.indexOf('temp_') !== 0) {
 				dp.debouncedSave(ruleId);
 			}
@@ -693,7 +701,7 @@
 				$boxBody.empty().append($empty);
 			}
 			// Debounce save.
-			var ruleId = $rule.data('rule-id');
+			var ruleId = dp.ruleId($rule);
 			if (ruleId && ruleId.indexOf('temp_') !== 0) {
 				dp.debouncedSave(ruleId);
 			}
@@ -725,10 +733,46 @@
 				$boxBody.empty().append($empty);
 			}
 			// Debounce save.
-			var ruleId = $rule.data('rule-id');
+			var ruleId = dp.ruleId($rule);
 			if (ruleId && ruleId.indexOf('temp_') !== 0) {
 				dp.debouncedSave(ruleId);
 			}
+		});
+
+		// ---- Collapse toggle (delegated) ----
+		dp.$list.on('click', '[data-toggle-collapse]', function (e) {
+			// Don't toggle when clicking on selects, inputs, or action buttons.
+			if ($(e.target).is('select, input, button, i.fa-copy, i.fa-trash-can')) return;
+			if ($(e.target).closest('select, [data-duplicate], [data-remove]').length) return;
+
+			var $rule = $(this).closest('.dukkan-dp__rule');
+			var $body = $rule.find('.dukkan-dp__rule-body');
+			var $icon = $rule.find('.dukkan-dp__rule-toggle-icon');
+			$body.slideToggle(200, function () {
+				$body.toggleClass('dukkan-dp__rule-body--collapsed');
+			});
+			$icon.toggleClass('dukkan-dp__rule-toggle-icon--open');
+		});
+
+		// ---- Save All Rules button ----
+		$('#dukkan-dp-save-all').on('click', function () {
+			var $btn = $(this);
+			var allRules = [];
+			dp.$list.find('.dukkan-dp__rule').each(function () {
+				allRules.push(dp.collectRuleData($(this)));
+			});
+
+			$btn.prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin"></i> ' + (dpI18n.saving || 'Saving…'));
+
+			dp.ajaxPost('dukkan_dp_save_all', { rules: allRules }, function (data) {
+				showToast(dpI18n.saved_all || 'All pricing rules saved.', 'success');
+			}, function () {
+				// Error handled by ajaxPost.
+			});
+
+			setTimeout(function () {
+				$btn.prop('disabled', false).html('<i class="fa-solid fa-floppy-disk"></i> ' + (dpI18n.save_all || 'Save All Rules'));
+			}, 2000);
 		});
 
 		// ---- Initialize sortable if rules exist ----

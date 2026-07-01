@@ -1591,9 +1591,26 @@ color:#f59e00;
     color: #dc2626;
 }
 
+.dukkan-dp__rule-toggle-btn {
+    margin-left: 2px;
+}
+
+.dukkan-dp__rule-toggle-icon {
+    transition: transform 0.2s ease;
+}
+
+.dukkan-dp__rule-toggle-icon--open {
+    transform: rotate(180deg);
+}
+
 /* Rule Card Body */
 .dukkan-dp__rule-body {
     padding: 20px 18px;
+    display: block;
+}
+
+.dukkan-dp__rule-body--collapsed {
+    display: none;
 }
 
 .dukkan-dp__field {
@@ -1774,6 +1791,7 @@ color:#f59e00;
     padding: 16px 28px 24px;
     display: flex;
     justify-content: flex-end;
+    gap: 12px;
 }
 
 .dukkan-dp__add-rule-btn {
@@ -1799,6 +1817,36 @@ color:#f59e00;
 
 .dukkan-dp__add-rule-btn i {
     font-size: 13px;
+}
+
+.dukkan-dp__save-all-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #16a34a;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s ease, box-shadow 0.2s ease;
+    line-height: 1.4;
+}
+
+.dukkan-dp__save-all-btn:hover {
+    background: #15803d;
+    box-shadow: 0 2px 8px rgba(22,163,74,0.25);
+}
+
+.dukkan-dp__save-all-btn i {
+    font-size: 13px;
+}
+
+.dukkan-dp__save-all-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
 /* Responsive */
