@@ -11,10 +11,10 @@
  */
 
 /**
- * Manages dynamic pricing rules — add, edit, update, delete, duplicate.
+ * Manages dynamic pricing rules — add, edit, update, delete, duplicate, reorder.
  *
- * Stores pricing rules in a WordPress option as an associative array
- * indexed by rule ID and exposes AJAX handlers for the Dukkan settings UI.
+ * Stores pricing rules in a WordPress option as an ordered indexed array
+ * and exposes AJAX handlers for the Dukkan settings UI.
  *
  * @package    Dukkan_Plugin
  * @subpackage Dukkan_Plugin/admin
@@ -70,6 +70,7 @@ class Dukkan_Plugin_Dynamic_Pricing {
 		add_action( 'wp_ajax_dukkan_dp_duplicate', array( $this, 'ajax_duplicate' ) );
 		add_action( 'wp_ajax_dukkan_dp_toggle', array( $this, 'ajax_toggle' ) );
 		add_action( 'wp_ajax_dukkan_dp_get', array( $this, 'ajax_get' ) );
+		add_action( 'wp_ajax_dukkan_dp_save_all', array( $this, 'ajax_save_all' ) );
 	}
 
 	// -------------------------------------------------------------------------
@@ -105,22 +106,217 @@ class Dukkan_Plugin_Dynamic_Pricing {
 		require plugin_dir_path( __FILE__ ) . 'partials/dukkan-dynamic-pricing-settings.php';
 	}
 
+	/**
+	 * Render a single rule card.
+	 *
+	 * @since 1.0.1
+	 * @param string $rule_id Rule ID.
+	 * @param array  $rule    Rule data (empty for new rules).
+	 */
+	public function render_rule_card( $rule_id, $rule ) {
+		$method          = $rule['method'] ?? 'simple_adjustment';
+		$note            = $rule['note'] ?? '';
+		$description     = $rule['description'] ?? '';
+		$adjustment_type = $rule['adjustment_type'] ?? 'fixed_discount';
+		$adjustment_amount = $rule['adjustment_amount'] ?? '0.00';
+		$apply_with      = $rule['apply_with'] ?? 'apply_with_others';
+		$products        = $rule['products'] ?? array();
+		$conditions      = $rule['conditions'] ?? array();
+		$is_template     = ( '{{RULE_ID}}' === $rule_id );
+		?>
+		<div class="dukkan-dp__rule" data-rule-id="<?php echo esc_attr( $rule_id ); ?>">
+			<!-- Card Header -->
+			<div class="dukkan-dp__rule-header">
+				<div class="dukkan-dp__rule-drag">
+					<i class="fa-solid fa-grip-vertical"></i>
+				</div>
+				<span class="dukkan-dp__rule-label"><?php esc_html_e( 'Pricing Rule', 'dukkan-plugin' ); ?></span>
+				<span class="dukkan-dp__rule-method-label" data-method-label>
+					<?php
+					if ( 'simple_adjustment' === $method ) {
+						esc_html_e( 'Simple adjustment', 'dukkan-plugin' );
+					} elseif ( 'bulk_pricing' === $method ) {
+						esc_html_e( 'Bulk pricing', 'dukkan-plugin' );
+					} elseif ( 'buy_x_get_y' === $method ) {
+						esc_html_e( 'Buy X Get Y', 'dukkan-plugin' );
+					} elseif ( 'bundle' === $method ) {
+						esc_html_e( 'Bundle', 'dukkan-plugin' );
+					} else {
+						esc_html_e( 'Simple adjustment', 'dukkan-plugin' );
+					}
+					?>
+				</span>
+				<div class="dukkan-dp__rule-header-right">
+					<select class="dukkan-dp__rule-apply-with" data-apply-with>
+						<option value="apply_with_others" <?php selected( $apply_with, 'apply_with_others' ); ?>>
+							<?php esc_html_e( 'Apply with other applicable rules', 'dukkan-plugin' ); ?>
+						</option>
+						<option value="apply_first" <?php selected( $apply_with, 'apply_first' ); ?>>
+							<?php esc_html_e( 'Apply first', 'dukkan-plugin' ); ?>
+						</option>
+						<option value="apply_last" <?php selected( $apply_with, 'apply_last' ); ?>>
+							<?php esc_html_e( 'Apply last', 'dukkan-plugin' ); ?>
+						</option>
+						<option value="stop_here" <?php selected( $apply_with, 'stop_here' ); ?>>
+							<?php esc_html_e( 'Stop here', 'dukkan-plugin' ); ?>
+						</option>
+					</select>
+					<button type="button" class="dukkan-dp__rule-icon-btn" data-duplicate title="<?php esc_attr_e( 'Duplicate rule', 'dukkan-plugin' ); ?>">
+						<i class="fa-solid fa-copy"></i>
+					</button>
+					<button type="button" class="dukkan-dp__rule-icon-btn dukkan-dp__rule-icon-btn--danger" data-remove title="<?php esc_attr_e( 'Remove rule', 'dukkan-plugin' ); ?>">
+						<i class="fa-solid fa-trash-can"></i>
+					</button>
+				</div>
+			</div>
+
+			<!-- Card Body -->
+			<div class="dukkan-dp__rule-body">
+				<!-- Method -->
+				<div class="dukkan-dp__field">
+					<label><?php esc_html_e( 'Method', 'dukkan-plugin' ); ?></label>
+					<select class="dukkan-dp__method-select" data-method>
+						<option value="simple_adjustment" <?php selected( $method, 'simple_adjustment' ); ?>>
+							<?php esc_html_e( 'Simple adjustment', 'dukkan-plugin' ); ?>
+						</option>
+						<option value="bulk_pricing" <?php selected( $method, 'bulk_pricing' ); ?>>
+							<?php esc_html_e( 'Bulk pricing', 'dukkan-plugin' ); ?>
+						</option>
+						<option value="buy_x_get_y" <?php selected( $method, 'buy_x_get_y' ); ?>>
+							<?php esc_html_e( 'Buy X Get Y', 'dukkan-plugin' ); ?>
+						</option>
+						<option value="bundle" <?php selected( $method, 'bundle' ); ?>>
+							<?php esc_html_e( 'Bundle', 'dukkan-plugin' ); ?>
+						</option>
+					</select>
+				</div>
+
+				<!-- Note -->
+				<div class="dukkan-dp__field">
+					<label><?php esc_html_e( 'Note – Private', 'dukkan-plugin' ); ?></label>
+					<input type="text" class="dukkan-dp__input" data-note value="<?php echo esc_attr( $note ); ?>" placeholder="<?php esc_attr_e( 'Optional private note', 'dukkan-plugin' ); ?>">
+				</div>
+
+				<!-- Description -->
+				<div class="dukkan-dp__field">
+					<label><?php esc_html_e( 'Description – Public', 'dukkan-plugin' ); ?></label>
+					<input type="text" class="dukkan-dp__input" data-description value="<?php echo esc_attr( $description ); ?>" placeholder="<?php esc_attr_e( 'Optional public description', 'dukkan-plugin' ); ?>">
+				</div>
+
+				<!-- Adjustment Box -->
+				<div class="dukkan-dp__box">
+					<div class="dukkan-dp__box-label"><?php esc_html_e( 'Adjustment', 'dukkan-plugin' ); ?></div>
+					<div class="dukkan-dp__box-body dukkan-dp__adjustment-body">
+						<select class="dukkan-dp__adjustment-type" data-adjustment-type>
+							<option value="fixed_discount" <?php selected( $adjustment_type, 'fixed_discount' ); ?>>
+								<?php esc_html_e( 'Fixed discount', 'dukkan-plugin' ); ?>
+							</option>
+							<option value="percentage_discount" <?php selected( $adjustment_type, 'percentage_discount' ); ?>>
+								<?php esc_html_e( 'Percentage discount', 'dukkan-plugin' ); ?>
+							</option>
+							<option value="fixed_price" <?php selected( $adjustment_type, 'fixed_price' ); ?>>
+								<?php esc_html_e( 'Fixed price', 'dukkan-plugin' ); ?>
+							</option>
+						</select>
+						<span class="dukkan-dp__adjustment-currency"><?php echo esc_html( get_woocommerce_currency_symbol() ); ?></span>
+						<input type="number" class="dukkan-dp__adjustment-amount" data-adjustment-amount
+							   value="<?php echo esc_attr( $adjustment_amount ); ?>"
+							   min="0" step="0.01" placeholder="0.00">
+					</div>
+				</div>
+
+				<!-- Products Box -->
+				<div class="dukkan-dp__box">
+					<div class="dukkan-dp__box-label"><?php esc_html_e( 'Products', 'dukkan-plugin' ); ?></div>
+					<div class="dukkan-dp__box-body dukkan-dp__products-body">
+						<?php if ( empty( $products ) ) : ?>
+							<div class="dukkan-dp__box-empty" data-products-empty>
+								<span class="dukkan-dp__box-empty-text"><?php esc_html_e( 'Applies to all products.', 'dukkan-plugin' ); ?></span>
+								<button type="button" class="dukkan-dp__box-action-btn" data-add-product>
+									<?php esc_html_e( 'Add Product', 'dukkan-plugin' ); ?>
+								</button>
+							</div>
+						<?php else : ?>
+							<div class="dukkan-dp__box-list" data-products-list>
+								<?php foreach ( $products as $product ) : ?>
+									<div class="dukkan-dp__product-tag" data-product-id="<?php echo esc_attr( is_array( $product ) ? $product['id'] : $product ); ?>">
+										<span><?php echo esc_html( is_array( $product ) ? $product['name'] : $product ); ?></span>
+										<button type="button" class="dukkan-dp__tag-remove" data-remove-product>&times;</button>
+									</div>
+								<?php endforeach; ?>
+							</div>
+							<button type="button" class="dukkan-dp__box-action-btn" data-add-product>
+								<?php esc_html_e( 'Add Product', 'dukkan-plugin' ); ?>
+							</button>
+						<?php endif; ?>
+					</div>
+				</div>
+
+				<!-- Conditions Box -->
+				<div class="dukkan-dp__box">
+					<div class="dukkan-dp__box-label"><?php esc_html_e( 'Conditions', 'dukkan-plugin' ); ?></div>
+					<div class="dukkan-dp__box-body dukkan-dp__conditions-body">
+						<?php if ( empty( $conditions ) ) : ?>
+							<div class="dukkan-dp__box-empty" data-conditions-empty>
+								<span class="dukkan-dp__box-empty-text"><?php esc_html_e( 'Applies in all cases.', 'dukkan-plugin' ); ?></span>
+								<button type="button" class="dukkan-dp__box-action-btn" data-add-condition>
+									<?php esc_html_e( 'Add Condition', 'dukkan-plugin' ); ?>
+								</button>
+							</div>
+						<?php else : ?>
+							<div class="dukkan-dp__box-list" data-conditions-list>
+								<?php foreach ( $conditions as $condition ) : ?>
+									<div class="dukkan-dp__condition-tag" data-condition-id="<?php echo esc_attr( $condition['id'] ?? '' ); ?>">
+										<span><?php echo esc_html( $condition['label'] ?? $condition['type'] ?? '' ); ?></span>
+										<button type="button" class="dukkan-dp__tag-remove" data-remove-condition>&times;</button>
+									</div>
+								<?php endforeach; ?>
+							</div>
+							<button type="button" class="dukkan-dp__box-action-btn" data-add-condition>
+								<?php esc_html_e( 'Add Condition', 'dukkan-plugin' ); ?>
+							</button>
+						<?php endif; ?>
+					</div>
+				</div>
+			</div>
+		</div>
+		<?php
+	}
+
 	// -------------------------------------------------------------------------
 	// Data Access
 	// -------------------------------------------------------------------------
 
 	/**
-	 * Retrieve all pricing rules.
+	 * Retrieve all pricing rules as an ordered array.
 	 *
 	 * @since  1.0.1
-	 * @return array
+	 * @return array<int, array>
 	 */
 	public function get_all_rules() {
 		$rules = get_option( self::OPTION_KEY, array() );
 		if ( ! is_array( $rules ) ) {
 			return array();
 		}
+		// Convert legacy associative format to indexed.
+		if ( $this->is_assoc( $rules ) ) {
+			return array_values( $rules );
+		}
 		return $rules;
+	}
+
+	/**
+	 * Detect if an array is associative.
+	 *
+	 * @since  1.0.1
+	 * @param  array $arr
+	 * @return bool
+	 */
+	private function is_assoc( $arr ) {
+		if ( array() === $arr ) {
+			return false;
+		}
+		return array_keys( $arr ) !== range( 0, count( $arr ) - 1 );
 	}
 
 	/**
@@ -148,51 +344,39 @@ class Dukkan_Plugin_Dynamic_Pricing {
 		$errors = array();
 
 		$sanitized = array(
-			'name'            => sanitize_text_field( $data['name'] ?? '' ),
-			'description'     => sanitize_textarea_field( $data['description'] ?? '' ),
-			'discount_type'   => sanitize_text_field( $data['discount_type'] ?? 'percentage' ),
-			'discount_value'  => floatval( $data['discount_value'] ?? 0 ),
-			'applies_to'      => sanitize_text_field( $data['applies_to'] ?? 'all' ),
-			'categories'      => array_map( 'intval', $data['categories'] ?? array() ),
-			'products'        => array_map( 'intval', $data['products'] ?? array() ),
-			'min_quantity'    => intval( $data['min_quantity'] ?? 0 ),
-			'min_amount'      => floatval( $data['min_amount'] ?? 0 ),
-			'start_date'      => sanitize_text_field( $data['start_date'] ?? '' ),
-			'end_date'        => sanitize_text_field( $data['end_date'] ?? '' ),
-			'status'          => isset( $data['status'] ) ? 1 : 0,
+			'method'            => sanitize_text_field( $data['method'] ?? 'simple_adjustment' ),
+			'note'              => sanitize_text_field( $data['note'] ?? '' ),
+			'description'       => sanitize_text_field( $data['description'] ?? '' ),
+			'adjustment_type'   => sanitize_text_field( $data['adjustment_type'] ?? 'fixed_discount' ),
+			'adjustment_amount' => floatval( $data['adjustment_amount'] ?? 0 ),
+			'apply_with'        => sanitize_text_field( $data['apply_with'] ?? 'apply_with_others' ),
+			'products'          => array_map( 'intval', $data['products'] ?? array() ),
+			'conditions'        => array(),
 		);
 
-		if ( '' === $sanitized['name'] ) {
-			$errors[] = __( 'Rule name is required.', 'dukkan-plugin' );
+		if ( ! in_array( $sanitized['method'], array( 'simple_adjustment', 'bulk_pricing', 'buy_x_get_y', 'bundle' ), true ) ) {
+			$sanitized['method'] = 'simple_adjustment';
 		}
 
-		if ( $sanitized['discount_value'] <= 0 ) {
-			$errors[] = __( 'Discount value must be greater than zero.', 'dukkan-plugin' );
+		if ( ! in_array( $sanitized['adjustment_type'], array( 'fixed_discount', 'percentage_discount', 'fixed_price' ), true ) ) {
+			$sanitized['adjustment_type'] = 'fixed_discount';
 		}
 
-		if ( 'percentage' === $sanitized['discount_type'] && $sanitized['discount_value'] > 100 ) {
-			$errors[] = __( 'Percentage discount cannot exceed 100%.', 'dukkan-plugin' );
+		if ( ! in_array( $sanitized['apply_with'], array( 'apply_with_others', 'apply_first', 'apply_last', 'stop_here' ), true ) ) {
+			$sanitized['apply_with'] = 'apply_with_others';
 		}
 
-		if ( ! in_array( $sanitized['discount_type'], array( 'percentage', 'fixed', 'buy_x_get_y' ), true ) ) {
-			$errors[] = __( 'Invalid discount type.', 'dukkan-plugin' );
-		}
-
-		if ( ! in_array( $sanitized['applies_to'], array( 'all', 'categories', 'products' ), true ) ) {
-			$errors[] = __( 'Invalid apply-to selection.', 'dukkan-plugin' );
-		}
-
-		if ( 'categories' === $sanitized['applies_to'] && empty( $sanitized['categories'] ) ) {
-			$errors[] = __( 'Please select at least one category.', 'dukkan-plugin' );
-		}
-
-		if ( 'products' === $sanitized['applies_to'] && empty( $sanitized['products'] ) ) {
-			$errors[] = __( 'Please select at least one product.', 'dukkan-plugin' );
-		}
-
-		if ( ! empty( $sanitized['start_date'] ) && ! empty( $sanitized['end_date'] ) ) {
-			if ( strtotime( $sanitized['end_date'] ) < strtotime( $sanitized['start_date'] ) ) {
-				$errors[] = __( 'End date cannot be before start date.', 'dukkan-plugin' );
+		// Sanitize conditions if present.
+		if ( ! empty( $data['conditions'] ) && is_array( $data['conditions'] ) ) {
+			foreach ( $data['conditions'] as $cond ) {
+				$condition = array(
+					'id'    => sanitize_text_field( $cond['id'] ?? '' ),
+					'type'  => sanitize_text_field( $cond['type'] ?? '' ),
+					'label' => sanitize_text_field( $cond['label'] ?? '' ),
+				);
+				if ( ! empty( $condition['type'] ) ) {
+					$sanitized['conditions'][] = $condition;
+				}
 			}
 		}
 
@@ -223,11 +407,10 @@ class Dukkan_Plugin_Dynamic_Pricing {
 	 * Generate a unique rule ID.
 	 *
 	 * @since  1.0.1
-	 * @param  string $name Rule name.
 	 * @return string
 	 */
-	private function generate_rule_id( $name ) {
-		return sanitize_title( $name ) . '-' . time();
+	private function generate_rule_id() {
+		return uniqid( 'dp_' );
 	}
 
 	// -------------------------------------------------------------------------
@@ -259,12 +442,12 @@ class Dukkan_Plugin_Dynamic_Pricing {
 			wp_send_json_error( array( 'message' => join( ', ', $result['errors'] ) ), 400 );
 		}
 
-		$sanitized = $result['sanitized'];
-		$rule_id   = $this->generate_rule_id( $sanitized['name'] );
+		$sanitized       = $result['sanitized'];
+		$rule_id         = $this->generate_rule_id();
 		$sanitized['id'] = $rule_id;
 
-		$rules          = $this->get_all_rules();
-		$rules[ $rule_id ] = $sanitized;
+		$rules    = $this->get_all_rules();
+		$rules[]  = $sanitized;
 		$this->save_rules( $rules );
 
 		wp_send_json_success( $sanitized );
@@ -286,7 +469,9 @@ class Dukkan_Plugin_Dynamic_Pricing {
 		}
 
 		$rules = $this->get_all_rules();
-		if ( ! isset( $rules[ $rule_id ] ) ) {
+		$found = $this->find_rule_index( $rules, $rule_id );
+
+		if ( false === $found ) {
 			wp_send_json_error( array( 'message' => __( 'Pricing rule not found.', 'dukkan-plugin' ) ), 404 );
 		}
 
@@ -295,9 +480,9 @@ class Dukkan_Plugin_Dynamic_Pricing {
 			wp_send_json_error( array( 'message' => join( ', ', $result['errors'] ) ), 400 );
 		}
 
-		$sanitized           = $result['sanitized'];
-		$sanitized['id']     = $rule_id;
-		$rules[ $rule_id ]   = $sanitized;
+		$sanitized             = $result['sanitized'];
+		$sanitized['id']       = $rule_id;
+		$rules[ $found ]       = $sanitized;
 		$this->save_rules( $rules );
 
 		wp_send_json_success( $sanitized );
@@ -318,12 +503,14 @@ class Dukkan_Plugin_Dynamic_Pricing {
 		}
 
 		$rules = $this->get_all_rules();
-		if ( ! isset( $rules[ $rule_id ] ) ) {
+		$found = $this->find_rule_index( $rules, $rule_id );
+
+		if ( false === $found ) {
 			wp_send_json_error( array( 'message' => __( 'Pricing rule not found.', 'dukkan-plugin' ) ), 404 );
 		}
 
-		unset( $rules[ $rule_id ] );
-		$this->save_rules( $rules );
+		unset( $rules[ $found ] );
+		$this->save_rules( array_values( $rules ) );
 
 		wp_send_json_success( array( 'deleted' => true, 'rule_id' => $rule_id ) );
 	}
@@ -343,16 +530,17 @@ class Dukkan_Plugin_Dynamic_Pricing {
 		}
 
 		$rules = $this->get_all_rules();
-		if ( ! isset( $rules[ $rule_id ] ) ) {
+		$found = $this->find_rule_index( $rules, $rule_id );
+
+		if ( false === $found ) {
 			wp_send_json_error( array( 'message' => __( 'Pricing rule not found.', 'dukkan-plugin' ) ), 404 );
 		}
 
-		$new_rule          = $rules[ $rule_id ];
-		$new_rule['name'] .= ' (' . __( 'Copy', 'dukkan-plugin' ) . ')';
-		$new_rule_id       = $this->generate_rule_id( $new_rule['name'] );
-		$new_rule['id']    = $new_rule_id;
+		$new_rule       = $rules[ $found ];
+		$new_rule_id    = $this->generate_rule_id();
+		$new_rule['id'] = $new_rule_id;
 
-		$rules[ $new_rule_id ] = $new_rule;
+		$rules[] = $new_rule;
 		$this->save_rules( $rules );
 
 		wp_send_json_success( $new_rule );
@@ -374,11 +562,13 @@ class Dukkan_Plugin_Dynamic_Pricing {
 		}
 
 		$rules = $this->get_all_rules();
-		if ( ! isset( $rules[ $rule_id ] ) ) {
+		$found = $this->find_rule_index( $rules, $rule_id );
+
+		if ( false === $found ) {
 			wp_send_json_error( array( 'message' => __( 'Pricing rule not found.', 'dukkan-plugin' ) ), 404 );
 		}
 
-		$rules[ $rule_id ]['status'] = $status;
+		$rules[ $found ]['status'] = $status;
 		$this->save_rules( $rules );
 
 		wp_send_json_success( array( 'rule_id' => $rule_id, 'status' => $status ) );
@@ -399,26 +589,79 @@ class Dukkan_Plugin_Dynamic_Pricing {
 		}
 
 		$rules = $this->get_all_rules();
-		if ( ! isset( $rules[ $rule_id ] ) ) {
+		$found = $this->find_rule_index( $rules, $rule_id );
+
+		if ( false === $found ) {
 			wp_send_json_error( array( 'message' => __( 'Pricing rule not found.', 'dukkan-plugin' ) ), 404 );
 		}
 
+		$rule = $rules[ $found ];
+
 		// Resolve product IDs to names for display.
-		if ( ! empty( $rules[ $rule_id ]['products'] ) ) {
-			foreach ( $rules[ $rule_id ]['products'] as $i => $product_id ) {
+		if ( ! empty( $rule['products'] ) ) {
+			foreach ( $rule['products'] as $i => $product_id ) {
 				$product = wc_get_product( $product_id );
 				if ( $product ) {
-					$rules[ $rule_id ]['products'][ $i ] = array(
+					$rule['products'][ $i ] = array(
 						'id'   => $product->get_id(),
 						'name' => $product->get_name(),
 					);
 				} else {
-					unset( $rules[ $rule_id ]['products'][ $i ] );
+					unset( $rule['products'][ $i ] );
 				}
 			}
-			$rules[ $rule_id ]['products'] = array_values( $rules[ $rule_id ]['products'] );
+			$rule['products'] = array_values( $rule['products'] );
 		}
 
-		wp_send_json_success( $rules[ $rule_id ] );
+		wp_send_json_success( $rule );
+	}
+
+	/**
+	 * AJAX: save all rules (used for reorder).
+	 *
+	 * @since 1.0.1
+	 */
+	public function ajax_save_all() {
+		$this->verify_ajax();
+
+		$raw_rules = isset( $_POST['rules'] ) && is_array( $_POST['rules'] ) ? wp_unslash( $_POST['rules'] ) : array();
+
+		$sanitized_rules = array();
+		foreach ( $raw_rules as $raw ) {
+			if ( ! is_array( $raw ) ) {
+				continue;
+			}
+			$result = $this->validate( $raw );
+			if ( $result['valid'] ) {
+				$sanitized             = $result['sanitized'];
+				$sanitized['id']       = sanitize_text_field( $raw['id'] ?? '' );
+				$sanitized_rules[]     = $sanitized;
+			}
+		}
+
+		$this->save_rules( $sanitized_rules );
+
+		wp_send_json_success( array( 'saved' => true, 'count' => count( $sanitized_rules ) ) );
+	}
+
+	// -------------------------------------------------------------------------
+	// Helpers
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Find a rule's index in the array by its ID.
+	 *
+	 * @since  1.0.1
+	 * @param  array  $rules
+	 * @param  string $rule_id
+	 * @return int|false
+	 */
+	private function find_rule_index( $rules, $rule_id ) {
+		foreach ( $rules as $i => $rule ) {
+			if ( isset( $rule['id'] ) && $rule['id'] === $rule_id ) {
+				return $i;
+			}
+		}
+		return false;
 	}
 }

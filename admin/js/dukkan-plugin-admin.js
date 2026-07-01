@@ -400,212 +400,102 @@
 		});
 
 		// ================================================================
-		// Dynamic Pricing & Discounts Management
+		// Dynamic Pricing & Discounts — Inline Rule Cards
 		// ================================================================
 
 		var dpI18n = wpldp_ajax.dp_i18n || {};
 
 		var dp = {
 			$list: $('#dukkan-dp-list'),
-			$empty: $('#dukkan-dp-empty'),
-
-			// Modal elements
-			$modal: $('#dukkan-dp-modal'),
-			$modalOverlay: $('#dukkan-dp-modal-overlay'),
-			$modalTitle: $('#dukkan-dp-modal-title'),
-			$modalRuleId: $('#dukkan-dp-modal-rule-id'),
-			$modalName: $('#dukkan-dp-rule-name'),
-			$modalDesc: $('#dukkan-dp-rule-desc'),
-			$modalDiscType: $('#dukkan-dp-discount-type'),
-			$modalDiscValue: $('#dukkan-dp-discount-value'),
-			$modalAppliesTo: $('#dukkan-dp-applies-to'),
-			$modalCategories: $('#dukkan-dp-categories'),
-			$modalProducts: $('#dukkan-dp-products'),
-			$modalMinQty: $('#dukkan-dp-min-qty'),
-			$modalMinAmount: $('#dukkan-dp-min-amount'),
-			$modalStartDate: $('#dukkan-dp-start-date'),
-			$modalEndDate: $('#dukkan-dp-end-date'),
-			$modalStatus: $('#dukkan-dp-status'),
-			$modalError: $('#dukkan-dp-modal-error'),
-			$modalSave: $('#dukkan-dp-modal-save'),
-			$valueHint: $('#dukkan-dp-value-hint'),
-
-			// Delete modal
-			$deleteModal: $('#dukkan-dp-delete-modal'),
-			$deleteOverlay: $('#dukkan-dp-delete-overlay'),
-			$deleteConfirm: $('#dukkan-dp-delete-confirm'),
-
-			deleteRuleId: '',
+			$template: $('#dukkan-dp-rule-template'),
 
 			/**
-			 * Open the add/edit modal.
+			 * Collect data from a rule card into an object.
 			 */
-			openModal: function (title, rule) {
-				rule = rule || {};
-				dp.$modalTitle.text(title);
-				dp.$modalRuleId.val(rule.id || '');
-				dp.$modalName.val(rule.name || '');
-				dp.$modalDesc.val(rule.description || '');
-				dp.$modalDiscType.val(rule.discount_type || 'percentage');
-				dp.$modalDiscValue.val(rule.discount_value !== undefined ? rule.discount_value : '');
-				dp.$modalAppliesTo.val(rule.applies_to || 'all');
-				dp.$modalMinQty.val(rule.min_quantity || '');
-				dp.$modalMinAmount.val(rule.min_amount || '');
-				dp.$modalStartDate.val(rule.start_date || '');
-				dp.$modalEndDate.val(rule.end_date || '');
-				dp.$modalStatus.prop('checked', rule.status !== undefined ? !!rule.status : true);
-				dp.$modalError.removeClass('active').text('');
-				dp.$modalSave.prop('disabled', false).text(dpI18n.save_btn || 'Save Rule');
-
-				dp.updateDiscountHint();
-				dp.toggleConditionalFields();
-
-				// Reset and repopulate select2 fields
-				if (rule.categories && rule.categories.length) {
-					dp.populateCategories(rule.categories);
-				} else {
-					dp.$modalCategories.val(null).trigger('change');
-				}
-
-				if (rule.products && rule.products.length) {
-					dp.populateProducts(rule.products);
-				} else {
-					dp.$modalProducts.val(null).trigger('change');
-				}
-
-				dp.$modal.addClass('active');
-				dp.$modalOverlay.addClass('active');
-				setTimeout(function () { dp.$modalName.focus(); }, 100);
+			collectRuleData: function ($rule) {
+				return {
+					id: $rule.data('rule-id') || '',
+					method: $rule.find('[data-method]').val() || 'simple_adjustment',
+					note: $rule.find('[data-note]').val() || '',
+					description: $rule.find('[data-description]').val() || '',
+					adjustment_type: $rule.find('[data-adjustment-type]').val() || 'fixed_discount',
+					adjustment_amount: $rule.find('[data-adjustment-amount]').val() || '0.00',
+					apply_with: $rule.find('[data-apply-with]').val() || 'apply_with_others',
+					products: dp.collectProductIds($rule),
+					conditions: dp.collectConditionData($rule)
+				};
 			},
 
 			/**
-			 * Close the add/edit modal.
+			 * Collect product IDs from tags.
 			 */
-			closeModal: function () {
-				dp.$modal.removeClass('active');
-				dp.$modalOverlay.removeClass('active');
+			collectProductIds: function ($rule) {
+				var ids = [];
+				$rule.find('[data-product-id]').each(function () {
+					ids.push($(this).data('product-id'));
+				});
+				return ids;
 			},
 
 			/**
-			 * Open the delete confirmation modal.
+			 * Collect condition data from tags.
 			 */
-			openDeleteModal: function (ruleId) {
-				dp.deleteRuleId = ruleId;
-				dp.$deleteModal.addClass('active');
-				dp.$deleteOverlay.addClass('active');
-			},
-
-			/**
-			 * Close the delete modal.
-			 */
-			closeDeleteModal: function () {
-				dp.deleteRuleId = '';
-				dp.$deleteModal.removeClass('active');
-				dp.$deleteOverlay.removeClass('active');
-			},
-
-			/**
-			 * Update discount value hint based on type.
-			 */
-			updateDiscountHint: function () {
-				var type = dp.$modalDiscType.val();
-				if (type === 'percentage') {
-					dp.$valueHint.text(dpI18n.value_hint_percent || 'Enter the discount percentage (e.g. 20 for 20% off).');
-				} else if (type === 'fixed') {
-					dp.$valueHint.text(dpI18n.value_hint_fixed || 'Enter the fixed discount amount.');
-				} else {
-					dp.$valueHint.text(dpI18n.value_hint_buy || 'Enter the discount amount for Buy X Get Y offers.');
-				}
-			},
-
-			/**
-			 * Show/hide conditional fields based on applies-to selection.
-			 */
-			toggleConditionalFields: function () {
-				var appliesTo = dp.$modalAppliesTo.val();
-				$('#dukkan-dp-categories-field').toggle(appliesTo === 'categories');
-				$('#dukkan-dp-products-field').toggle(appliesTo === 'products');
-			},
-
-			/**
-			 * Populate categories select2 with selected values.
-			 */
-			populateCategories: function (categories) {
-				var data = [];
-				$.each(categories, function (i, catId) {
-					$.ajax({
-						url: wpldp_ajax.url,
-						data: {
-							action: 'wpldp_get_categories',
-							nonce: wpldp_ajax.nonce
-						},
-						async: false,
-						success: function (html) {
-							var $temp = $('<div>').html(html);
-							var $option = $temp.find('input[value="' + catId + '"]');
-							if ($option.length) {
-								data.push({
-									id: catId,
-									text: $option.siblings('.cat-name').text()
-								});
-							}
-						}
+			collectConditionData: function ($rule) {
+				var conditions = [];
+				$rule.find('[data-condition-id]').each(function () {
+					conditions.push({
+						id: $(this).data('condition-id'),
+						type: $(this).data('condition-type') || '',
+						label: $(this).find('span').first().text() || ''
 					});
 				});
+				return conditions;
+			},
 
-				// Since loading categories asynchronously is complex with Select2,
-				// we load all categories and pre-select.
-				$.ajax({
-					url: wpldp_ajax.url,
-					data: {
-						action: 'wpldp_get_categories',
-						nonce: wpldp_ajax.nonce
-					},
-					success: function (html) {
-						var $temp = $('<div>').html(html);
-						var options = [];
-						$temp.find('.cat-checkbox').each(function () {
-							options.push({
-								id: $(this).val(),
-								text: $(this).siblings('.cat-name').text()
-							});
+			/**
+			 * Update method label in header when method select changes.
+			 */
+			updateMethodLabel: function ($rule) {
+				var method = $rule.find('[data-method]').val();
+				var $label = $rule.find('[data-method-label]');
+				var labelText = dpI18n.simple_adjustment || 'Simple adjustment';
+				switch (method) {
+					case 'bulk_pricing':
+						labelText = dpI18n.bulk_pricing || 'Bulk pricing';
+						break;
+					case 'buy_x_get_y':
+						labelText = dpI18n.buy_x_get_y_label || 'Buy X Get Y';
+						break;
+					case 'bundle':
+						labelText = dpI18n.bundle || 'Bundle';
+						break;
+				}
+				$label.text(labelText);
+			},
+
+			/**
+			 * Debounced save of a single rule via AJAX.
+			 */
+			debouncedSave: (function () {
+				var timers = {};
+				return function (ruleId) {
+					if (timers[ruleId]) clearTimeout(timers[ruleId]);
+					timers[ruleId] = setTimeout(function () {
+						var $rule = dp.$list.find('[data-rule-id="' + ruleId + '"]');
+						if (!$rule.length) return;
+						var ruleData = dp.collectRuleData($rule);
+						dp.ajaxPost('dukkan_dp_update', {
+							rule_id: ruleId,
+							rule: ruleData
 						});
-						dp.rebuildSelect2(dp.$modalCategories, options, categories);
-					}
-				});
-			},
-
-			/**
-			 * Populate products select2 with selected values.
-			 */
-			populateProducts: function (products) {
-				var selected = [];
-				$.each(products, function (i, product) {
-					var id = typeof product === 'object' ? product.id : product;
-					var name = typeof product === 'object' ? product.name : String(id);
-					selected.push({ id: id, text: name });
-				});
-
-				// Set initial selections
-				dp.rebuildSelect2(dp.$modalProducts, selected, []);
-			},
-
-			/**
-			 * Rebuild a Select2 instance with options and selections.
-			 */
-			rebuildSelect2: function ($select, allOptions, selectedIds) {
-				$select.empty();
-				$.each(allOptions, function (i, opt) {
-					var $option = new Option(opt.text, opt.id, false, selectedIds.indexOf(parseInt(opt.id)) !== -1);
-					$select.append($option);
-				});
-				$select.trigger('change');
-			},
+					}, 600);
+				};
+			})(),
 
 			/**
 			 * Make AJAX POST request.
 			 */
-			ajaxPost: function (action, data, onSuccess) {
+			ajaxPost: function (action, data, onSuccess, onError) {
 				$.post(wpldp_ajax.url, $.extend({
 					action: action,
 					nonce: wpldp_ajax.nonce
@@ -615,6 +505,7 @@
 						if (onSuccess) onSuccess(response.data);
 					} else {
 						showToast(response.data.message || 'An error occurred.', 'error');
+						if (onError) onError(response.data);
 					}
 				})
 				.fail(function () {
@@ -623,295 +514,226 @@
 			},
 
 			/**
-			 * Collect form data into a rule object.
+			 * Add a new blank rule card.
 			 */
-			collectFormData: function () {
-				return {
-					name: dp.$modalName.val().trim(),
-					description: dp.$modalDesc.val().trim(),
-					discount_type: dp.$modalDiscType.val(),
-					discount_value: dp.$modalDiscValue.val(),
-					applies_to: dp.$modalAppliesTo.val(),
-					categories: dp.$modalCategories.val() || [],
-					products: dp.$modalProducts.val() || [],
-					min_quantity: dp.$modalMinQty.val(),
-					min_amount: dp.$modalMinAmount.val(),
-					start_date: dp.$modalStartDate.val(),
-					end_date: dp.$modalEndDate.val(),
-					status: dp.$modalStatus.is(':checked') ? 1 : 0
-				};
+			addRule: function () {
+				// Create with temporary ID, then save to server to get real ID.
+				var tempId = 'temp_' + Date.now();
+				var html = dp.$template.html().replace(/\{\{RULE_ID\}\}/g, tempId);
+				var $rule = $(html);
+
+				dp.$list.append($rule);
+
+				// Immediately save to server.
+				var ruleData = dp.collectRuleData($rule);
+				dp.ajaxPost('dukkan_dp_add', { rule: ruleData }, function (data) {
+					// Update temp ID with real ID from server.
+					$rule.attr('data-rule-id', data.id);
+					$rule.find('[data-rule-id]').attr('data-rule-id', data.id);
+					if (dp.$list.hasClass('ui-sortable')) {
+						dp.$list.sortable('refresh');
+					} else {
+						dp.initSortable();
+					}
+				}, function () {
+					// On failure, remove the card.
+					$rule.remove();
+				});
+
+				if (dp.$list.hasClass('ui-sortable')) {
+					dp.$list.sortable('refresh');
+				} else {
+					dp.initSortable();
+				}
+
+				// Scroll to the new rule.
+				$('html, body').animate({ scrollTop: $rule.offset().top - 100 }, 300);
 			},
 
 			/**
-			 * Refresh the list from server.
+			 * Remove a rule card.
 			 */
-			refreshList: function () {
-				dp.ajaxPost('dukkan_dp_list', {}, function (rules) {
-					dp.$list.empty();
-					dp.$empty.hide();
-
-					if ($.isEmptyObject(rules)) {
-						dp.$empty.show();
-						return;
-					}
-
-					$.each(rules, function (ruleId, rule) {
-						var badgeText = '';
-						if (rule.discount_type === 'percentage') {
-							badgeText = rule.discount_value + '% ' + (dpI18n.off || 'off');
-						} else if (rule.discount_type === 'fixed') {
-							badgeText = (dpI18n.off || 'off') + ' ' + rule.discount_value;
-						} else {
-							badgeText = dpI18n.buy_x_get_y || 'Buy X Get Y';
-						}
-
-						var scopeText = '';
-						if (rule.applies_to === 'all') {
-							scopeText = dpI18n.all_products || 'All Products';
-						} else if (rule.applies_to === 'categories') {
-							scopeText = (rule.categories ? rule.categories.length : 0) + ' ' + (dpI18n.categories || 'Categories');
-						} else {
-							scopeText = (rule.products ? rule.products.length : 0) + ' ' + (dpI18n.products_label || 'Products');
-						}
-
-						var $item = $(
-							'<div class="dukkan-dp__item" data-rule-id="' + dp.escAttr(ruleId) + '">' +
-								'<div class="dukkan-dp__item-main">' +
-									'<div class="dukkan-dp__item-info">' +
-										'<div class="dukkan-dp__item-name">' + dp.escHtml(rule.name) + '</div>' +
-										'<div class="dukkan-dp__item-meta">' +
-											'<span class="dukkan-dp__item-badge">' + dp.escHtml(badgeText) + '</span>' +
-											'<span class="dukkan-dp__item-scope">' + dp.escHtml(scopeText) + '</span>' +
-										'</div>' +
-									'</div>' +
-									'<label class="dukkan-dp__toggle wpldp-switch">' +
-										'<input type="checkbox" class="dukkan-dp__toggle-input" data-rule-id="' + dp.escAttr(ruleId) + '"' + (rule.status ? ' checked' : '') + '>' +
-										'<span class="wpldp-slider"></span>' +
-									'</label>' +
-								'</div>' +
-								'<div class="dukkan-dp__item-actions">' +
-									'<button type="button" class="dukkan-dp__item-btn dukkan-dp__item-btn--edit" data-rule-id="' + dp.escAttr(ruleId) + '" title="' + dp.escAttr(dpI18n.edit || 'Edit') + '">' +
-										'<i class="fa-solid fa-pen-to-square"></i>' +
-									'</button>' +
-									'<button type="button" class="dukkan-dp__item-btn dukkan-dp__item-btn--copy" data-rule-id="' + dp.escAttr(ruleId) + '" title="' + dp.escAttr(dpI18n.duplicate || 'Duplicate') + '">' +
-										'<i class="fa-solid fa-copy"></i>' +
-									'</button>' +
-									'<button type="button" class="dukkan-dp__item-btn dukkan-dp__item-btn--delete" data-rule-id="' + dp.escAttr(ruleId) + '" title="' + dp.escAttr(dpI18n.delete || 'Delete') + '">' +
-										'<i class="fa-solid fa-trash-can"></i>' +
-									'</button>' +
-								'</div>' +
-							'</div>'
-						);
-						dp.$list.append($item);
-					});
+			removeRule: function ($rule) {
+				var ruleId = $rule.data('rule-id');
+				if (!ruleId || ruleId.indexOf('temp_') === 0) {
+					$rule.slideUp(200, function () { $(this).remove(); });
+					return;
+				}
+				dp.ajaxPost('dukkan_dp_delete', { rule_id: ruleId }, function () {
+					showToast(dpI18n.deleted || 'Pricing rule deleted.', 'success');
+					$rule.slideUp(200, function () { $(this).remove(); });
 				});
 			},
 
 			/**
-			 * Escape HTML.
+			 * Duplicate a rule card.
 			 */
-			escHtml: function (str) {
-				var div = document.createElement('div');
-				div.appendChild(document.createTextNode(str));
-				return div.innerHTML;
+			duplicateRule: function ($rule) {
+				var ruleId = $rule.data('rule-id');
+
+				// For temp rules, just clone client-side.
+				if (ruleId && ruleId.indexOf('temp_') === 0) {
+					var $clone = $rule.clone();
+					var newTempId = 'temp_' + Date.now();
+					$clone.attr('data-rule-id', newTempId);
+					$clone.find('[data-rule-id]').attr('data-rule-id', newTempId);
+					$clone.insertAfter($rule);
+					if (dp.$list.hasClass('ui-sortable')) {
+						dp.$list.sortable('refresh');
+					}
+					return;
+				}
+
+				dp.ajaxPost('dukkan_dp_duplicate', { rule_id: ruleId }, function (data) {
+					var $clone = $rule.clone();
+					$clone.attr('data-rule-id', data.id);
+					$clone.find('[data-method]').val(data.method || 'simple_adjustment');
+					$clone.find('[data-apply-with]').val(data.apply_with || 'apply_with_others');
+					$clone.find('[data-adjustment-type]').val(data.adjustment_type || 'fixed_discount');
+					$clone.find('[data-adjustment-amount]').val(data.adjustment_amount || '0.00');
+					$clone.find('[data-note]').val(data.note || '');
+					$clone.find('[data-description]').val(data.description || '');
+					$clone.hide().insertAfter($rule).slideDown(200);
+					dp.updateMethodLabel($clone);
+					showToast(dpI18n.duplicated || 'Pricing rule duplicated.', 'success');
+					if (dp.$list.hasClass('ui-sortable')) {
+						dp.$list.sortable('refresh');
+					}
+				});
 			},
 
 			/**
-			 * Escape attribute.
+			 * Initialize jQuery UI Sortable for drag-and-drop reordering.
 			 */
-			escAttr: function (str) {
-				return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#039;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+			initSortable: function () {
+				if (dp.$list.hasClass('ui-sortable')) {
+					dp.$list.sortable('destroy');
+				}
+				dp.$list.sortable({
+					handle: '.dukkan-dp__rule-drag',
+					axis: 'y',
+					placeholder: 'dukkan-dp__rule ui-sortable-placeholder',
+					forcePlaceholderSize: true,
+					opacity: 0.85,
+					tolerance: 'pointer',
+					update: function () {
+						// Collect all rules in current order and save.
+						var allRules = [];
+						dp.$list.find('.dukkan-dp__rule').each(function () {
+							allRules.push(dp.collectRuleData($(this)));
+						});
+						dp.ajaxPost('dukkan_dp_save_all', { rules: allRules }, function (data) {
+							showToast(dpI18n.order_saved || 'Order saved.', 'success');
+						});
+					}
+				});
 			}
 		};
 
-		// ---- Add button ----
-		$('#dukkan-dp-add-btn').on('click', function () {
-			dp.openModal(dpI18n.add_title || 'Add Pricing Rule');
+		// ---- Add Rule button ----
+		$('#dukkan-dp-add-rule').on('click', function () {
+			dp.addRule();
 		});
 
-		// ---- Edit button (delegated) ----
-		dp.$list.on('click', '.dukkan-dp__item-btn--edit', function () {
-			var ruleId = $(this).data('rule-id');
-			// Fetch full rule data and open modal.
-			$.post(wpldp_ajax.url, {
-				action: 'dukkan_dp_get',
-				rule_id: ruleId,
-				nonce: wpldp_ajax.nonce
-			}, function (response) {
-				if (response.success) {
-					dp.openModal(dpI18n.edit_title || 'Edit Pricing Rule', response.data);
-				} else {
-					showToast(response.data.message || 'Failed to load rule.', 'error');
-				}
-			}).fail(function () {
-				showToast('Request failed. Please try again.', 'error');
-			});
+		// ---- Remove rule (delegated) ----
+		dp.$list.on('click', '[data-remove]', function () {
+			var $rule = $(this).closest('.dukkan-dp__rule');
+			dp.removeRule($rule);
 		});
 
-		// ---- Duplicate button (delegated) ----
-		dp.$list.on('click', '.dukkan-dp__item-btn--copy', function () {
-			var ruleId = $(this).data('rule-id');
-			dp.ajaxPost('dukkan_dp_duplicate', { rule_id: ruleId }, function (data) {
-				showToast(dpI18n.duplicated || 'Pricing rule duplicated.', 'success');
-				dp.refreshList();
-			});
+		// ---- Duplicate rule (delegated) ----
+		dp.$list.on('click', '[data-duplicate]', function () {
+			var $rule = $(this).closest('.dukkan-dp__rule');
+			dp.duplicateRule($rule);
 		});
 
-		// ---- Delete button (delegated) ----
-		dp.$list.on('click', '.dukkan-dp__item-btn--delete', function () {
-			dp.openDeleteModal($(this).data('rule-id'));
-		});
-
-		// ---- Toggle switch (delegated) ----
-		dp.$list.on('change', '.dukkan-dp__toggle-input', function () {
-			var ruleId = $(this).data('rule-id');
-			var status = $(this).is(':checked') ? 1 : 0;
-			dp.ajaxPost('dukkan_dp_toggle', { rule_id: ruleId, status: status }, function () {
-				showToast(status ? (dpI18n.enabled || 'Rule enabled.') : (dpI18n.disabled || 'Rule disabled.'), 'success');
-			});
-		});
-
-		// ---- Modal close ----
-		$('#dukkan-dp-modal-close, #dukkan-dp-modal-cancel, #dukkan-dp-modal-overlay').on('click', function () {
-			dp.closeModal();
-		});
-
-		// ---- Discount type change ----
-		dp.$modalDiscType.on('change', function () {
-			dp.updateDiscountHint();
-		});
-
-		// ---- Applies-to change ----
-		dp.$modalAppliesTo.on('change', function () {
-			dp.toggleConditionalFields();
-		});
-
-		// ---- Modal save ----
-		$('#dukkan-dp-modal-save').on('click', function () {
-			var $btn = $(this);
-			var ruleId = dp.$modalRuleId.val().trim();
-			var ruleData = dp.collectFormData();
-			var isEdit = ruleId !== '';
-
-			dp.$modalError.removeClass('active').text('');
-
-			if (!ruleData.name) {
-				dp.$modalError.addClass('active').text(dpI18n.name_required || 'Rule name is required.');
-				return;
-			}
-			if (!ruleData.discount_value || parseFloat(ruleData.discount_value) <= 0) {
-				dp.$modalError.addClass('active').text(dpI18n.value_required || 'Discount value must be greater than zero.');
-				return;
-			}
-			if (ruleData.applies_to === 'categories' && (!ruleData.categories || !ruleData.categories.length)) {
-				dp.$modalError.addClass('active').text(dpI18n.categories_required || 'Please select at least one category.');
-				return;
-			}
-			if (ruleData.applies_to === 'products' && (!ruleData.products || !ruleData.products.length)) {
-				dp.$modalError.addClass('active').text(dpI18n.products_required || 'Please select at least one product.');
-				return;
-			}
-
-			$btn.prop('disabled', true).text(dpI18n.saving || 'Saving…');
-
-			var ajaxAction = isEdit ? 'dukkan_dp_update' : 'dukkan_dp_add';
-			var ajaxData = { rule: ruleData };
-			if (isEdit) {
-				ajaxData.rule_id = ruleId;
-			}
-
-			dp.ajaxPost(ajaxAction, ajaxData, function () {
-				dp.closeModal();
-				showToast(isEdit ? (dpI18n.updated || 'Pricing rule updated.') : (dpI18n.added || 'Pricing rule added.'), 'success');
-				dp.refreshList();
-			});
-
-			setTimeout(function () {
-				$btn.prop('disabled', false).text(dpI18n.save_btn || 'Save Rule');
-			}, 3000);
-		});
-
-		// ---- Enter key in modal fields ----
-		$('#dukkan-dp-modal').on('keydown', 'input', function (e) {
-			if (e.key === 'Enter') {
-				e.preventDefault();
-				$('#dukkan-dp-modal-save').trigger('click');
+		// ---- Method select change (delegated) ----
+		dp.$list.on('change', '[data-method]', function () {
+			var $rule = $(this).closest('.dukkan-dp__rule');
+			dp.updateMethodLabel($rule);
+			var ruleId = $rule.data('rule-id');
+			if (ruleId && ruleId.indexOf('temp_') !== 0) {
+				dp.debouncedSave(ruleId);
 			}
 		});
 
-		// ---- Delete modal ----
-		$('#dukkan-dp-delete-close, #dukkan-dp-delete-cancel, #dukkan-dp-delete-overlay').on('click', function () {
-			dp.closeDeleteModal();
+		// ---- Any field change triggers debounced save for persisted rules ----
+		dp.$list.on('change input', '[data-apply-with], [data-adjustment-type], [data-adjustment-amount], [data-note], [data-description]', function () {
+			var $rule = $(this).closest('.dukkan-dp__rule');
+			var ruleId = $rule.data('rule-id');
+			if (ruleId && ruleId.indexOf('temp_') !== 0) {
+				dp.debouncedSave(ruleId);
+			}
 		});
 
-		$('#dukkan-dp-delete-confirm').on('click', function () {
-			if (!dp.deleteRuleId) return;
-
-			var $btn = $(this);
-			$btn.prop('disabled', true).text(dpI18n.deleting || 'Deleting…');
-
-			dp.ajaxPost('dukkan_dp_delete', { rule_id: dp.deleteRuleId }, function () {
-				dp.closeDeleteModal();
-				showToast(dpI18n.deleted || 'Pricing rule deleted.', 'success');
-				dp.refreshList();
-			});
-
-			setTimeout(function () {
-				$btn.prop('disabled', false).text(dpI18n.delete_btn || 'Delete');
-			}, 3000);
+		// ---- Add Product button (placeholder) ----
+		dp.$list.on('click', '[data-add-product]', function () {
+			var $rule = $(this).closest('.dukkan-dp__rule');
+			var $productsBody = $rule.find('.dukkan-dp__products-body');
+			showToast(dpI18n.product_placeholder || 'Product selector coming soon.', 'warning');
 		});
 
-		// ---- Initialize Select2 for categories and products in modal ----
-		if ($.fn.select2) {
-			dp.$modalCategories.select2({
-				placeholder: dpI18n.select_categories || 'Search categories…',
-				allowClear: true,
-				width: '100%'
-			});
+		// ---- Remove product tag (delegated) ----
+		dp.$list.on('click', '[data-remove-product]', function () {
+			var $tag = $(this).closest('.dukkan-dp__product-tag');
+			var $rule = $(this).closest('.dukkan-dp__rule');
+			$tag.remove();
+			// Show empty state if no more product tags.
+			var $boxBody = $rule.find('.dukkan-dp__products-body');
+			var $list = $boxBody.find('[data-products-list]');
+			if ($list.length && !$list.children().length) {
+				$list.remove();
+				$boxBody.find('[data-add-product]').remove();
+				var $empty = $(
+					'<div class="dukkan-dp__box-empty" data-products-empty>' +
+						'<span class="dukkan-dp__box-empty-text">' + (dpI18n.applies_all || 'Applies to all products.') + '</span>' +
+						'<button type="button" class="dukkan-dp__box-action-btn" data-add-product>' + (dpI18n.add_product || 'Add Product') + '</button>' +
+					'</div>'
+				);
+				$boxBody.empty().append($empty);
+			}
+			// Debounce save.
+			var ruleId = $rule.data('rule-id');
+			if (ruleId && ruleId.indexOf('temp_') !== 0) {
+				dp.debouncedSave(ruleId);
+			}
+		});
 
-			dp.$modalProducts.select2({
-				placeholder: dpI18n.search_products || 'Search products…',
-				allowClear: true,
-				width: '100%',
-				ajax: {
-					url: wpldp_ajax.url,
-					dataType: 'json',
-					delay: 250,
-					data: function (params) {
-						return {
-							action: 'wpldp_search_products',
-							q: params.term,
-							nonce: wpldp_ajax.nonce
-						};
-					},
-					processResults: function (data) {
-						return {
-							results: $.map(data, function (item) {
-								return { id: item.id, text: item.text };
-							})
-						};
-					},
-					cache: true
-				},
-				minimumInputLength: 1
-			});
+		// ---- Add Condition button (placeholder) ----
+		dp.$list.on('click', '[data-add-condition]', function () {
+			var $rule = $(this).closest('.dukkan-dp__rule');
+			showToast(dpI18n.condition_placeholder || 'Condition builder coming soon.', 'warning');
+		});
 
-			// Load categories into the modal select2
-			$.ajax({
-				url: wpldp_ajax.url,
-				data: {
-					action: 'wpldp_get_categories',
-					nonce: wpldp_ajax.nonce
-				},
-				success: function (html) {
-					var $temp = $('<div>').html(html);
-					$temp.find('.cat-checkbox').each(function () {
-						var $option = new Option($(this).siblings('.cat-name').text(), $(this).val(), false, false);
-						dp.$modalCategories.append($option);
-					});
-					dp.$modalCategories.trigger('change');
-				}
-			});
+		// ---- Remove condition tag (delegated) ----
+		dp.$list.on('click', '[data-remove-condition]', function () {
+			var $tag = $(this).closest('.dukkan-dp__condition-tag');
+			var $rule = $(this).closest('.dukkan-dp__rule');
+			$tag.remove();
+			// Show empty state if no more condition tags.
+			var $boxBody = $rule.find('.dukkan-dp__conditions-body');
+			var $list = $boxBody.find('[data-conditions-list]');
+			if ($list.length && !$list.children().length) {
+				$list.remove();
+				$boxBody.find('[data-add-condition]').remove();
+				var $empty = $(
+					'<div class="dukkan-dp__box-empty" data-conditions-empty>' +
+						'<span class="dukkan-dp__box-empty-text">' + (dpI18n.applies_all_cases || 'Applies in all cases.') + '</span>' +
+						'<button type="button" class="dukkan-dp__box-action-btn" data-add-condition>' + (dpI18n.add_condition || 'Add Condition') + '</button>' +
+					'</div>'
+				);
+				$boxBody.empty().append($empty);
+			}
+			// Debounce save.
+			var ruleId = $rule.data('rule-id');
+			if (ruleId && ruleId.indexOf('temp_') !== 0) {
+				dp.debouncedSave(ruleId);
+			}
+		});
+
+		// ---- Initialize sortable if rules exist ----
+		if (dp.$list.children().length) {
+			dp.initSortable();
 		}
 
 	});
