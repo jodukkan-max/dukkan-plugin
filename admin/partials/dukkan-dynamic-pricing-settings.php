@@ -26,10 +26,25 @@
                     </option>
                 </optgroup>
             </select>
-            <select class="dukkan-dp__global-select" id="dukkan-dp-global-limit">
-                <option value="none"><?php esc_html_e( 'No discount limit', 'dukkan-plugin' ); ?></option>
-                <option value="single"><?php esc_html_e( 'Single discount per product', 'dukkan-plugin' ); ?></option>
-                <option value="one"><?php esc_html_e( 'One discount per cart', 'dukkan-plugin' ); ?></option>
+            <select class="dukkan-dp__global-select" id="dukkan-dp-global-limit" data-global-setting="discount_limit">
+                <optgroup label="<?php esc_attr_e( 'No Limit', 'dukkan-plugin' ); ?>">
+                    <option value="none" <?php selected( $this->get_global_setting( 'discount_limit', 'none' ), 'none' ); ?>>
+                        <?php esc_html_e( 'No discount limit', 'dukkan-plugin' ); ?>
+                    </option>
+                </optgroup>
+                <optgroup label="<?php esc_attr_e( 'Price Discount Limit', 'dukkan-plugin' ); ?>">
+                    <option value="price_discount_amount" <?php selected( $this->get_global_setting( 'discount_limit', 'none' ), 'price_discount_amount' ); ?>>
+                        <?php esc_html_e( 'Price discount limit $', 'dukkan-plugin' ); ?>
+                    </option>
+                    <option value="price_discount_percent" <?php selected( $this->get_global_setting( 'discount_limit', 'none' ), 'price_discount_percent' ); ?>>
+                        <?php esc_html_e( 'Price discount limit %', 'dukkan-plugin' ); ?>
+                    </option>
+                </optgroup>
+                <optgroup label="<?php esc_attr_e( 'Total Discount Limit', 'dukkan-plugin' ); ?>">
+                    <option value="total_discount_amount" <?php selected( $this->get_global_setting( 'discount_limit', 'none' ), 'total_discount_amount' ); ?>>
+                        <?php esc_html_e( 'Total discount limit $', 'dukkan-plugin' ); ?>
+                    </option>
+                </optgroup>
             </select>
         </div>
     </div>
