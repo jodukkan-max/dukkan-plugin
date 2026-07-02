@@ -700,11 +700,17 @@ class Dukkan_Plugin_Dynamic_Pricing {
 	public function ajax_save_global() {
 		$this->verify_ajax();
 
-		$key   = isset( $_POST['setting_key'] ) ? sanitize_text_field( wp_unslash( $_POST['setting_key'] ) ) : '';
-		$value = isset( $_POST['setting_value'] ) ? sanitize_text_field( wp_unslash( $_POST['setting_value'] ) ) : '';
+		$key = isset( $_POST['setting_key'] ) ? sanitize_text_field( wp_unslash( $_POST['setting_key'] ) ) : '';
 
 		if ( empty( $key ) ) {
 			wp_send_json_error( array( 'message' => __( 'Setting key is required.', 'dukkan-plugin' ) ), 400 );
+		}
+
+		// Sanitize numeric values as floats; everything else as text.
+		if ( 'discount_limit_value' === $key ) {
+			$value = isset( $_POST['setting_value'] ) ? floatval( wp_unslash( $_POST['setting_value'] ) ) : 0;
+		} else {
+			$value = isset( $_POST['setting_value'] ) ? sanitize_text_field( wp_unslash( $_POST['setting_value'] ) ) : '';
 		}
 
 		$this->save_global_setting( $key, $value );

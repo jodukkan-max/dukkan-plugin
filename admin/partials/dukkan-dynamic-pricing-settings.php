@@ -26,26 +26,37 @@
                     </option>
                 </optgroup>
             </select>
-            <select class="dukkan-dp__global-select" id="dukkan-dp-global-limit" data-global-setting="discount_limit">
-                <optgroup label="<?php esc_attr_e( 'No Limit', 'dukkan-plugin' ); ?>">
-                    <option value="none" <?php selected( $this->get_global_setting( 'discount_limit', 'none' ), 'none' ); ?>>
-                        <?php esc_html_e( 'No discount limit', 'dukkan-plugin' ); ?>
-                    </option>
-                </optgroup>
-                <optgroup label="<?php esc_attr_e( 'Price Discount Limit', 'dukkan-plugin' ); ?>">
-                    <option value="price_discount_amount" <?php selected( $this->get_global_setting( 'discount_limit', 'none' ), 'price_discount_amount' ); ?>>
-                        <?php esc_html_e( 'Price discount limit $', 'dukkan-plugin' ); ?>
-                    </option>
-                    <option value="price_discount_percent" <?php selected( $this->get_global_setting( 'discount_limit', 'none' ), 'price_discount_percent' ); ?>>
-                        <?php esc_html_e( 'Price discount limit %', 'dukkan-plugin' ); ?>
-                    </option>
-                </optgroup>
-                <optgroup label="<?php esc_attr_e( 'Total Discount Limit', 'dukkan-plugin' ); ?>">
-                    <option value="total_discount_amount" <?php selected( $this->get_global_setting( 'discount_limit', 'none' ), 'total_discount_amount' ); ?>>
-                        <?php esc_html_e( 'Total discount limit $', 'dukkan-plugin' ); ?>
-                    </option>
-                </optgroup>
-            </select>
+            <div class="dukkan-dp__global-limit-wrap">
+                <select class="dukkan-dp__global-select dukkan-dp__global-limit-select" id="dukkan-dp-global-limit" data-global-setting="discount_limit">
+                    <optgroup label="<?php esc_attr_e( 'No Limit', 'dukkan-plugin' ); ?>">
+                        <option value="none" <?php selected( $this->get_global_setting( 'discount_limit', 'none' ), 'none' ); ?>>
+                            <?php esc_html_e( 'No discount limit', 'dukkan-plugin' ); ?>
+                        </option>
+                    </optgroup>
+                    <optgroup label="<?php esc_attr_e( 'Price Discount Limit', 'dukkan-plugin' ); ?>">
+                        <option value="price_discount_amount" <?php selected( $this->get_global_setting( 'discount_limit', 'none' ), 'price_discount_amount' ); ?>>
+                            <?php esc_html_e( 'Price discount limit $', 'dukkan-plugin' ); ?>
+                        </option>
+                        <option value="price_discount_percent" <?php selected( $this->get_global_setting( 'discount_limit', 'none' ), 'price_discount_percent' ); ?>>
+                            <?php esc_html_e( 'Price discount limit %', 'dukkan-plugin' ); ?>
+                        </option>
+                    </optgroup>
+                    <optgroup label="<?php esc_attr_e( 'Total Discount Limit', 'dukkan-plugin' ); ?>">
+                        <option value="total_discount_amount" <?php selected( $this->get_global_setting( 'discount_limit', 'none' ), 'total_discount_amount' ); ?>>
+                            <?php esc_html_e( 'Total discount limit $', 'dukkan-plugin' ); ?>
+                        </option>
+                    </optgroup>
+                </select>
+                <input type="number"
+                       class="dukkan-dp__global-limit-input <?php echo 'none' === $this->get_global_setting( 'discount_limit', 'none' ) ? 'dukkan-dp__global-limit-input--hidden' : ''; ?>"
+                       id="dukkan-dp-global-limit-value"
+                       data-global-setting="discount_limit_value"
+                       value="<?php echo esc_attr( $this->get_global_setting( 'discount_limit_value', '0.0' ) ); ?>"
+                       min="0"
+                       step="0.01"
+                       placeholder="0.0"
+                >
+            </div>
         </div>
     </div>
 

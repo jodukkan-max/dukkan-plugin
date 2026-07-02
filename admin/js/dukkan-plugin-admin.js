@@ -648,12 +648,37 @@
 			var $select = $(this);
 			var key = $select.data('global-setting');
 			var value = $select.val();
+
 			dp.ajaxPost('dukkan_dp_save_global', {
 				setting_key: key,
 				setting_value: value
 			}, function () {
 				showToast(dpI18n.setting_saved || 'Setting saved.', 'success');
 			});
+
+			// Toggle discount-limit value input visibility.
+			if (key === 'discount_limit') {
+				var $input = $('#dukkan-dp-global-limit-value');
+				$input.toggleClass('dukkan-dp__global-limit-input--hidden', value === 'none');
+				if (value !== 'none') {
+					$input.focus();
+				}
+			}
+		});
+
+		// ---- Discount limit value input — debounced save ----
+		var dpLimitValueTimer;
+		$('#dukkan-dp-global-limit-value').on('input', function () {
+			var $input = $(this);
+			clearTimeout(dpLimitValueTimer);
+			dpLimitValueTimer = setTimeout(function () {
+				var val = parseFloat($input.val());
+				if (isNaN(val)) val = 0;
+				dp.ajaxPost('dukkan_dp_save_global', {
+					setting_key: 'discount_limit_value',
+					setting_value: val
+				});
+			}, 500);
 		});
 
 		// ---- Remove rule (delegated) ----

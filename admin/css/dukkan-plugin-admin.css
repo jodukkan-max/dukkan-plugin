@@ -1452,6 +1452,12 @@ color:#f59e00;
     gap: 12px;
 }
 
+.dukkan-dp__global-limit-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
 .dukkan-dp__global-select {
     border: 1px solid #d1d5db;
     border-radius: 6px;
@@ -1468,6 +1474,27 @@ color:#f59e00;
     border-color: #ff5a00;
     box-shadow: 0 0 0 2px rgba(255,90,0,0.15);
     outline: none;
+}
+
+.dukkan-dp__global-limit-input {
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 13px;
+    color: #374151;
+    width: 80px;
+    text-align: right;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.dukkan-dp__global-limit-input:focus {
+    border-color: #ff5a00;
+    box-shadow: 0 0 0 2px rgba(255,90,0,0.15);
+    outline: none;
+}
+
+.dukkan-dp__global-limit-input--hidden {
+    display: none;
 }
 
 /* Rule List (sortable) */
