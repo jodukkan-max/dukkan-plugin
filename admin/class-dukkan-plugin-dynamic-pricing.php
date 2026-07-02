@@ -157,18 +157,24 @@ class Dukkan_Plugin_Dynamic_Pricing {
 				</span>
 				<div class="dukkan-dp__rule-header-right">
 					<select class="dukkan-dp__rule-apply-with" data-apply-with>
-						<option value="apply_with_others" <?php selected( $apply_with, 'apply_with_others' ); ?>>
-							<?php esc_html_e( 'Apply with other applicable rules', 'dukkan-plugin' ); ?>
-						</option>
-						<option value="apply_first" <?php selected( $apply_with, 'apply_first' ); ?>>
-							<?php esc_html_e( 'Apply first', 'dukkan-plugin' ); ?>
-						</option>
-						<option value="apply_last" <?php selected( $apply_with, 'apply_last' ); ?>>
-							<?php esc_html_e( 'Apply last', 'dukkan-plugin' ); ?>
-						</option>
-						<option value="stop_here" <?php selected( $apply_with, 'stop_here' ); ?>>
-							<?php esc_html_e( 'Stop here', 'dukkan-plugin' ); ?>
-						</option>
+						<optgroup label="<?php esc_attr_e( 'Non-Exclusive', 'dukkan-plugin' ); ?>">
+							<option value="apply_with_others" <?php selected( $apply_with, 'apply_with_others' ); ?>>
+								<?php esc_html_e( 'Apply with other applicable rules', 'dukkan-plugin' ); ?>
+							</option>
+						</optgroup>
+						<optgroup label="<?php esc_attr_e( 'Exclusive – Per Cart Item', 'dukkan-plugin' ); ?>">
+							<option value="apply_disregard_others" <?php selected( $apply_with, 'apply_disregard_others' ); ?>>
+								<?php esc_html_e( 'Apply this rule and disregard other rules', 'dukkan-plugin' ); ?>
+							</option>
+							<option value="apply_if_others_na" <?php selected( $apply_with, 'apply_if_others_na' ); ?>>
+								<?php esc_html_e( 'Apply if other rules are not applicable', 'dukkan-plugin' ); ?>
+							</option>
+						</optgroup>
+						<optgroup label="<?php esc_attr_e( 'Disabled', 'dukkan-plugin' ); ?>">
+							<option value="disabled" <?php selected( $apply_with, 'disabled' ); ?>>
+								<?php esc_html_e( 'Disabled', 'dukkan-plugin' ); ?>
+							</option>
+						</optgroup>
 					</select>
 					<button type="button" class="dukkan-dp__rule-icon-btn" data-duplicate title="<?php esc_attr_e( 'Duplicate rule', 'dukkan-plugin' ); ?>">
 						<i class="fa-solid fa-copy"></i>
