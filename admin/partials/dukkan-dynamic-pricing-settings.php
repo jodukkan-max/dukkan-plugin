@@ -3,9 +3,28 @@
     <div class="dukkan-dp__header">
         <h2 class="dukkan-dp__title"><?php esc_html_e( 'Product Pricing', 'dukkan-plugin' ); ?></h2>
         <div class="dukkan-dp__global-controls">
-            <select class="dukkan-dp__global-select" id="dukkan-dp-global-apply">
-                <option value="first"><?php esc_html_e( 'Apply first applicable rule', 'dukkan-plugin' ); ?></option>
-                <option value="all"><?php esc_html_e( 'Apply all applicable rules', 'dukkan-plugin' ); ?></option>
+            <select class="dukkan-dp__global-select" id="dukkan-dp-global-apply" data-global-setting="rule_application">
+                <optgroup label="<?php esc_attr_e( 'Apply All', 'dukkan-plugin' ); ?>">
+                    <option value="apply_all" <?php selected( $this->get_global_setting( 'rule_application', 'apply_first' ), 'apply_all' ); ?>>
+                        <?php esc_html_e( 'Apply all applicable rules', 'dukkan-plugin' ); ?>
+                    </option>
+                </optgroup>
+                <optgroup label="<?php esc_attr_e( 'Apply One – Per Cart Item', 'dukkan-plugin' ); ?>">
+                    <option value="apply_first" <?php selected( $this->get_global_setting( 'rule_application', 'apply_first' ), 'apply_first' ); ?>>
+                        <?php esc_html_e( 'Apply first applicable rule', 'dukkan-plugin' ); ?>
+                    </option>
+                    <option value="apply_smaller_price" <?php selected( $this->get_global_setting( 'rule_application', 'apply_first' ), 'apply_smaller_price' ); ?>>
+                        <?php esc_html_e( 'Apply rule for smaller price', 'dukkan-plugin' ); ?>
+                    </option>
+                    <option value="apply_bigger_price" <?php selected( $this->get_global_setting( 'rule_application', 'apply_first' ), 'apply_bigger_price' ); ?>>
+                        <?php esc_html_e( 'Apply rule for bigger price', 'dukkan-plugin' ); ?>
+                    </option>
+                </optgroup>
+                <optgroup label="<?php esc_attr_e( 'Disabled', 'dukkan-plugin' ); ?>">
+                    <option value="all_disabled" <?php selected( $this->get_global_setting( 'rule_application', 'apply_first' ), 'all_disabled' ); ?>>
+                        <?php esc_html_e( 'All rules disabled', 'dukkan-plugin' ); ?>
+                    </option>
+                </optgroup>
             </select>
             <select class="dukkan-dp__global-select" id="dukkan-dp-global-limit">
                 <option value="none"><?php esc_html_e( 'No discount limit', 'dukkan-plugin' ); ?></option>

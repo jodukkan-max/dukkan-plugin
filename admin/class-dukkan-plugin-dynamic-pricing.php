@@ -31,6 +31,14 @@ class Dukkan_Plugin_Dynamic_Pricing {
 	const OPTION_KEY = 'dukkan_dynamic_pricing_rules';
 
 	/**
+	 * Option key for global pricing settings (application mode, discount limit, etc.).
+	 *
+	 * @since 1.0.1
+	 * @var   string
+	 */
+	const GLOBAL_OPTION_KEY = 'dukkan_dynamic_pricing_global';
+
+	/**
 	 * The ID of this plugin.
 	 *
 	 * @since    1.0.1
@@ -71,6 +79,7 @@ class Dukkan_Plugin_Dynamic_Pricing {
 		add_action( 'wp_ajax_dukkan_dp_toggle', array( $this, 'ajax_toggle' ) );
 		add_action( 'wp_ajax_dukkan_dp_get', array( $this, 'ajax_get' ) );
 		add_action( 'wp_ajax_dukkan_dp_save_all', array( $this, 'ajax_save_all' ) );
+		add_action( 'wp_ajax_dukkan_dp_save_global', array( $this, 'ajax_save_global' ) );
 	}
 
 	// -------------------------------------------------------------------------
@@ -284,6 +293,42 @@ class Dukkan_Plugin_Dynamic_Pricing {
 			</div>
 		</div>
 		<?php
+	}
+
+	// -------------------------------------------------------------------------
+	// Global Settings
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Get a global pricing setting with a default fallback.
+	 *
+	 * @since  1.0.1
+	 * @param  string $key     Setting key.
+	 * @param  mixed  $default Default value.
+	 * @return mixed
+	 */
+	public function get_global_setting( $key, $default = null ) {
+		$settings = get_option( self::GLOBAL_OPTION_KEY, array() );
+		if ( ! is_array( $settings ) ) {
+			$settings = array();
+		}
+		return $settings[ $key ] ?? $default;
+	}
+
+	/**
+	 * Save a global pricing setting.
+	 *
+	 * @since 1.0.1
+	 * @param string $key   Setting key.
+	 * @param mixed  $value Setting value.
+	 */
+	private function save_global_setting( $key, $value ) {
+		$settings = get_option( self::GLOBAL_OPTION_KEY, array() );
+		if ( ! is_array( $settings ) ) {
+			$settings = array();
+		}
+		$settings[ $key ] = $value;
+		update_option( self::GLOBAL_OPTION_KEY, $settings, 'no' );
 	}
 
 	// -------------------------------------------------------------------------
@@ -645,6 +690,26 @@ class Dukkan_Plugin_Dynamic_Pricing {
 		$this->save_rules( $sanitized_rules );
 
 		wp_send_json_success( array( 'saved' => true, 'count' => count( $sanitized_rules ) ) );
+	}
+
+	/**
+	 * AJAX: save a global pricing setting.
+	 *
+	 * @since 1.0.1
+	 */
+	public function ajax_save_global() {
+		$this->verify_ajax();
+
+		$key   = isset( $_POST['setting_key'] ) ? sanitize_text_field( wp_unslash( $_POST['setting_key'] ) ) : '';
+		$value = isset( $_POST['setting_value'] ) ? sanitize_text_field( wp_unslash( $_POST['setting_value'] ) ) : '';
+
+		if ( empty( $key ) ) {
+			wp_send_json_error( array( 'message' => __( 'Setting key is required.', 'dukkan-plugin' ) ), 400 );
+		}
+
+		$this->save_global_setting( $key, $value );
+
+		wp_send_json_success( array( 'key' => $key, 'value' => $value ) );
 	}
 
 	// -------------------------------------------------------------------------

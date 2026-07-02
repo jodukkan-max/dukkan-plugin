@@ -643,6 +643,19 @@
 			dp.addRule();
 		});
 
+		// ---- Global setting select change ----
+		$('.dukkan-dp__global-select[data-global-setting]').on('change', function () {
+			var $select = $(this);
+			var key = $select.data('global-setting');
+			var value = $select.val();
+			dp.ajaxPost('dukkan_dp_save_global', {
+				setting_key: key,
+				setting_value: value
+			}, function () {
+				showToast(dpI18n.setting_saved || 'Setting saved.', 'success');
+			});
+		});
+
 		// ---- Remove rule (delegated) ----
 		dp.$list.on('click', '[data-remove]', function () {
 			var $rule = $(this).closest('.dukkan-dp__rule');
