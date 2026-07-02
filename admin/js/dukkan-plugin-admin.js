@@ -703,8 +703,17 @@
 			}
 		});
 
-		// ---- Any field change triggers debounced save for persisted rules ----
-		dp.$list.on('change input', '[data-apply-with], [data-adjustment-type], [data-adjustment-amount], [data-note], [data-description]', function () {
+		// ---- Apply-with select change (delegated) ----
+		dp.$list.on('change', '[data-apply-with]', function () {
+			var $rule = $(this).closest('.dukkan-dp__rule');
+			var ruleId = dp.ruleId($rule);
+			if (ruleId && ruleId.indexOf('temp_') !== 0) {
+				dp.debouncedSave(ruleId);
+			}
+		});
+
+		// ---- Any other field change triggers debounced save for persisted rules ----
+		dp.$list.on('change input', '[data-adjustment-type], [data-adjustment-amount], [data-note], [data-description]', function () {
 			var $rule = $(this).closest('.dukkan-dp__rule');
 			var ruleId = dp.ruleId($rule);
 			if (ruleId && ruleId.indexOf('temp_') !== 0) {
