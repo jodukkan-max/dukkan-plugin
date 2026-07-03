@@ -7,6 +7,11 @@ $tabs = apply_filters('dukkan_settings_tabs', array(
         'icon'  => 'fa-solid fa-mobile-screen',
     ),
 
+    'store_app_connection' => array(
+        'title' => 'Store OTP',
+        'icon'  => 'fa-solid fa-key',
+    ),
+
     // 'addons' => array(
     //     'title' => 'Product Add-Ons',
     //     'icon'  => 'fa-solid fa-dollar-sign',

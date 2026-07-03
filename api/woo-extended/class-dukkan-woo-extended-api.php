@@ -40,6 +40,15 @@ class Dukkan_Plugin_Woo_Extended_API {
 	 */
 	private $version;
 
+    /**
+     * The option name for the store connection auth code.
+     *
+     * @since    1.0.0
+     * @access   private
+     * @var      string    $store_connection_auth_code    The option name for the store connection auth code.
+     */
+    private $store_connection_auth_code_option_name = 'dukkan_plugin_store_connection_auth_code';
+
 	/**
 	 * Initialize the class and set its properties.
 	 *
@@ -60,10 +69,16 @@ class Dukkan_Plugin_Woo_Extended_API {
      */
     public function dukkan_plugin_woo_extended_api()
     {
+        register_rest_route('dukkan-woo-extended/v1', '/request-store-connection-auth-code', array(
+            'methods'             => 'POST',
+            'callback'            => array($this, 'dukkan_plugin_generate_store_connection_auth_code'),
+            'permission_callback' => array($this, 'dukkan_plugin_static_key_permission_callback')
+        ));
+
         register_rest_route('dukkan-woo-extended/v1', '/rest-api-keys', array(
             'methods'             => 'POST',
             'callback'            => array($this, 'dukkan_plugin_generate_woo_rest_api_keys'),
-            'permission_callback' => array($this, 'dukkan_plugin_static_key_permission_callback'),
+            'permission_callback' => array($this, 'dukkan_plugin_auth_code_permission_callback'),
             'args'                => array(
                 'user_id'     => array(
                     'required'          => false,
@@ -79,6 +94,33 @@ class Dukkan_Plugin_Woo_Extended_API {
                 ),
             ),
         ));
+    }
+
+    /**
+     * Authenticate the key generation endpoint with a store connection auth code.
+     */
+    public function dukkan_plugin_auth_code_permission_callback(WP_REST_Request $request)
+    {
+        $generated_auth_code = $this->dukkan_plugin_get_store_connection_auth_code();
+        $request_auth_code = trim((string) $request->get_header('x-dukkan-auth-code'));
+
+        if (empty($request_auth_code)) {
+            $request_auth_code = trim((string) $request->get_param('auth_code'));
+        }
+
+        if (empty($generated_auth_code) || empty($request_auth_code) || !hash_equals($generated_auth_code, $request_auth_code)) {
+            return new WP_Error('dukkan_woo_extended_unauthorized', 'Invalid or missing store connection auth code.', array('status' => 401));
+        }
+
+        // Delete the auth code after successful authentication.
+        delete_option($this->store_connection_auth_code_option_name);
+
+        return true;
+    }
+
+    private function dukkan_plugin_get_store_connection_auth_code()
+    {
+        return get_option($this->store_connection_auth_code_option_name);
     }
 
     /**
@@ -111,6 +153,25 @@ class Dukkan_Plugin_Woo_Extended_API {
         $api_key = defined('DUKKAN_WOO_EXTENDED_STATIC_API_KEY') ? DUKKAN_WOO_EXTENDED_STATIC_API_KEY : 'dukkan_woo_extended_static_key';
 
         return apply_filters('dukkan_plugin_woo_extended_static_api_key', $api_key);
+    }
+
+    /**
+     * Generate store connection auth code.
+     */
+    public function dukkan_plugin_generate_store_connection_auth_code(WP_REST_Request $request)
+    {
+        // Generate a 4-character alphanumeric code.
+        $auth_code = strtoupper( wp_generate_password( 4, false, false ) );
+
+        // Save the code in plugin settings.
+        update_option( $this->store_connection_auth_code_option_name, $auth_code );
+
+        return new WP_REST_Response(
+            array(
+                'success' => true,
+            ),
+            200
+        );
     }
 
     /**
