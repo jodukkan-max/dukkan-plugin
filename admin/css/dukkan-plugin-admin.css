@@ -1901,3 +1901,39 @@ color:#f59e00;
         flex-wrap: wrap;
     }
 }
+
+
+/* ==========================================================================
+   Store App Connection
+   ========================================================================== */
+   button.wpldp-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #ff5a00;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s ease, box-shadow 0.2s ease;
+    line-height: 1.4;
+}
+.wpldp-content-store-connection .wpldp-group-top {
+    display: flex;
+    flex-direction: column;
+    row-gap: 30px;
+    padding: 10px;
+    margin: 30px 10px;
+}
+span.wpldp-store-connection-auth-code {
+    display: flex;
+    column-gap: 10px;
+    font-size: 20px;
+}
+span.wpldp-store-connection-auth-code strong {
+    color: #ff5a00;
+    font-size: 40px;
+}
