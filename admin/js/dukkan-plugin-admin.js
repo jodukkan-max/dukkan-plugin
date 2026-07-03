@@ -486,12 +486,9 @@
 			 */
 			debouncedSave: (function () {
 				var timers = {};
-				return function (ruleId) {
+				return function (ruleId, ruleData) {
 					if (timers[ruleId]) clearTimeout(timers[ruleId]);
 					timers[ruleId] = setTimeout(function () {
-						var $rule = dp.$list.find('[data-rule-id="' + ruleId + '"]');
-						if (!$rule.length) return;
-						var ruleData = dp.collectRuleData($rule);
 						dp.ajaxPost('dukkan_dp_update', {
 							rule_id: ruleId,
 							rule: ruleData
@@ -699,7 +696,7 @@
 			dp.updateMethodLabel($rule);
 			var ruleId = dp.ruleId($rule);
 			if (ruleId && ruleId.indexOf('temp_') !== 0) {
-				dp.debouncedSave(ruleId);
+				dp.debouncedSave(ruleId, dp.collectRuleData($rule));
 			}
 		});
 
@@ -721,7 +718,7 @@
 			var $rule = $(this).closest('.dukkan-dp__rule');
 			var ruleId = dp.ruleId($rule);
 			if (ruleId && ruleId.indexOf('temp_') !== 0) {
-				dp.debouncedSave(ruleId);
+				dp.debouncedSave(ruleId, dp.collectRuleData($rule));
 			}
 		});
 
@@ -754,7 +751,7 @@
 			// Debounce save.
 			var ruleId = dp.ruleId($rule);
 			if (ruleId && ruleId.indexOf('temp_') !== 0) {
-				dp.debouncedSave(ruleId);
+				dp.debouncedSave(ruleId, dp.collectRuleData($rule));
 			}
 		});
 
@@ -786,7 +783,7 @@
 			// Debounce save.
 			var ruleId = dp.ruleId($rule);
 			if (ruleId && ruleId.indexOf('temp_') !== 0) {
-				dp.debouncedSave(ruleId);
+				dp.debouncedSave(ruleId, dp.collectRuleData($rule));
 			}
 		});
 

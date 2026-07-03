@@ -416,7 +416,7 @@ class Dukkan_Plugin_Dynamic_Pricing {
 			$sanitized['adjustment_type'] = 'fixed_discount';
 		}
 
-		if ( ! in_array( $sanitized['apply_with'], array( 'apply_with_others', 'apply_first', 'apply_last', 'stop_here' ), true ) ) {
+		if ( ! in_array( $sanitized['apply_with'], array( 'apply_with_others', 'apply_disregard_others', 'apply_if_others_na', 'disabled' ), true ) ) {
 			$sanitized['apply_with'] = 'apply_with_others';
 		}
 
