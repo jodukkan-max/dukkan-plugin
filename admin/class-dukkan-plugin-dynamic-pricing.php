@@ -182,7 +182,7 @@ class Dukkan_Plugin_Dynamic_Pricing {
 					<button type="button" class="dukkan-dp__rule-icon-btn dukkan-dp__rule-icon-btn--danger" data-remove title="<?php esc_attr_e( 'Remove rule', 'dukkan-plugin' ); ?>">
 						<i class="fa-solid fa-trash-can"></i>
 					</button>
-					<button type="button" class="dukkan-dp__rule-icon-btn dukkan-dp__rule-toggle-btn" data-toggle-collapse title="<?php esc_attr_e( 'Toggle details', 'dukkan-plugin' ); ?>">
+					<button type="button" class="dukkan-dp__rule-icon-btn dukkan-dp__rule-toggle-btn" title="<?php esc_attr_e( 'Toggle details', 'dukkan-plugin' ); ?>">
 						<i class="fa-solid fa-chevron-down dukkan-dp__rule-toggle-icon"></i>
 					</button>
 				</div>

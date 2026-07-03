@@ -789,9 +789,17 @@
 
 		// ---- Collapse toggle (delegated) ----
 		dp.$list.on('click', '[data-toggle-collapse]', function (e) {
-			// Don't toggle when clicking on selects, inputs, or action buttons.
-			if ($(e.target).is('select, input, button, i.fa-copy, i.fa-trash-can')) return;
-			if ($(e.target).closest('select, [data-duplicate], [data-remove]').length) return;
+			// Don't toggle when clicking on selects, inputs, or action buttons
+			// — except the collapse toggle button itself.
+			var $target = $(e.target);
+			if ($target.is('select, input') ||
+			    $target.closest('select, [data-duplicate], [data-remove]').length) {
+				return;
+			}
+			// Allow clicks on the toggle button or its icon to pass.
+			if ($target.is('button') && !$target.closest('.dukkan-dp__rule-toggle-btn').length) {
+				return;
+			}
 
 			var $rule = $(this).closest('.dukkan-dp__rule');
 			var $body = $rule.find('.dukkan-dp__rule-body');
