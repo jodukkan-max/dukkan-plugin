@@ -146,10 +146,24 @@ class Dukkan_Plugin_Dynamic_Pricing {
 						esc_html_e( 'Simple adjustment', 'dukkan-plugin' );
 					} elseif ( 'bulk_pricing' === $method ) {
 						esc_html_e( 'Bulk pricing', 'dukkan-plugin' );
+					} elseif ( 'tiered_pricing' === $method ) {
+						esc_html_e( 'Tiered pricing', 'dukkan-plugin' );
+					} elseif ( 'group_of_products' === $method ) {
+						esc_html_e( 'Group of products', 'dukkan-plugin' );
+					} elseif ( 'group_of_products_repeating' === $method ) {
+						esc_html_e( 'Group of products - Repeating', 'dukkan-plugin' );
+					} elseif ( 'buy_x_get_x' === $method ) {
+						esc_html_e( 'Buy x get x', 'dukkan-plugin' );
+					} elseif ( 'buy_x_get_x_repeating' === $method ) {
+						esc_html_e( 'Buy x get x - Repeating', 'dukkan-plugin' );
 					} elseif ( 'buy_x_get_y' === $method ) {
-						esc_html_e( 'Buy X Get Y', 'dukkan-plugin' );
-					} elseif ( 'bundle' === $method ) {
-						esc_html_e( 'Bundle', 'dukkan-plugin' );
+						esc_html_e( 'Buy x get y', 'dukkan-plugin' );
+					} elseif ( 'buy_x_get_y_repeating' === $method ) {
+						esc_html_e( 'Buy x get y - Repeating', 'dukkan-plugin' );
+					} elseif ( 'exclude_products_from_all_rules' === $method ) {
+						esc_html_e( 'Exclude products from all rules', 'dukkan-plugin' );
+					} elseif ( 'restrict_purchase_of_matched_products' === $method ) {
+						esc_html_e( 'Restrict purchase of matched products', 'dukkan-plugin' );
 					} else {
 						esc_html_e( 'Simple adjustment', 'dukkan-plugin' );
 					}
@@ -194,18 +208,49 @@ class Dukkan_Plugin_Dynamic_Pricing {
 				<div class="dukkan-dp__field">
 					<label><?php esc_html_e( 'Method', 'dukkan-plugin' ); ?></label>
 					<select class="dukkan-dp__method-select" data-method>
-						<option value="simple_adjustment" <?php selected( $method, 'simple_adjustment' ); ?>>
-							<?php esc_html_e( 'Simple adjustment', 'dukkan-plugin' ); ?>
-						</option>
-						<option value="bulk_pricing" <?php selected( $method, 'bulk_pricing' ); ?>>
-							<?php esc_html_e( 'Bulk pricing', 'dukkan-plugin' ); ?>
-						</option>
-						<option value="buy_x_get_y" <?php selected( $method, 'buy_x_get_y' ); ?>>
-							<?php esc_html_e( 'Buy X Get Y', 'dukkan-plugin' ); ?>
-						</option>
-						<option value="bundle" <?php selected( $method, 'bundle' ); ?>>
-							<?php esc_html_e( 'Bundle', 'dukkan-plugin' ); ?>
-						</option>
+						<optgroup label="<?php esc_attr_e( 'Simple', 'dukkan-plugin' ); ?>">
+							<option value="simple_adjustment" <?php selected( $method, 'simple_adjustment' ); ?>>
+								<?php esc_html_e( 'Simple adjustment', 'dukkan-plugin' ); ?>
+							</option>
+						</optgroup>
+						<optgroup label="<?php esc_attr_e( 'Volume', 'dukkan-plugin' ); ?>">
+							<option value="bulk_pricing" <?php selected( $method, 'bulk_pricing' ); ?>>
+								<?php esc_html_e( 'Bulk pricing', 'dukkan-plugin' ); ?>
+							</option>
+							<option value="tiered_pricing" <?php selected( $method, 'tiered_pricing' ); ?>>
+								<?php esc_html_e( 'Tiered pricing', 'dukkan-plugin' ); ?>
+							</option>
+						</optgroup>
+						<optgroup label="<?php esc_attr_e( 'Group', 'dukkan-plugin' ); ?>">
+							<option value="group_of_products" <?php selected( $method, 'group_of_products' ); ?>>
+								<?php esc_html_e( 'Group of products', 'dukkan-plugin' ); ?>
+							</option>
+							<option value="group_of_products_repeating" <?php selected( $method, 'group_of_products_repeating' ); ?>>
+								<?php esc_html_e( 'Group of products - Repeating', 'dukkan-plugin' ); ?>
+							</option>
+						</optgroup>
+						<optgroup label="<?php esc_attr_e( 'Buy / Get', 'dukkan-plugin' ); ?>">
+							<option value="buy_x_get_x" <?php selected( $method, 'buy_x_get_x' ); ?>>
+								<?php esc_html_e( 'Buy x get x', 'dukkan-plugin' ); ?>
+							</option>
+							<option value="buy_x_get_x_repeating" <?php selected( $method, 'buy_x_get_x_repeating' ); ?>>
+								<?php esc_html_e( 'Buy x get x - Repeating', 'dukkan-plugin' ); ?>
+							</option>
+							<option value="buy_x_get_y" <?php selected( $method, 'buy_x_get_y' ); ?>>
+								<?php esc_html_e( 'Buy x get y', 'dukkan-plugin' ); ?>
+							</option>
+							<option value="buy_x_get_y_repeating" <?php selected( $method, 'buy_x_get_y_repeating' ); ?>>
+								<?php esc_html_e( 'Buy x get y - Repeating', 'dukkan-plugin' ); ?>
+							</option>
+						</optgroup>
+						<optgroup label="<?php esc_attr_e( 'Other', 'dukkan-plugin' ); ?>">
+							<option value="exclude_products_from_all_rules" <?php selected( $method, 'exclude_products_from_all_rules' ); ?>>
+								<?php esc_html_e( 'Exclude products from all rules', 'dukkan-plugin' ); ?>
+							</option>
+							<option value="restrict_purchase_of_matched_products" <?php selected( $method, 'restrict_purchase_of_matched_products' ); ?>>
+								<?php esc_html_e( 'Restrict purchase of matched products', 'dukkan-plugin' ); ?>
+							</option>
+						</optgroup>
 					</select>
 				</div>
 
@@ -408,7 +453,7 @@ class Dukkan_Plugin_Dynamic_Pricing {
 			'conditions'        => array(),
 		);
 
-		if ( ! in_array( $sanitized['method'], array( 'simple_adjustment', 'bulk_pricing', 'buy_x_get_y', 'bundle' ), true ) ) {
+		if ( ! in_array( $sanitized['method'], array( 'simple_adjustment', 'bulk_pricing', 'tiered_pricing', 'group_of_products', 'group_of_products_repeating', 'buy_x_get_x', 'buy_x_get_x_repeating', 'buy_x_get_y', 'buy_x_get_y_repeating', 'exclude_products_from_all_rules', 'restrict_purchase_of_matched_products' ), true ) ) {
 			$sanitized['method'] = 'simple_adjustment';
 		}
 

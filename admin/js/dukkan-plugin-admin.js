@@ -466,19 +466,20 @@
 			updateMethodLabel: function ($rule) {
 				var method = $rule.find('[data-method]').val();
 				var $label = $rule.find('[data-method-label]');
-				var labelText = dpI18n.simple_adjustment || 'Simple adjustment';
-				switch (method) {
-					case 'bulk_pricing':
-						labelText = dpI18n.bulk_pricing || 'Bulk pricing';
-						break;
-					case 'buy_x_get_y':
-						labelText = dpI18n.buy_x_get_y_label || 'Buy X Get Y';
-						break;
-					case 'bundle':
-						labelText = dpI18n.bundle || 'Bundle';
-						break;
-				}
-				$label.text(labelText);
+				var labels = {
+					simple_adjustment:                   dpI18n.simple_adjustment || 'Simple adjustment',
+					bulk_pricing:                        dpI18n.bulk_pricing || 'Bulk pricing',
+					tiered_pricing:                      dpI18n.tiered_pricing || 'Tiered pricing',
+					group_of_products:                   dpI18n.group_of_products || 'Group of products',
+					group_of_products_repeating:         dpI18n.group_of_products_repeating || 'Group of products - Repeating',
+					buy_x_get_x:                         dpI18n.buy_x_get_x || 'Buy x get x',
+					buy_x_get_x_repeating:               dpI18n.buy_x_get_x_repeating || 'Buy x get x - Repeating',
+					buy_x_get_y:                         dpI18n.buy_x_get_y_label || 'Buy x get y',
+					buy_x_get_y_repeating:               dpI18n.buy_x_get_y_repeating || 'Buy x get y - Repeating',
+					exclude_products_from_all_rules:     dpI18n.exclude_products_from_all_rules || 'Exclude products from all rules',
+					restrict_purchase_of_matched_products: dpI18n.restrict_purchase_of_matched_products || 'Restrict purchase of matched products'
+				};
+				$label.text(labels[method] || labels.simple_adjustment);
 			},
 
 			/**
