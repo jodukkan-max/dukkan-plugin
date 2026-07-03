@@ -703,12 +703,16 @@
 			}
 		});
 
-		// ---- Apply-with select change (delegated) ----
+		// ---- Apply-with select change (delegated) — save immediately ----
 		dp.$list.on('change', '[data-apply-with]', function () {
 			var $rule = $(this).closest('.dukkan-dp__rule');
 			var ruleId = dp.ruleId($rule);
 			if (ruleId && ruleId.indexOf('temp_') !== 0) {
-				dp.debouncedSave(ruleId);
+				var ruleData = dp.collectRuleData($rule);
+				dp.ajaxPost('dukkan_dp_update', {
+					rule_id: ruleId,
+					rule: ruleData
+				});
 			}
 		});
 
