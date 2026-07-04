@@ -485,46 +485,147 @@
     background: #fef2f2;
 }
 
-/*
- * Select2 / SelectWoo overrides — so the multi-select fits inside
- * the inline filter row without breaking the layout.
- */
-.dukkan-dp__product-filter-value .select2-container {
-    width: 100% !important;
-    min-width: 0;
-    flex: 1;
+/* -------------------------------------------------------------------------
+   Product Filter — Chips (selected products above the search field)
+   ------------------------------------------------------------------------- */
+.dukkan-dp__product-filter-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 6px;
+    width: 100%;
 }
 
-.dukkan-dp__product-filter-value .select2-container .select2-selection--multiple {
-    min-height: 34px;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
-    font-size: 12px;
+.dukkan-dp__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    border-radius: 4px;
+    padding: 1px 3px 1px 7px;
+    font-size: 11px;
+    line-height: 1.5;
+    color: #0c4a6e;
+    max-width: 100%;
+}
+
+.dukkan-dp__chip-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 200px;
+}
+
+.dukkan-dp__chip-remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border: none;
+    background: none;
+    color: #38bdf8;
+    cursor: pointer;
+    font-size: 13px;
+    padding: 0;
+    line-height: 1;
+    border-radius: 3px;
+    flex-shrink: 0;
+    transition: color 0.15s ease, background 0.15s ease;
+}
+
+.dukkan-dp__chip-remove:hover {
+    color: #fff;
+    background: #ef4444;
+}
+
+/* -------------------------------------------------------------------------
+   Select2 / SelectWoo overrides for the inline filter row
+   ------------------------------------------------------------------------- */
+
+/* Hide the default Select2 choice pills — we render them externally. */
+.dukkan-dp__product-filter-value
+.select2-container--default
+.select2-selection--multiple
+.select2-selection__rendered {
+    display: block;
+    padding: 0;
 }
 
 .dukkan-dp__product-filter-value
 .select2-container--default
 .select2-selection--multiple
 .select2-selection__choice {
-    font-size: 11px;
-    padding: 2px 6px;
-    margin-top: 4px;
-    background: #f3f4f6;
-    border: 1px solid #e5e7eb;
-    border-radius: 4px;
-    color: #374151;
+    display: none !important;
+}
+
+.dukkan-dp__product-filter-value .select2-container {
+    width: 100% !important;
+    min-width: 0;
+}
+
+.dukkan-dp__product-filter-value
+.select2-container .select2-selection--multiple {
+    min-height: 34px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 12px;
+    background: #fff;
+    box-shadow: none;
+}
+
+.dukkan-dp__product-filter-value
+.select2-container--default.select2-container--focus
+.select2-selection--multiple {
+    border-color: #ff5a00;
+    box-shadow: 0 0 0 2px rgba(255,90,0,0.15);
 }
 
 .dukkan-dp__product-filter-value
 .select2-container .select2-search--inline .select2-search__field {
     font-size: 12px;
-    min-height: 28px;
-    margin-top: 2px;
+    min-height: 30px;
+    margin: 0;
+    padding: 4px 8px;
+    width: 100% !important;
+    font-family: inherit;
 }
 
-/* Keep dropdown above everything. */
+.dukkan-dp__product-filter-value
+.select2-container .select2-search--inline .select2-search__field::placeholder {
+    color: #9ca3af;
+}
+
+/* Dropdown — float above everything */
 .select2-dropdown--dukkan-dp {
-    z-index: 160010;
+    z-index: 160010 !important;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    font-size: 13px;
+}
+
+.select2-dropdown--dukkan-dp .select2-results__option {
+    padding: 8px 12px;
+    margin: 0;
+}
+
+.select2-dropdown--dukkan-dp .select2-results__option--highlighted {
+    background: #fff7ed;
+    color: #1d2327;
+}
+
+.select2-dropdown--dukkan-dp
+.select2-results__option[aria-selected="true"] {
+    background: #f0f9ff;
+    color: #0c4a6e;
+}
+
+.select2-dropdown--dukkan-dp .select2-results__message {
+    color: #9ca3af;
+    font-size: 12px;
+    padding: 10px 12px;
 }
 
 /* Product/Condition Tags (kept for conditions) */

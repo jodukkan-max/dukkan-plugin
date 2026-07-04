@@ -462,18 +462,43 @@ class Dukkan_Plugin_Dynamic_Pricing {
 				// --- Select2 multi-select for Product type ---
 				$show_product_select2 = $is_template || 'product' === $type;
 				if ( $show_product_select2 ) :
-					// Pre-load selected product options.
+					// Pre-load selected product options from the saved value.
 					$selected_product_ids = array();
 					if ( is_array( $value ) ) {
 						$selected_product_ids = array_map( 'intval', $value );
-					} elseif ( is_numeric( $value ) ) {
+					} elseif ( is_numeric( $value ) && $value > 0 ) {
 						$selected_product_ids = array( (int) $value );
 					}
 					?>
+					<!-- Chips area — selected products appear here as pills -->
+					<div class="dukkan-dp__product-filter-chips" data-filter-chips
+						 style="display:<?php echo ( 'product' === $type && ! empty( $selected_product_ids ) ) ? '' : 'none'; ?>;">
+						<?php foreach ( $selected_product_ids as $pid ) : ?>
+							<?php
+							$p = wc_get_product( $pid );
+							if ( ! $p ) {
+								continue;
+							}
+							$p_sku   = $p->get_sku();
+							$p_title = $p->get_name();
+							$p_text  = $p_title;
+							if ( ! empty( $p_sku ) ) {
+								$p_text .= ' (' . $p_sku . ')';
+							}
+							?>
+							<span class="dukkan-dp__chip" data-chip-value="<?php echo esc_attr( (string) $pid ); ?>">
+								<span class="dukkan-dp__chip-text"><?php echo esc_html( $p_text ); ?></span>
+								<button type="button" class="dukkan-dp__chip-remove"
+										data-chip-remove="<?php echo esc_attr( (string) $pid ); ?>"
+										aria-label="<?php esc_attr_e( 'Remove', 'dukkan-plugin' ); ?>">&times;</button>
+							</span>
+						<?php endforeach; ?>
+					</div>
+					<!-- Hidden native <select> for Select2 data binding -->
 					<select class="dukkan-dp__product-filter-value-select2"
 							data-filter-value-select2
 							multiple
-							style="display:<?php echo 'product' === $type ? '' : 'none'; ?>;width:100%;"
+							style="display:<?php echo 'product' === $type ? '' : 'none'; ?>;"
 							data-placeholder="<?php esc_attr_e( 'Search products…', 'dukkan-plugin' ); ?>">
 						<?php foreach ( $selected_product_ids as $pid ) : ?>
 							<?php
@@ -511,8 +536,10 @@ class Dukkan_Plugin_Dynamic_Pricing {
 					</select>
 				<?php endif; ?>
 				<?php
+				// Text input for types that don't use Select2 or special widgets.
+				// Note: 'product' is NOT in this list.
 				$text_types = array( 'product_variation', 'product_regular_price', 'product_stock_quantity', 'product_metadata', 'cart_item_data', 'coupons_applied' );
-				$show_text  = $is_template || ( empty( $type ) || in_array( $type, $text_types, true ) );
+				$show_text  = $is_template || ( ! empty( $type ) && in_array( $type, $text_types, true ) );
 				$text_hidden = ! $show_text;
 				?>
 				<input type="text"

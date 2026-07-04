@@ -136,13 +136,14 @@
 				'<select class="dukkan-dp__product-filter-type" data-filter-type>' + typeOptions + '</select>' +
 				'<select class="dukkan-dp__product-filter-operator" data-filter-operator>' + operatorOptions + '</select>' +
 				'<div class="dukkan-dp__product-filter-value" data-filter-value-wrap>' +
+					'<div class="dukkan-dp__product-filter-chips" data-filter-chips style="display:none;"></div>' +
+					'<select class="dukkan-dp__product-filter-value-select2" data-filter-value-select2 multiple ' +
+						'style="display:none;" ' +
+						'data-placeholder="' + (dpI18n.pf_search_placeholder || 'Search products…') + '">' +
+					'</select>' +
 					'<select class="dukkan-dp__product-filter-value-on-sale" data-filter-value-on-sale style="display:none;">' +
 						'<option value="yes">' + (dpI18n.pf_yes || 'Yes') + '</option>' +
 						'<option value="no">' + (dpI18n.pf_no || 'No') + '</option>' +
-					'</select>' +
-					'<select class="dukkan-dp__product-filter-value-select2" data-filter-value-select2 multiple ' +
-						'style="display:none;width:100%;" ' +
-						'data-placeholder="' + (dpI18n.pf_search_placeholder || 'Search products…') + '">' +
 					'</select>' +
 					'<input type="text" class="dukkan-dp__product-filter-value-input" data-filter-value-input placeholder="' + (dpI18n.pf_search_placeholder || 'Search or enter value…') + '">' +
 				'</div>' +
@@ -219,6 +220,7 @@
 			var $input    = $row.find('[data-filter-value-input]');
 			var $onSale   = $row.find('[data-filter-value-on-sale]');
 			var $select2  = $valueWrap.find('[data-filter-value-select2]');
+			var $chips    = $valueWrap.find('[data-filter-chips]');
 
 			// Destroy existing Select2 instance before hiding.
 			if ($select2.length && $select2.data('select2')) {
@@ -229,6 +231,9 @@
 			$input.hide();
 			$onSale.hide();
 			$select2.hide();
+			if ($chips.length) {
+				$chips.hide();
+			}
 
 			// Show the correct value widget.
 			if (type === 'product_is_on_sale') {
@@ -236,14 +241,66 @@
 			} else if (config.valueType === 'select2') {
 				$select2.show();
 				dp.initProductSelect2($select2);
+				// Show chips if there are already selected items (server-rendered).
+				if ($select2.val() && $select2.val().length > 0) {
+					dp.renderProductChips($select2);
+				}
 			} else {
 				$input.show();
 			}
 		},
 
 		/**
+		 * Render selected products as chips in the external chips container
+		 * above the Select2 input. Mirrors the pattern used in dp-product-addon.
+		 *
+		 * @param {jQuery} $el The Select2-enhanced <select> element.
+		 */
+		renderProductChips: function ($el) {
+			var $chips = $el.closest('[data-filter-value-wrap]').find('[data-filter-chips]');
+			if (!$chips.length) {
+				return;
+			}
+			$chips.empty();
+
+			var selected = $el.select2('data');
+			if (!selected || !selected.length) {
+				$chips.hide();
+				return;
+			}
+			$chips.show();
+
+			$.each(selected, function (i, item) {
+				var $chip = $(
+					'<span class="dukkan-dp__chip" data-chip-value="' + item.id + '">' +
+						'<span class="dukkan-dp__chip-text">' + $('<div>').text(item.text).html() + '</span>' +
+						'<button type="button" class="dukkan-dp__chip-remove" ' +
+							'data-chip-remove="' + item.id + '" ' +
+							'aria-label="' + (dpI18n.pf_remove || 'Remove') + '">&times;</button>' +
+					'</span>'
+				);
+				$chips.append($chip);
+			});
+
+			// Handle chip removal — deselect from Select2.
+			$chips.find('.dukkan-dp__chip-remove').off('click').on('click', function (e) {
+				e.stopPropagation();
+				var id = $(this).data('chip-remove').toString();
+				var current = $el.val() || [];
+				var updated = current.filter(function (v) { return v.toString() !== id; });
+				$el.val(updated).trigger('change');
+				dp.renderProductChips($el);
+
+				// Trigger save.
+				var $rule = $el.closest('.dukkan-dp__rule');
+				dp.saveRuleProductFilters($rule);
+			});
+		},
+
+		/**
 		 * Initialize SelectWoo (AJAX multi-select) on a <select multiple>
-		 * for product search.
+		 * for product search. Selected items are rendered as chips ABOVE the
+		 * input via renderProductChips.
 		 *
 		 * @param {jQuery} $el The <select> element to enhance.
 		 */
@@ -271,12 +328,13 @@
 					cache: true
 				},
 				minimumInputLength: 2,
-				allowClear:         true,
+				allowClear:         false,
 				placeholder:        $el.data('placeholder') || (dpI18n.pf_search_placeholder || 'Search products…'),
 				width:              '100%',
 				dropdownCssClass:   'select2-dropdown--dukkan-dp',
 				dropdownParent:     $el.closest('.dukkan-dp__list')
 			}).on('select2:select select2:unselect', function () {
+				dp.renderProductChips($el);
 				var $rule = $(this).closest('.dukkan-dp__rule');
 				dp.saveRuleProductFilters($rule);
 			});
