@@ -82,6 +82,15 @@ class Dukkan_Plugin_Admin {
 
 		wp_enqueue_style( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'css/dukkan-plugin-admin.css', array(), $this->version, 'all' );
 
+		// Dynamic Pricing stylesheet.
+		wp_enqueue_style(
+			'dukkan-plugin-dynamic-pricing',
+			plugin_dir_url( __FILE__ ) . 'css/dukkan-plugin-dynamic-pricing.css',
+			array(),
+			$this->version,
+			'all'
+		);
+
 	}
 
 	/**
@@ -109,6 +118,15 @@ class Dukkan_Plugin_Admin {
 		wp_enqueue_script('selectWoo'); // safer than select2
 		
 		wp_enqueue_script( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'js/dukkan-plugin-admin.js', array( 'jquery', 'jquery-ui-sortable', 'selectWoo' ), $this->version, false );
+
+		// Dynamic Pricing — separate script loaded after main admin JS.
+		wp_enqueue_script(
+			'dukkan-plugin-dynamic-pricing',
+			plugin_dir_url( __FILE__ ) . 'js/dukkan-plugin-dynamic-pricing.js',
+			array( 'jquery', 'jquery-ui-sortable' ),
+			$this->version,
+			true
+		);
 
 		wp_localize_script($this->plugin_name, 'wpldp_ajax', [
 			'url' => admin_url('admin-ajax.php'),
