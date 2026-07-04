@@ -123,7 +123,7 @@ class Dukkan_Plugin_Admin {
 		wp_enqueue_script(
 			'dukkan-plugin-dynamic-pricing',
 			plugin_dir_url( __FILE__ ) . 'js/dukkan-plugin-dynamic-pricing.js',
-			array( 'jquery', 'jquery-ui-sortable' ),
+			array( 'jquery', 'jquery-ui-sortable', 'selectWoo' ),
 			$this->version,
 			true
 		);

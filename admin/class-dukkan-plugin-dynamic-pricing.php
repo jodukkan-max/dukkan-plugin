@@ -80,6 +80,7 @@ class Dukkan_Plugin_Dynamic_Pricing {
 		add_action( 'wp_ajax_dukkan_dp_get', array( $this, 'ajax_get' ) );
 		add_action( 'wp_ajax_dukkan_dp_save_all', array( $this, 'ajax_save_all' ) );
 		add_action( 'wp_ajax_dukkan_dp_save_global', array( $this, 'ajax_save_global' ) );
+		add_action( 'wp_ajax_dukkan_dp_product_search', array( $this, 'ajax_product_search' ) );
 	}
 
 	// -------------------------------------------------------------------------
@@ -416,15 +417,23 @@ class Dukkan_Plugin_Dynamic_Pricing {
 				</optgroup>
 			</select>
 			<select class="dukkan-dp__product-filter-operator" data-filter-operator>
-				<option value="in_list" <?php selected( $operator, 'in_list' ); ?>>
-					<?php esc_html_e( 'in list', 'dukkan-plugin' ); ?>
-				</option>
-				<option value="not_in_list" <?php selected( $operator, 'not_in_list' ); ?>>
-					<?php esc_html_e( 'not in list', 'dukkan-plugin' ); ?>
-				</option>
-				<option value="equals" <?php selected( $operator, 'equals' ); ?>>
-					<?php esc_html_e( 'equals', 'dukkan-plugin' ); ?>
-				</option>
+				<?php if ( 'product' === $type ) : ?>
+					<option value="in_list" <?php selected( $operator, 'in_list' ); ?>>
+						<?php esc_html_e( 'in list', 'dukkan-plugin' ); ?>
+					</option>
+					<option value="not_in_list" <?php selected( $operator, 'not_in_list' ); ?>>
+						<?php esc_html_e( 'not in list', 'dukkan-plugin' ); ?>
+					</option>
+				<?php else : ?>
+					<option value="in_list" <?php selected( $operator, 'in_list' ); ?>>
+						<?php esc_html_e( 'in list', 'dukkan-plugin' ); ?>
+					</option>
+					<option value="not_in_list" <?php selected( $operator, 'not_in_list' ); ?>>
+						<?php esc_html_e( 'not in list', 'dukkan-plugin' ); ?>
+					</option>
+					<option value="equals" <?php selected( $operator, 'equals' ); ?>>
+						<?php esc_html_e( 'equals', 'dukkan-plugin' ); ?>
+					</option>
 				<option value="not_equals" <?php selected( $operator, 'not_equals' ); ?>>
 					<?php esc_html_e( 'not equals', 'dukkan-plugin' ); ?>
 				</option>
@@ -444,11 +453,51 @@ class Dukkan_Plugin_Dynamic_Pricing {
 					<?php esc_html_e( 'contains', 'dukkan-plugin' ); ?>
 				</option>
 				<option value="does_not_contain" <?php selected( $operator, 'does_not_contain' ); ?>>
-					<?php esc_html_e( 'does not contain', 'dukkan-plugin' ); ?>
-				</option>
+						<?php esc_html_e( 'does not contain', 'dukkan-plugin' ); ?>
+					</option>
+				<?php endif; ?>
 			</select>
 			<div class="dukkan-dp__product-filter-value" data-filter-value-wrap>
-				<?php if ( $is_template || in_array( $type, array( 'product_category', 'product_attributes', 'product_tags', 'product_shipping_class' ), true ) ) : ?>
+				<?php
+				// --- Select2 multi-select for Product type ---
+				$show_product_select2 = $is_template || 'product' === $type;
+				if ( $show_product_select2 ) :
+					// Pre-load selected product options.
+					$selected_product_ids = array();
+					if ( is_array( $value ) ) {
+						$selected_product_ids = array_map( 'intval', $value );
+					} elseif ( is_numeric( $value ) ) {
+						$selected_product_ids = array( (int) $value );
+					}
+					?>
+					<select class="dukkan-dp__product-filter-value-select2"
+							data-filter-value-select2
+							multiple
+							style="display:<?php echo 'product' === $type ? '' : 'none'; ?>;width:100%;"
+							data-placeholder="<?php esc_attr_e( 'Search products…', 'dukkan-plugin' ); ?>">
+						<?php foreach ( $selected_product_ids as $pid ) : ?>
+							<?php
+							$p = wc_get_product( $pid );
+							if ( ! $p ) {
+								continue;
+							}
+							$p_sku   = $p->get_sku();
+							$p_title = $p->get_name();
+							$p_text  = $p_title;
+							if ( ! empty( $p_sku ) ) {
+								$p_text .= ' (' . $p_sku . ')';
+							}
+							?>
+							<option value="<?php echo esc_attr( (string) $pid ); ?>" selected="selected">
+								<?php echo esc_html( $p_text ); ?>
+							</option>
+						<?php endforeach; ?>
+					</select>
+				<?php endif; ?>
+				<?php
+				// --- Select for category / attributes / tags / shipping-class ---
+				if ( $is_template || in_array( $type, array( 'product_category', 'product_attributes', 'product_tags', 'product_shipping_class' ), true ) ) :
+					?>
 					<select class="dukkan-dp__product-filter-value-select" data-filter-value multiple
 							data-placeholder="<?php esc_attr_e( 'Select…', 'dukkan-plugin' ); ?>"
 							style="display:<?php echo in_array( $type, array( 'product_category', 'product_attributes', 'product_tags', 'product_shipping_class' ), true ) ? '' : 'none'; ?>">
@@ -462,7 +511,7 @@ class Dukkan_Plugin_Dynamic_Pricing {
 					</select>
 				<?php endif; ?>
 				<?php
-				$text_types = array( 'product', 'product_variation', 'product_regular_price', 'product_stock_quantity', 'product_metadata', 'cart_item_data', 'coupons_applied' );
+				$text_types = array( 'product_variation', 'product_regular_price', 'product_stock_quantity', 'product_metadata', 'cart_item_data', 'coupons_applied' );
 				$show_text  = $is_template || ( empty( $type ) || in_array( $type, $text_types, true ) );
 				$text_hidden = ! $show_text;
 				?>
@@ -937,6 +986,123 @@ class Dukkan_Plugin_Dynamic_Pricing {
 		$this->save_global_setting( $key, $value );
 
 		wp_send_json_success( array( 'key' => $key, 'value' => $value ) );
+	}
+
+	// -------------------------------------------------------------------------
+	// Product Search AJAX
+	// -------------------------------------------------------------------------
+
+	/**
+	 * AJAX: search WooCommerce products by title, SKU, or ID.
+	 *
+	 * Returns Select2-compatible results for the dynamic pricing product
+	 * filter multi-select.
+	 *
+	 * @since 1.0.1
+	 */
+	public function ajax_product_search() {
+		$this->verify_ajax();
+
+		$term = isset( $_GET['term'] ) ? sanitize_text_field( wp_unslash( $_GET['term'] ) ) : '';
+
+		// Require at least 2 characters for server-side search.
+		if ( mb_strlen( $term ) < 2 ) {
+			wp_send_json_success( array() );
+		}
+
+		$results = array();
+		$limit   = 30;
+
+		// Search by title.
+		$products = wc_get_products( array(
+			'status'  => 'publish',
+			'limit'   => $limit,
+			's'       => $term,
+			'type'    => array( 'simple', 'variable' ),
+			'orderby' => 'title',
+			'order'   => 'ASC',
+		) );
+
+		$seen_ids = array();
+
+		foreach ( $products as $product ) {
+			$pid   = $product->get_id();
+			$sku   = $product->get_sku();
+			$title = $product->get_name();
+
+			if ( in_array( $pid, $seen_ids, true ) ) {
+				continue;
+			}
+			$seen_ids[] = $pid;
+
+			$text = $title;
+			if ( ! empty( $sku ) ) {
+				$text .= ' (' . $sku . ')';
+			}
+
+			$results[] = array(
+				'id'   => (string) $pid,
+				'text' => $text,
+				'sku'  => $sku,
+			);
+		}
+
+		// Also search by SKU (meta query) for partial matches that title
+		// search might miss.
+		if ( count( $results ) < $limit ) {
+			$remaining = $limit - count( $results );
+
+			$sku_products = wc_get_products( array(
+				'status'     => 'publish',
+				'limit'      => $remaining,
+				'type'       => array( 'simple', 'variable' ),
+				'sku'        => $term,
+				'orderby'    => 'title',
+				'order'      => 'ASC',
+			) );
+
+			foreach ( $sku_products as $product ) {
+				$pid   = $product->get_id();
+				$sku   = $product->get_sku();
+				$title = $product->get_name();
+
+				if ( in_array( $pid, $seen_ids, true ) ) {
+					continue;
+				}
+				$seen_ids[] = $pid;
+
+				$text = $title;
+				if ( ! empty( $sku ) ) {
+					$text .= ' (' . $sku . ')';
+				}
+
+				$results[] = array(
+					'id'   => (string) $pid,
+					'text' => $text,
+					'sku'  => $sku,
+				);
+			}
+		}
+
+		// Also search by numeric ID if the term looks like a number.
+		if ( is_numeric( $term ) && ! in_array( (int) $term, $seen_ids, true ) ) {
+			$product = wc_get_product( (int) $term );
+			if ( $product && 'publish' === $product->get_status() ) {
+				$sku   = $product->get_sku();
+				$title = $product->get_name();
+				$text  = $title;
+				if ( ! empty( $sku ) ) {
+					$text .= ' (' . $sku . ')';
+				}
+				$results[] = array(
+					'id'   => (string) $product->get_id(),
+					'text' => $text,
+					'sku'  => $sku,
+				);
+			}
+		}
+
+		wp_send_json_success( $results );
 	}
 
 	// -------------------------------------------------------------------------

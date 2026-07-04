@@ -56,6 +56,18 @@
 				var value;
 				if (type === 'product_is_on_sale') {
 					value = $row.find('[data-filter-value-on-sale]').val() || '';
+				} else if (type === 'product') {
+					// Multi-select via Select2 — collect as array.
+					var $select2 = $row.find('[data-filter-value-select2]');
+					if ($select2.length && $select2.data('select2')) {
+						value = $select2.val() || [];
+					} else {
+						value = $select2.val() || [];
+					}
+					// Ensure value is always an array of strings.
+					if (!Array.isArray(value)) {
+						value = value ? [value] : [];
+					}
 				} else {
 					value = $row.find('[data-filter-value-input]').val() || '';
 				}
@@ -128,7 +140,11 @@
 						'<option value="yes">' + (dpI18n.pf_yes || 'Yes') + '</option>' +
 						'<option value="no">' + (dpI18n.pf_no || 'No') + '</option>' +
 					'</select>' +
-					'<input type="text" class="dukkan-dp__product-filter-value-input" data-filter-value-input placeholder="' + (dpI18n.pf_search_placeholder || 'Search or enter value...') + '">' +
+					'<select class="dukkan-dp__product-filter-value-select2" data-filter-value-select2 multiple ' +
+						'style="display:none;width:100%;" ' +
+						'data-placeholder="' + (dpI18n.pf_search_placeholder || 'Search products…') + '">' +
+					'</select>' +
+					'<input type="text" class="dukkan-dp__product-filter-value-input" data-filter-value-input placeholder="' + (dpI18n.pf_search_placeholder || 'Search or enter value…') + '">' +
 				'</div>' +
 				'<button type="button" class="dukkan-dp__product-filter-remove" data-remove-product-filter title="' + (dpI18n.pf_remove || 'Remove filter') + '">' +
 					'<i class="fa-solid fa-xmark"></i>' +
@@ -137,21 +153,142 @@
 		},
 
 		/**
-		 * Update product filter value fields visibility based on type.
+		 * Operator labels shared between template generation and rebuild logic.
 		 */
-		updateProductFilterValueFields: function ($row) {
-			var type = $row.find('[data-filter-type]').val();
-			var $input = $row.find('[data-filter-value-input]');
-			var $onSale = $row.find('[data-filter-value-on-sale]');
+		operatorLabels: {
+			in_list: dpI18n.op_in_list || 'in list',
+			not_in_list: dpI18n.op_not_in_list || 'not in list',
+			equals: dpI18n.op_equals || 'equals',
+			not_equals: dpI18n.op_not_equals || 'not equals',
+			greater_than: dpI18n.op_greater_than || 'greater than',
+			less_than: dpI18n.op_less_than || 'less than',
+			greater_than_or_equal: dpI18n.op_greater_than_or_equal || 'greater than or equal',
+			less_than_or_equal: dpI18n.op_less_than_or_equal || 'less than or equal',
+			contains: dpI18n.op_contains || 'contains',
+			does_not_contain: dpI18n.op_does_not_contain || 'does not contain'
+		},
 
+		/**
+		 * Per-type operator sets and value field configuration.
+		 * Add new types here as they are implemented.
+		 */
+		filterTypeConfig: {
+			'product': {
+				operators: ['in_list', 'not_in_list'],
+				defaultOperator: 'in_list',
+				valueType: 'select2'
+			},
+			'default': {
+				operators: ['in_list','not_in_list','equals','not_equals','greater_than','less_than','greater_than_or_equal','less_than_or_equal','contains','does_not_contain'],
+				defaultOperator: 'in_list',
+				valueType: 'text'
+			}
+		},
+
+		/**
+		 * Rebuild operator dropdown options and value field type based on the
+		 * selected product filter type. This is the central routing function —
+		 * every Product Type will later define its own operator set and value
+		 * field type through the filterTypeConfig map.
+		 *
+		 * @param {jQuery} $row The product filter row element.
+		 */
+		rebuildFilterControls: function ($row) {
+			var type = $row.find('[data-filter-type]').val() || 'product';
+			var config = dp.filterTypeConfig[type] || dp.filterTypeConfig['default'];
+
+			// 1. Rebuild operator dropdown.
+			var $operator = $row.find('[data-filter-operator]');
+			var currentOp = $operator.val();
+			var operatorOptions = '';
+			config.operators.forEach(function (op) {
+				var label = dp.operatorLabels[op] || op;
+				var selected = (currentOp === op) ? ' selected' : '';
+				operatorOptions += '<option value="' + op + '"' + selected + '>' + label + '</option>';
+			});
+			$operator.html(operatorOptions);
+
+			// Reset operator to default if the previously selected one is no
+			// longer in the allowed set for the new type.
+			if (currentOp && config.operators.indexOf(currentOp) === -1) {
+				$operator.val(config.defaultOperator);
+			}
+
+			// 2. Rebuild value field.
+			var $valueWrap = $row.find('[data-filter-value-wrap]');
+			var $input    = $row.find('[data-filter-value-input]');
+			var $onSale   = $row.find('[data-filter-value-on-sale]');
+			var $select2  = $valueWrap.find('[data-filter-value-select2]');
+
+			// Destroy existing Select2 instance before hiding.
+			if ($select2.length && $select2.data('select2')) {
+				$select2.select2('destroy');
+			}
+
+			// Hide everything first.
 			$input.hide();
 			$onSale.hide();
+			$select2.hide();
 
+			// Show the correct value widget.
 			if (type === 'product_is_on_sale') {
 				$onSale.show();
+			} else if (config.valueType === 'select2') {
+				$select2.show();
+				dp.initProductSelect2($select2);
 			} else {
 				$input.show();
 			}
+		},
+
+		/**
+		 * Initialize SelectWoo (AJAX multi-select) on a <select multiple>
+		 * for product search.
+		 *
+		 * @param {jQuery} $el The <select> element to enhance.
+		 */
+		initProductSelect2: function ($el) {
+			// Don't re-initialise if already a Select2.
+			if ($el.data('select2')) {
+				return;
+			}
+
+			$el.selectWoo({
+				ajax: {
+					url:      wpldp_ajax.url,
+					dataType: 'json',
+					delay:    250,
+					data: function (params) {
+						return {
+							action: 'dukkan_dp_product_search',
+							nonce:  wpldp_ajax.nonce,
+							term:   params.term
+						};
+					},
+					processResults: function (data) {
+						return { results: data.data || [] };
+					},
+					cache: true
+				},
+				minimumInputLength: 2,
+				allowClear:         true,
+				placeholder:        $el.data('placeholder') || (dpI18n.pf_search_placeholder || 'Search products…'),
+				width:              '100%',
+				dropdownParent:     $el.closest('.dukkan-dp__rule')
+			}).on('select2:select select2:unselect', function () {
+				var $rule = $(this).closest('.dukkan-dp__rule');
+				dp.saveRuleProductFilters($rule);
+			});
+		},
+
+		/**
+		 * Backward-compatible wrapper — now delegates to rebuildFilterControls.
+		 *
+		 * @deprecated Use rebuildFilterControls directly.
+		 * @param {jQuery} $row The product filter row element.
+		 */
+		updateProductFilterValueFields: function ($row) {
+			dp.rebuildFilterControls($row);
 		},
 
 		/**
@@ -485,10 +622,14 @@
 		}
 
 		// Append a new filter row from template.
-		var $row = $(dp.productFilterRowTemplate());
-		$list.append($row);
+			var $row = $(dp.productFilterRowTemplate());
+			$list.append($row);
 
-		// Re-init sortable on the list.
+			// Rebuild controls for the default type ('product') — this
+			// trims operators and initialises Select2.
+			dp.rebuildFilterControls($row);
+
+			// Re-init sortable on the list.
 		if ($list.hasClass('ui-sortable')) {
 			$list.sortable('refresh');
 		} else {
@@ -521,7 +662,7 @@
 	// ---- Product filter type change (delegated) ----
 	dp.$list.on('change', '[data-filter-type]', function () {
 		var $row = $(this).closest('[data-product-filter]');
-		dp.updateProductFilterValueFields($row);
+		dp.rebuildFilterControls($row);
 		var $rule = $(this).closest('.dukkan-dp__rule');
 		dp.saveRuleProductFilters($rule);
 	});
@@ -612,5 +753,13 @@
 	if (dp.$list.children().length) {
 		dp.initSortable();
 	}
+
+	// ---- Initialize Select2 on existing server-rendered product filter rows ----
+	dp.$list.find('[data-product-filter]').each(function () {
+		var type = $(this).find('[data-filter-type]').val();
+		if (type === 'product') {
+			dp.rebuildFilterControls($(this));
+		}
+	});
 
 })( jQuery );
