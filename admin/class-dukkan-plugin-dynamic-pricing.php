@@ -271,15 +271,27 @@ class Dukkan_Plugin_Dynamic_Pricing {
 					<div class="dukkan-dp__box-label"><?php esc_html_e( 'Adjustment', 'dukkan-plugin' ); ?></div>
 					<div class="dukkan-dp__box-body dukkan-dp__adjustment-body">
 						<select class="dukkan-dp__adjustment-type" data-adjustment-type>
-							<option value="fixed_discount" <?php selected( $adjustment_type, 'fixed_discount' ); ?>>
-								<?php esc_html_e( 'Fixed discount', 'dukkan-plugin' ); ?>
-							</option>
-							<option value="percentage_discount" <?php selected( $adjustment_type, 'percentage_discount' ); ?>>
-								<?php esc_html_e( 'Percentage discount', 'dukkan-plugin' ); ?>
-							</option>
-							<option value="fixed_price" <?php selected( $adjustment_type, 'fixed_price' ); ?>>
-								<?php esc_html_e( 'Fixed price', 'dukkan-plugin' ); ?>
-							</option>
+							<optgroup label="<?php esc_attr_e( 'Discount', 'dukkan-plugin' ); ?>">
+								<option value="fixed_discount" <?php selected( $adjustment_type, 'fixed_discount' ); ?>>
+									<?php esc_html_e( 'Fixed discount', 'dukkan-plugin' ); ?>
+								</option>
+								<option value="percentage_discount" <?php selected( $adjustment_type, 'percentage_discount' ); ?>>
+									<?php esc_html_e( 'Percentage discount', 'dukkan-plugin' ); ?>
+								</option>
+							</optgroup>
+							<optgroup label="<?php esc_attr_e( 'Fee', 'dukkan-plugin' ); ?>">
+								<option value="fixed_fee" <?php selected( $adjustment_type, 'fixed_fee' ); ?>>
+									<?php esc_html_e( 'Fixed fee', 'dukkan-plugin' ); ?>
+								</option>
+								<option value="percentage_fee" <?php selected( $adjustment_type, 'percentage_fee' ); ?>>
+									<?php esc_html_e( 'Percentage fee', 'dukkan-plugin' ); ?>
+								</option>
+							</optgroup>
+							<optgroup label="<?php esc_attr_e( 'Price', 'dukkan-plugin' ); ?>">
+								<option value="fixed_price" <?php selected( $adjustment_type, 'fixed_price' ); ?>>
+									<?php esc_html_e( 'Fixed price', 'dukkan-plugin' ); ?>
+								</option>
+							</optgroup>
 						</select>
 						<span class="dukkan-dp__adjustment-currency"><?php echo esc_html( get_woocommerce_currency_symbol() ); ?></span>
 						<input type="number" class="dukkan-dp__adjustment-amount" data-adjustment-amount
@@ -457,7 +469,7 @@ class Dukkan_Plugin_Dynamic_Pricing {
 			$sanitized['method'] = 'simple_adjustment';
 		}
 
-		if ( ! in_array( $sanitized['adjustment_type'], array( 'fixed_discount', 'percentage_discount', 'fixed_price' ), true ) ) {
+		if ( ! in_array( $sanitized['adjustment_type'], array( 'fixed_discount', 'percentage_discount', 'fixed_fee', 'percentage_fee', 'fixed_price' ), true ) ) {
 			$sanitized['adjustment_type'] = 'fixed_discount';
 		}
 
