@@ -274,7 +274,8 @@
 				allowClear:         true,
 				placeholder:        $el.data('placeholder') || (dpI18n.pf_search_placeholder || 'Search products…'),
 				width:              '100%',
-				dropdownParent:     $el.closest('.dukkan-dp__rule')
+				dropdownCssClass:   'select2-dropdown--dukkan-dp',
+				dropdownParent:     $el.closest('.dukkan-dp__list')
 			}).on('select2:select select2:unselect', function () {
 				var $rule = $(this).closest('.dukkan-dp__rule');
 				dp.saveRuleProductFilters($rule);

@@ -485,6 +485,48 @@
     background: #fef2f2;
 }
 
+/*
+ * Select2 / SelectWoo overrides — so the multi-select fits inside
+ * the inline filter row without breaking the layout.
+ */
+.dukkan-dp__product-filter-value .select2-container {
+    width: 100% !important;
+    min-width: 0;
+    flex: 1;
+}
+
+.dukkan-dp__product-filter-value .select2-container .select2-selection--multiple {
+    min-height: 34px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 12px;
+}
+
+.dukkan-dp__product-filter-value
+.select2-container--default
+.select2-selection--multiple
+.select2-selection__choice {
+    font-size: 11px;
+    padding: 2px 6px;
+    margin-top: 4px;
+    background: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    color: #374151;
+}
+
+.dukkan-dp__product-filter-value
+.select2-container .select2-search--inline .select2-search__field {
+    font-size: 12px;
+    min-height: 28px;
+    margin-top: 2px;
+}
+
+/* Keep dropdown above everything. */
+.select2-dropdown--dukkan-dp {
+    z-index: 160010;
+}
+
 /* Product/Condition Tags (kept for conditions) */
 .dukkan-dp__box-list {
     display: flex;
