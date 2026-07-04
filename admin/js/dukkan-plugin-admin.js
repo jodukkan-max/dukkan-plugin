@@ -429,20 +429,149 @@
 					adjustment_type: $rule.find('[data-adjustment-type]').val() || 'fixed_discount',
 					adjustment_amount: $rule.find('[data-adjustment-amount]').val() || '0.00',
 					apply_with: $rule.find('[data-apply-with]').val() || 'apply_with_others',
-					products: dp.collectProductIds($rule),
+					products: dp.collectProductFilters($rule),
 					conditions: dp.collectConditionData($rule)
 				};
 			},
 
 			/**
-			 * Collect product IDs from tags.
+			 * Collect product filter data from rows.
 			 */
-			collectProductIds: function ($rule) {
-				var ids = [];
-				$rule.find('[data-product-id]').each(function () {
-					ids.push($(this).data('product-id'));
+			collectProductFilters: function ($rule) {
+				var filters = [];
+				$rule.find('[data-product-filter]').each(function () {
+					var $row = $(this);
+					var type = $row.find('[data-filter-type]').val() || 'product';
+					var value;
+					if (type === 'product_is_on_sale') {
+						value = $row.find('[data-filter-value-on-sale]').val() || '';
+					} else {
+						value = $row.find('[data-filter-value-input]').val() || '';
+					}
+					filters.push({
+						type: type,
+						operator: $row.find('[data-filter-operator]').val() || 'in_list',
+						value: value
+					});
 				});
-				return ids;
+				return filters;
+			},
+
+			/**
+			 * Generate a product filter row HTML template (for JS cloning).
+			 */
+			productFilterRowTemplate: function () {
+				var typeOptions = '';
+				var typeGroups = {
+					'Product': [
+						{ val: 'product', label: dpI18n.pf_product || 'Product' },
+						{ val: 'product_variation', label: dpI18n.pf_product_variation || 'Product variation' },
+						{ val: 'product_category', label: dpI18n.pf_product_category || 'Product category' },
+						{ val: 'product_attributes', label: dpI18n.pf_product_attributes || 'Product attributes' },
+						{ val: 'product_tags', label: dpI18n.pf_product_tags || 'Product tags' }
+					],
+					'Product Property': [
+						{ val: 'product_regular_price', label: dpI18n.pf_product_regular_price || 'Product regular price' },
+						{ val: 'product_is_on_sale', label: dpI18n.pf_product_is_on_sale || 'Product is on sale' },
+						{ val: 'product_stock_quantity', label: dpI18n.pf_product_stock_quantity || 'Product stock quantity' },
+						{ val: 'product_shipping_class', label: dpI18n.pf_product_shipping_class || 'Product shipping class' },
+						{ val: 'product_metadata', label: dpI18n.pf_product_metadata || 'Product metadata' }
+					],
+					'Other': [
+						{ val: 'cart_item_data', label: dpI18n.pf_cart_item_data || 'Cart item data' },
+						{ val: 'coupons_applied', label: dpI18n.pf_coupons_applied || 'Coupons applied' }
+					]
+				};
+				for (var group in typeGroups) {
+					typeOptions += '<optgroup label="' + group + '">';
+					typeGroups[group].forEach(function (o) {
+						typeOptions += '<option value="' + o.val + '">' + o.label + '</option>';
+					});
+					typeOptions += '</optgroup>';
+				}
+
+				var operatorOptions = '';
+				var operators = ['in_list','not_in_list','equals','not_equals','greater_than','less_than','greater_than_or_equal','less_than_or_equal','contains','does_not_contain'];
+				var operatorLabels = {
+					in_list: dpI18n.op_in_list || 'in list',
+					not_in_list: dpI18n.op_not_in_list || 'not in list',
+					equals: dpI18n.op_equals || 'equals',
+					not_equals: dpI18n.op_not_equals || 'not equals',
+					greater_than: dpI18n.op_greater_than || 'greater than',
+					less_than: dpI18n.op_less_than || 'less than',
+					greater_than_or_equal: dpI18n.op_greater_than_or_equal || 'greater than or equal',
+					less_than_or_equal: dpI18n.op_less_than_or_equal || 'less than or equal',
+					contains: dpI18n.op_contains || 'contains',
+					does_not_contain: dpI18n.op_does_not_contain || 'does not contain'
+				};
+				operators.forEach(function (op) {
+					operatorOptions += '<option value="' + op + '">' + (operatorLabels[op] || op) + '</option>';
+				});
+
+				return '<div class="dukkan-dp__product-filter-row" data-product-filter>' +
+					'<div class="dukkan-dp__product-filter-drag"><i class="fa-solid fa-grip-vertical"></i></div>' +
+					'<select class="dukkan-dp__product-filter-type" data-filter-type>' + typeOptions + '</select>' +
+					'<select class="dukkan-dp__product-filter-operator" data-filter-operator>' + operatorOptions + '</select>' +
+					'<div class="dukkan-dp__product-filter-value" data-filter-value-wrap>' +
+						'<select class="dukkan-dp__product-filter-value-on-sale" data-filter-value-on-sale style="display:none;">' +
+							'<option value="yes">' + (dpI18n.pf_yes || 'Yes') + '</option>' +
+							'<option value="no">' + (dpI18n.pf_no || 'No') + '</option>' +
+						'</select>' +
+						'<input type="text" class="dukkan-dp__product-filter-value-input" data-filter-value-input placeholder="' + (dpI18n.pf_search_placeholder || 'Search or enter value...') + '">' +
+					'</div>' +
+					'<button type="button" class="dukkan-dp__product-filter-remove" data-remove-product-filter title="' + (dpI18n.pf_remove || 'Remove filter') + '">' +
+						'<i class="fa-solid fa-xmark"></i>' +
+					'</button>' +
+				'</div>';
+			},
+
+			/**
+			 * Update product filter value fields visibility based on type.
+			 */
+			updateProductFilterValueFields: function ($row) {
+				var type = $row.find('[data-filter-type]').val();
+				var $input = $row.find('[data-filter-value-input]');
+				var $onSale = $row.find('[data-filter-value-on-sale]');
+
+				$input.hide();
+				$onSale.hide();
+
+				if (type === 'product_is_on_sale') {
+					$onSale.show();
+				} else {
+					$input.show();
+				}
+			},
+
+			/**
+			 * Initialize sortable for product filter rows within a list.
+			 */
+			initProductFiltersSortable: function ($list) {
+				if ($list.hasClass('ui-sortable')) {
+					$list.sortable('destroy');
+				}
+				$list.sortable({
+					handle: '.dukkan-dp__product-filter-drag',
+					axis: 'y',
+					placeholder: 'dukkan-dp__product-filter-row dukkan-dp__product-filter-row--placeholder',
+					forcePlaceholderSize: true,
+					opacity: 0.85,
+					tolerance: 'pointer',
+					update: function () {
+						var $rule = $list.closest('.dukkan-dp__rule');
+						dp.saveRuleProductFilters($rule);
+					}
+				});
+			},
+
+			/**
+			 * Save product filter changes for a rule.
+			 */
+			saveRuleProductFilters: function ($rule) {
+				var ruleId = dp.ruleId($rule);
+				if (ruleId && ruleId.indexOf('temp_') !== 0) {
+					dp.debouncedSave(ruleId, dp.collectRuleData($rule));
+				}
 			},
 
 			/**
@@ -723,37 +852,73 @@
 			}
 		});
 
-		// ---- Add Product button (placeholder) ----
+		// ---- Add Product button (delegated) ----
 		dp.$list.on('click', '[data-add-product]', function () {
 			var $rule = $(this).closest('.dukkan-dp__rule');
 			var $productsBody = $rule.find('.dukkan-dp__products-body');
-			showToast(dpI18n.product_placeholder || 'Product selector coming soon.', 'warning');
+			var $empty = $productsBody.find('[data-products-empty]');
+			var $list = $productsBody.find('[data-products-list]');
+			var $addBtn = $(this);
+
+			// If button is inside empty state, move it out.
+			if ($addBtn.parent().is('[data-products-empty]')) {
+				$empty.hide();
+				$addBtn.appendTo($productsBody).show();
+			}
+
+			// Create list if first filter.
+			if (!$list.length) {
+				$list = $('<div class="dukkan-dp__products-list" data-products-list></div>');
+				$addBtn.before($list);
+				dp.initProductFiltersSortable($list);
+			}
+
+			// Append a new filter row from template.
+			var $row = $(dp.productFilterRowTemplate());
+			$list.append($row);
+
+			// Re-init sortable on the list.
+			if ($list.hasClass('ui-sortable')) {
+				$list.sortable('refresh');
+			} else {
+				dp.initProductFiltersSortable($list);
+			}
+
+			// Save rule.
+			dp.saveRuleProductFilters($rule);
 		});
 
-		// ---- Remove product tag (delegated) ----
-		dp.$list.on('click', '[data-remove-product]', function () {
-			var $tag = $(this).closest('.dukkan-dp__product-tag');
+		// ---- Remove product filter row (delegated) ----
+		dp.$list.on('click', '[data-remove-product-filter]', function () {
+			var $row = $(this).closest('[data-product-filter]');
 			var $rule = $(this).closest('.dukkan-dp__rule');
-			$tag.remove();
-			// Show empty state if no more product tags.
-			var $boxBody = $rule.find('.dukkan-dp__products-body');
-			var $list = $boxBody.find('[data-products-list]');
-			if ($list.length && !$list.children().length) {
+			var $productsBody = $rule.find('.dukkan-dp__products-body');
+			var $list = $productsBody.find('[data-products-list]');
+			$row.remove();
+
+			// If no rows left, restore empty state.
+			if (!$list.find('[data-product-filter]').length) {
 				$list.remove();
-				$boxBody.find('[data-add-product]').remove();
-				var $empty = $(
-					'<div class="dukkan-dp__box-empty" data-products-empty>' +
-						'<span class="dukkan-dp__box-empty-text">' + (dpI18n.applies_all || 'Applies to all products.') + '</span>' +
-						'<button type="button" class="dukkan-dp__box-action-btn" data-add-product>' + (dpI18n.add_product || 'Add Product') + '</button>' +
-					'</div>'
-				);
-				$boxBody.empty().append($empty);
+				var $empty = $productsBody.find('[data-products-empty]');
+				var $addBtn = $productsBody.find('[data-add-product]');
+				$addBtn.prependTo($empty);
+				$empty.show();
 			}
-			// Debounce save.
-			var ruleId = dp.ruleId($rule);
-			if (ruleId && ruleId.indexOf('temp_') !== 0) {
-				dp.debouncedSave(ruleId, dp.collectRuleData($rule));
-			}
+			dp.saveRuleProductFilters($rule);
+		});
+
+		// ---- Product filter type change (delegated) ----
+		dp.$list.on('change', '[data-filter-type]', function () {
+			var $row = $(this).closest('[data-product-filter]');
+			dp.updateProductFilterValueFields($row);
+			var $rule = $(this).closest('.dukkan-dp__rule');
+			dp.saveRuleProductFilters($rule);
+		});
+
+		// ---- Product filter operator / value change (delegated) ----
+		dp.$list.on('change input', '[data-filter-operator], [data-filter-value-input], [data-filter-value-on-sale]', function () {
+			var $rule = $(this).closest('.dukkan-dp__rule');
+			dp.saveRuleProductFilters($rule);
 		});
 
 		// ---- Add Condition button (placeholder) ----

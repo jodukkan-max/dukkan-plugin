@@ -312,12 +312,9 @@ class Dukkan_Plugin_Dynamic_Pricing {
 								</button>
 							</div>
 						<?php else : ?>
-							<div class="dukkan-dp__box-list" data-products-list>
+							<div class="dukkan-dp__products-list" data-products-list>
 								<?php foreach ( $products as $product ) : ?>
-									<div class="dukkan-dp__product-tag" data-product-id="<?php echo esc_attr( is_array( $product ) ? $product['id'] : $product ); ?>">
-										<span><?php echo esc_html( is_array( $product ) ? $product['name'] : $product ); ?></span>
-										<button type="button" class="dukkan-dp__tag-remove" data-remove-product>&times;</button>
-									</div>
+									<?php $this->render_product_filter_row( $product, $is_template ); ?>
 								<?php endforeach; ?>
 							</div>
 							<button type="button" class="dukkan-dp__box-action-btn" data-add-product>
@@ -354,6 +351,133 @@ class Dukkan_Plugin_Dynamic_Pricing {
 					</div>
 				</div>
 			</div>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Render a single product filter row.
+	 *
+	 * @since 1.0.1
+	 * @param array $filter      Filter data {type, operator, value}.
+	 * @param bool  $is_template Whether this is a JS clone template.
+	 */
+	public function render_product_filter_row( $filter = array(), $is_template = false ) {
+		$type     = $is_template ? '' : ( $filter['type'] ?? 'product' );
+		$operator = $is_template ? '' : ( $filter['operator'] ?? 'in_list' );
+		$value    = $is_template ? '' : ( $filter['value'] ?? '' );
+		?>
+		<div class="dukkan-dp__product-filter-row" data-product-filter>
+			<div class="dukkan-dp__product-filter-drag">
+				<i class="fa-solid fa-grip-vertical"></i>
+			</div>
+			<select class="dukkan-dp__product-filter-type" data-filter-type>
+				<optgroup label="<?php esc_attr_e( 'Product', 'dukkan-plugin' ); ?>">
+					<option value="product" <?php selected( $type, 'product' ); ?>>
+						<?php esc_html_e( 'Product', 'dukkan-plugin' ); ?>
+					</option>
+					<option value="product_variation" <?php selected( $type, 'product_variation' ); ?>>
+						<?php esc_html_e( 'Product variation', 'dukkan-plugin' ); ?>
+					</option>
+					<option value="product_category" <?php selected( $type, 'product_category' ); ?>>
+						<?php esc_html_e( 'Product category', 'dukkan-plugin' ); ?>
+					</option>
+					<option value="product_attributes" <?php selected( $type, 'product_attributes' ); ?>>
+						<?php esc_html_e( 'Product attributes', 'dukkan-plugin' ); ?>
+					</option>
+					<option value="product_tags" <?php selected( $type, 'product_tags' ); ?>>
+						<?php esc_html_e( 'Product tags', 'dukkan-plugin' ); ?>
+					</option>
+				</optgroup>
+				<optgroup label="<?php esc_attr_e( 'Product Property', 'dukkan-plugin' ); ?>">
+					<option value="product_regular_price" <?php selected( $type, 'product_regular_price' ); ?>>
+						<?php esc_html_e( 'Product regular price', 'dukkan-plugin' ); ?>
+					</option>
+					<option value="product_is_on_sale" <?php selected( $type, 'product_is_on_sale' ); ?>>
+						<?php esc_html_e( 'Product is on sale', 'dukkan-plugin' ); ?>
+					</option>
+					<option value="product_stock_quantity" <?php selected( $type, 'product_stock_quantity' ); ?>>
+						<?php esc_html_e( 'Product stock quantity', 'dukkan-plugin' ); ?>
+					</option>
+					<option value="product_shipping_class" <?php selected( $type, 'product_shipping_class' ); ?>>
+						<?php esc_html_e( 'Product shipping class', 'dukkan-plugin' ); ?>
+					</option>
+					<option value="product_metadata" <?php selected( $type, 'product_metadata' ); ?>>
+						<?php esc_html_e( 'Product metadata', 'dukkan-plugin' ); ?>
+					</option>
+				</optgroup>
+				<optgroup label="<?php esc_attr_e( 'Other', 'dukkan-plugin' ); ?>">
+					<option value="cart_item_data" <?php selected( $type, 'cart_item_data' ); ?>>
+						<?php esc_html_e( 'Cart item data', 'dukkan-plugin' ); ?>
+					</option>
+					<option value="coupons_applied" <?php selected( $type, 'coupons_applied' ); ?>>
+						<?php esc_html_e( 'Coupons applied', 'dukkan-plugin' ); ?>
+					</option>
+				</optgroup>
+			</select>
+			<select class="dukkan-dp__product-filter-operator" data-filter-operator>
+				<option value="in_list" <?php selected( $operator, 'in_list' ); ?>>
+					<?php esc_html_e( 'in list', 'dukkan-plugin' ); ?>
+				</option>
+				<option value="not_in_list" <?php selected( $operator, 'not_in_list' ); ?>>
+					<?php esc_html_e( 'not in list', 'dukkan-plugin' ); ?>
+				</option>
+				<option value="equals" <?php selected( $operator, 'equals' ); ?>>
+					<?php esc_html_e( 'equals', 'dukkan-plugin' ); ?>
+				</option>
+				<option value="not_equals" <?php selected( $operator, 'not_equals' ); ?>>
+					<?php esc_html_e( 'not equals', 'dukkan-plugin' ); ?>
+				</option>
+				<option value="greater_than" <?php selected( $operator, 'greater_than' ); ?>>
+					<?php esc_html_e( 'greater than', 'dukkan-plugin' ); ?>
+				</option>
+				<option value="less_than" <?php selected( $operator, 'less_than' ); ?>>
+					<?php esc_html_e( 'less than', 'dukkan-plugin' ); ?>
+				</option>
+				<option value="greater_than_or_equal" <?php selected( $operator, 'greater_than_or_equal' ); ?>>
+					<?php esc_html_e( 'greater than or equal', 'dukkan-plugin' ); ?>
+				</option>
+				<option value="less_than_or_equal" <?php selected( $operator, 'less_than_or_equal' ); ?>>
+					<?php esc_html_e( 'less than or equal', 'dukkan-plugin' ); ?>
+				</option>
+				<option value="contains" <?php selected( $operator, 'contains' ); ?>>
+					<?php esc_html_e( 'contains', 'dukkan-plugin' ); ?>
+				</option>
+				<option value="does_not_contain" <?php selected( $operator, 'does_not_contain' ); ?>>
+					<?php esc_html_e( 'does not contain', 'dukkan-plugin' ); ?>
+				</option>
+			</select>
+			<div class="dukkan-dp__product-filter-value" data-filter-value-wrap>
+				<?php if ( $is_template || in_array( $type, array( 'product_category', 'product_attributes', 'product_tags', 'product_shipping_class' ), true ) ) : ?>
+					<select class="dukkan-dp__product-filter-value-select" data-filter-value multiple
+							data-placeholder="<?php esc_attr_e( 'Select…', 'dukkan-plugin' ); ?>"
+							style="display:<?php echo in_array( $type, array( 'product_category', 'product_attributes', 'product_tags', 'product_shipping_class' ), true ) ? '' : 'none'; ?>">
+					</select>
+				<?php endif; ?>
+				<?php if ( $is_template || 'product_is_on_sale' === $type ) : ?>
+					<select class="dukkan-dp__product-filter-value-on-sale" data-filter-value-on-sale
+							style="display:<?php echo 'product_is_on_sale' === $type ? '' : 'none'; ?>">
+						<option value="yes" <?php selected( $value, 'yes' ); ?>><?php esc_html_e( 'Yes', 'dukkan-plugin' ); ?></option>
+						<option value="no" <?php selected( $value, 'no' ); ?>><?php esc_html_e( 'No', 'dukkan-plugin' ); ?></option>
+					</select>
+				<?php endif; ?>
+				<?php
+				$text_types = array( 'product', 'product_variation', 'product_regular_price', 'product_stock_quantity', 'product_metadata', 'cart_item_data', 'coupons_applied' );
+				$show_text  = $is_template || ( empty( $type ) || in_array( $type, $text_types, true ) );
+				$text_hidden = ! $show_text;
+				?>
+				<input type="text"
+					   class="dukkan-dp__product-filter-value-input"
+					   data-filter-value-input
+					   value="<?php echo esc_attr( is_array( $value ) ? implode( ', ', $value ) : $value ); ?>"
+					   placeholder="<?php esc_attr_e( 'Search or enter value…', 'dukkan-plugin' ); ?>"
+					   <?php echo $text_hidden ? 'style="display:none;"' : ''; ?>
+				>
+			</div>
+			<button type="button" class="dukkan-dp__product-filter-remove" data-remove-product-filter
+					title="<?php esc_attr_e( 'Remove filter', 'dukkan-plugin' ); ?>">
+				<i class="fa-solid fa-xmark"></i>
+			</button>
 		</div>
 		<?php
 	}
@@ -461,7 +585,7 @@ class Dukkan_Plugin_Dynamic_Pricing {
 			'adjustment_type'   => sanitize_text_field( $data['adjustment_type'] ?? 'fixed_discount' ),
 			'adjustment_amount' => floatval( $data['adjustment_amount'] ?? 0 ),
 			'apply_with'        => sanitize_text_field( $data['apply_with'] ?? 'apply_with_others' ),
-			'products'          => array_map( 'intval', $data['products'] ?? array() ),
+			'products'          => array(),
 			'conditions'        => array(),
 		);
 
@@ -475,6 +599,40 @@ class Dukkan_Plugin_Dynamic_Pricing {
 
 		if ( ! in_array( $sanitized['apply_with'], array( 'apply_with_others', 'apply_disregard_others', 'apply_if_others_na', 'disabled' ), true ) ) {
 			$sanitized['apply_with'] = 'apply_with_others';
+		}
+
+		// Sanitize product filters.
+		if ( ! empty( $data['products'] ) && is_array( $data['products'] ) ) {
+			$valid_types = array(
+				'product', 'product_variation', 'product_category', 'product_attributes',
+				'product_tags', 'product_regular_price', 'product_is_on_sale',
+				'product_stock_quantity', 'product_shipping_class', 'product_metadata',
+				'cart_item_data', 'coupons_applied',
+			);
+			$valid_operators = array(
+				'in_list', 'not_in_list', 'equals', 'not_equals', 'greater_than',
+				'less_than', 'greater_than_or_equal', 'less_than_or_equal',
+				'contains', 'does_not_contain',
+			);
+			foreach ( $data['products'] as $product ) {
+				if ( ! is_array( $product ) ) {
+					continue;
+				}
+				$filter = array(
+					'type'     => sanitize_text_field( $product['type'] ?? 'product' ),
+					'operator' => sanitize_text_field( $product['operator'] ?? 'in_list' ),
+					'value'    => is_array( $product['value'] ?? '' )
+						? array_map( 'sanitize_text_field', $product['value'] )
+						: sanitize_text_field( $product['value'] ?? '' ),
+				);
+				if ( ! in_array( $filter['type'], $valid_types, true ) ) {
+					$filter['type'] = 'product';
+				}
+				if ( ! in_array( $filter['operator'], $valid_operators, true ) ) {
+					$filter['operator'] = 'in_list';
+				}
+				$sanitized['products'][] = $filter;
+			}
 		}
 
 		// Sanitize conditions if present.
