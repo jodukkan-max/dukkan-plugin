@@ -134,11 +134,6 @@ class Dukkan_Plugin {
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'api/class-dukkan-plugin-general.php';
 
 		/**
-		 * The class responsible for defining translatepress apis.
-		 */
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'api/class-dukkan-plugin-translatepress.php';
-
-		/**
 		 * The class responsible for defining product addon apis.
 		 */
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'api/class-dukkan-plugin-product-addon-api.php';
@@ -253,9 +248,13 @@ class Dukkan_Plugin {
 	 * @access   private
 	 */
 	private function define_translatepress_api_hooks() {
+		if ( ! class_exists( 'TRP_Translate_Press' ) ) {
+			return;
+		}
+
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'api/class-dukkan-plugin-translatepress.php';
 
 		$plugin_translatepress_api = new Dukkan_Plugin_Translatepress( $this->get_plugin_name(), $this->get_version() );
-
 	}
 
 	/**

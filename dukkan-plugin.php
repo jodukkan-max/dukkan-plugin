@@ -16,7 +16,7 @@
  * Plugin Name:       Dukkan
  * Plugin URI:        https://dukkanjo.com
  * Description:       WooCommerce companion plugin — REST APIs, product add-ons, dynamic pricing bridge, TranslatePress integration.
- * Version:           1.0.1
+ * Version:           1.0.2
  * Author:            Dukkan Ecommerce LLC
  * Author URI:        https://dukkanjo.com/
  * License:           GPL-2.0+
@@ -35,7 +35,7 @@ if ( ! defined( 'WPINC' ) ) {
  * Start at version 1.0.0 and use SemVer - https://semver.org
  * Rename this for your plugin and update it as you release new versions.
  */
-define( 'DUKKAN_PLUGIN_VERSION', '1.0.1' );
+define( 'DUKKAN_PLUGIN_VERSION', '1.0.2' );
 
 define( 'DUKKAN_PLUGIN_PATH', plugin_dir_path( __FILE__ ) );
 define( 'DUKKAN_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
@@ -84,3 +84,12 @@ function run_dukkan_plugin() {
 
 }
 run_dukkan_plugin();
+
+/**
+ * Register the self-update mechanism powered by a GitHub-
+ * hosted version.json file. No wordpress.org listing needed.
+ *
+ * @since 1.0.2
+ */
+require_once plugin_dir_path( __FILE__ ) . 'includes/class-dukkan-plugin-updater.php';
+new Dukkan_Plugin_Updater( __FILE__, DUKKAN_PLUGIN_VERSION );
