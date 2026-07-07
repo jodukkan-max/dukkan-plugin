@@ -3,7 +3,7 @@
   "auth": "none (public)",
 
   "endpoints": {
-    "list_rules":           "GET    /rules?page=1&per_page=10&search=keyword",
+    "list_rules":           "GET    /rules?page=1&per_page=10&method=simple|bulk&search=keyword",
     "get_rule":             "GET    /rules/{uid}",
     "create_rule":          "POST   /rules",
     "update_rule":          "PUT    /rules/{uid}",
@@ -11,12 +11,32 @@
     "search_products":      "GET    /products/search?search=shirt&per_page=10"
   },
 
-  "pricing_methods": [
+  "rule_methods": [
+    { "key": "simple", "meaning": "Simple adjustment — one fixed pricing method for all matching products" },
+    { "key": "bulk",   "meaning": "Bulk pricing — different prices based on quantity ranges" }
+  ],
+
+  "pricing_methods_simple": [
     { "key": "discount__amount",     "meaning": "Fixed discount",    "example": "$10 off each item" },
     { "key": "discount__percentage", "meaning": "Percentage discount","example": "15% off" },
     { "key": "fee__amount",          "meaning": "Fixed fee",         "example": "$5 added per item" },
     { "key": "fee__percentage",      "meaning": "Percentage fee",    "example": "10% added" },
     { "key": "fixed__price",         "meaning": "Fixed price",       "example": "Set price to $49.99" }
+  ],
+
+  "pricing_methods_bulk": [
+    { "key": "discount__amount",       "meaning": "Fixed discount per unit in range" },
+    { "key": "discount__percentage",   "meaning": "Percentage discount in range" },
+    { "key": "fixed__price",           "meaning": "Fixed price per unit in range" },
+    { "key": "fixed__price_per_range", "meaning": "Total price for the entire range, divided among units" }
+  ],
+
+  "quantities_based_on": [
+    { "key": "individual__product",        "meaning": "Individual product (variations grouped to parent)" },
+    { "key": "individual__variation",      "meaning": "Individual variation" },
+    { "key": "individual__configuration",  "meaning": "Individual cart line item" },
+    { "key": "cumulative__all",            "meaning": "All matched products added up together" },
+    { "key": "cumulative__categories",     "meaning": "Quantities added up per category" }
   ],
 
   "product_method": [
@@ -30,12 +50,11 @@
   ],
 
   "cart_conditions": {
-    "description": "Array of condition objects. Each has type, method_option, and value.",
     "types": [
-      { "type": "cart_subtotal", "meaning": "Cart subtotal amount",   "value_type": "decimal" },
-      { "type": "cart_quantity", "meaning": "Total quantity in cart",  "value_type": "decimal" },
-      { "type": "cart_count",    "meaning": "Distinct items in cart",  "value_type": "number" },
-      { "type": "cart_weight",   "meaning": "Total cart weight",       "value_type": "decimal" }
+      { "type": "cart_subtotal", "meaning": "Cart subtotal amount" },
+      { "type": "cart_quantity", "meaning": "Total quantity in cart" },
+      { "type": "cart_count",    "meaning": "Distinct items in cart" },
+      { "type": "cart_weight",   "meaning": "Total cart weight" }
     ],
     "operators": [
       { "key": "at_least",      "meaning": ">= (greater than or equal)" },
@@ -45,21 +64,8 @@
     ]
   },
 
-  "rule_fields": {
-    "uid":                      { "type": "string",  "required": "auto", "desc": "Unique ID, e.g. rp_wcdpd_abc123" },
-    "note":                     { "type": "string",  "required": "no",   "desc": "Private admin note" },
-    "public_note":              { "type": "string",  "required": "no",   "desc": "Public description shown to customer" },
-    "pricing_method":           { "type": "string",  "required": "YES",  "desc": "See pricing_methods table above" },
-    "pricing_value":            { "type": "number",  "required": "YES",  "desc": "Positive number. 10 = $10 or 10%" },
-    "product_uids":             { "type": "[int]",   "required": "YES*", "desc": "Array of product IDs. *Required unless product_category_uids is set" },
-    "product_method":           { "type": "string",  "required": "no",   "desc": "in_list (default) or not_in_list" },
-    "product_category_uids":    { "type": "[int]",   "required": "YES*", "desc": "Array of category IDs. *Required unless product_uids is set" },
-    "product_category_method":  { "type": "string",  "required": "no",   "desc": "in_list (default) or not_in_list" },
-    "conditions":               { "type": "[object]","required": "no",   "desc": "Cart conditions. See cart_conditions table above" }
-  },
-
   "examples": {
-    "by_product": {
+    "simple_by_product": {
       "desc": "20% discount on products 40289 and 40372",
       "method": "POST /rules",
       "body": {
@@ -70,7 +76,7 @@
         "product_method": "in_list"
       }
     },
-    "by_category": {
+    "simple_by_category": {
       "desc": "$5 discount on all SKIRT category products",
       "method": "POST /rules",
       "body": {
@@ -81,40 +87,42 @@
         "product_category_method": "in_list"
       }
     },
-    "with_cart_condition": {
-      "desc": "$10 off product 40289 when cart subtotal >= $100",
+    "bulk_basic": {
+      "desc": "Bulk pricing: 1-5 items = regular, 6-10 = 10% off, 11+ = $15 each",
       "method": "POST /rules",
       "body": {
-        "pricing_method": "discount__amount",
-        "pricing_value": 10,
+        "method": "bulk",
+        "note": "Wholesale bulk pricing",
+        "quantities_based_on": "individual__product",
         "product_uids": [40289],
         "product_method": "in_list",
-        "conditions": [
-          { "type": "cart_subtotal", "method_option": "at_least", "value": 100 }
+        "quantity_ranges": [
+          { "from": 1,  "to": 5,  "pricing_method": "discount__amount",     "pricing_value": 0 },
+          { "from": 6,  "to": 10, "pricing_method": "discount__percentage", "pricing_value": 10 },
+          { "from": 11, "pricing_method": "fixed__price", "pricing_value": 15 }
         ]
       }
     },
-    "with_two_conditions": {
-      "desc": "20% off when subtotal >= $50 AND cart weight < 5",
+    "bulk_by_category": {
+      "desc": "Bulk pricing on SKIRT category: 3+ items = 15% off",
       "method": "POST /rules",
       "body": {
-        "pricing_method": "discount__percentage",
-        "pricing_value": 20,
-        "product_uids": [40289],
-        "product_method": "in_list",
-        "conditions": [
-          { "type": "cart_subtotal", "method_option": "at_least", "value": 50 },
-          { "type": "cart_weight",   "method_option": "less_than", "value": 5 }
+        "method": "bulk",
+        "note": "Skirt bulk discount",
+        "quantities_based_on": "cumulative__all",
+        "product_category_uids": [1811],
+        "product_category_method": "in_list",
+        "quantity_ranges": [
+          { "from": 1, "to": 2, "pricing_method": "discount__amount", "pricing_value": 0 },
+          { "from": 3, "pricing_method": "discount__percentage", "pricing_value": 15 }
         ]
       }
     },
     "update": {
-      "desc": "Change discount from 30% to 40%",
+      "desc": "Update a simple rule pricing value",
       "method": "PUT /rules/rp_wcdpd_44f5e892",
       "note": "Partial update. Only send fields you want to change",
-      "body": {
-        "pricing_value": 40
-      }
+      "body": { "pricing_value": 40 }
     },
     "delete": {
       "desc": "Delete a rule",

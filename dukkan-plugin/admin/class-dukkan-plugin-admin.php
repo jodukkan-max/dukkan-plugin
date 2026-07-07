@@ -82,15 +82,6 @@ class Dukkan_Plugin_Admin {
 
 		wp_enqueue_style( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'css/dukkan-plugin-admin.css', array(), $this->version, 'all' );
 
-		// Dynamic Pricing stylesheet.
-		wp_enqueue_style(
-			'dukkan-plugin-dynamic-pricing',
-			plugin_dir_url( __FILE__ ) . 'css/dukkan-plugin-dynamic-pricing.css',
-			array(),
-			$this->version,
-			'all'
-		);
-
 	}
 
 	/**
@@ -119,15 +110,6 @@ class Dukkan_Plugin_Admin {
 		
 		wp_enqueue_script( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'js/dukkan-plugin-admin.js', array( 'jquery', 'jquery-ui-sortable', 'selectWoo' ), $this->version, false );
 
-		// Dynamic Pricing — separate script loaded after main admin JS.
-		wp_enqueue_script(
-			'dukkan-plugin-dynamic-pricing',
-			plugin_dir_url( __FILE__ ) . 'js/dukkan-plugin-dynamic-pricing.js',
-			array( 'jquery', 'jquery-ui-sortable' ),
-			$this->version,
-			true
-		);
-
 		wp_localize_script($this->plugin_name, 'wpldp_ajax', [
 			'url' => admin_url('admin-ajax.php'),
 			'nonce' => wp_create_nonce('wpldp_nonce'),
@@ -149,66 +131,6 @@ class Dukkan_Plugin_Admin {
 				'delete_confirm'     => __( 'Delete Order Status', 'dukkan-plugin' ),
 				'delete_msg'         => __( 'Are you sure you want to delete this order status? This action cannot be undone.', 'dukkan-plugin' ),
 				'cancel'             => __( 'Cancel', 'dukkan-plugin' ),
-			],
-			'dp_i18n' => [
-				'add_title'             => __( 'Add Pricing Rule', 'dukkan-plugin' ),
-				'edit_title'            => __( 'Edit Pricing Rule', 'dukkan-plugin' ),
-				'save_btn'              => __( 'Save Rule', 'dukkan-plugin' ),
-				'saving'                => __( 'Saving…', 'dukkan-plugin' ),
-				'save_all'              => __( 'Save All Rules', 'dukkan-plugin' ),
-				'saved_all'             => __( 'All pricing rules saved.', 'dukkan-plugin' ),
-				'deleting'              => __( 'Deleting…', 'dukkan-plugin' ),
-				'added'                 => __( 'Pricing rule added.', 'dukkan-plugin' ),
-				'updated'               => __( 'Pricing rule updated.', 'dukkan-plugin' ),
-				'deleted'               => __( 'Pricing rule deleted.', 'dukkan-plugin' ),
-				'duplicated'            => __( 'Pricing rule duplicated.', 'dukkan-plugin' ),
-				'order_saved'           => __( 'Order saved.', 'dukkan-plugin' ),
-				'setting_saved'         => __( 'Setting saved.', 'dukkan-plugin' ),
-				'simple_adjustment'                     => __( 'Simple adjustment', 'dukkan-plugin' ),
-				'bulk_pricing'                          => __( 'Bulk pricing', 'dukkan-plugin' ),
-				'tiered_pricing'                        => __( 'Tiered pricing', 'dukkan-plugin' ),
-				'group_of_products'                     => __( 'Group of products', 'dukkan-plugin' ),
-				'group_of_products_repeating'           => __( 'Group of products - Repeating', 'dukkan-plugin' ),
-				'buy_x_get_x'                           => __( 'Buy x get x', 'dukkan-plugin' ),
-				'buy_x_get_x_repeating'                 => __( 'Buy x get x - Repeating', 'dukkan-plugin' ),
-				'buy_x_get_y_label'                     => __( 'Buy x get y', 'dukkan-plugin' ),
-				'buy_x_get_y_repeating'                 => __( 'Buy x get y - Repeating', 'dukkan-plugin' ),
-				'exclude_products_from_all_rules'       => __( 'Exclude products from all rules', 'dukkan-plugin' ),
-				'restrict_purchase_of_matched_products' => __( 'Restrict purchase of matched products', 'dukkan-plugin' ),
-				// Product filter i18n.
-				'pf_product'                 => __( 'Product', 'dukkan-plugin' ),
-				'pf_product_variation'       => __( 'Product variation', 'dukkan-plugin' ),
-				'pf_product_category'        => __( 'Product category', 'dukkan-plugin' ),
-				'pf_product_attributes'      => __( 'Product attributes', 'dukkan-plugin' ),
-				'pf_product_tags'            => __( 'Product tags', 'dukkan-plugin' ),
-				'pf_product_regular_price'   => __( 'Product regular price', 'dukkan-plugin' ),
-				'pf_product_is_on_sale'      => __( 'Product is on sale', 'dukkan-plugin' ),
-				'pf_product_stock_quantity'  => __( 'Product stock quantity', 'dukkan-plugin' ),
-				'pf_product_shipping_class'  => __( 'Product shipping class', 'dukkan-plugin' ),
-				'pf_product_metadata'        => __( 'Product metadata', 'dukkan-plugin' ),
-				'pf_cart_item_data'          => __( 'Cart item data', 'dukkan-plugin' ),
-				'pf_coupons_applied'         => __( 'Coupons applied', 'dukkan-plugin' ),
-				'pf_yes'                     => __( 'Yes', 'dukkan-plugin' ),
-				'pf_no'                      => __( 'No', 'dukkan-plugin' ),
-				'pf_search_placeholder'      => __( 'Search or enter value…', 'dukkan-plugin' ),
-				'pf_remove'                  => __( 'Remove filter', 'dukkan-plugin' ),
-				// Operator i18n.
-				'op_in_list'                  => __( 'in list', 'dukkan-plugin' ),
-				'op_not_in_list'              => __( 'not in list', 'dukkan-plugin' ),
-				'op_equals'                   => __( 'equals', 'dukkan-plugin' ),
-				'op_not_equals'               => __( 'not equals', 'dukkan-plugin' ),
-				'op_greater_than'             => __( 'greater than', 'dukkan-plugin' ),
-				'op_less_than'                => __( 'less than', 'dukkan-plugin' ),
-				'op_greater_than_or_equal'    => __( 'greater than or equal', 'dukkan-plugin' ),
-				'op_less_than_or_equal'       => __( 'less than or equal', 'dukkan-plugin' ),
-				'op_contains'                 => __( 'contains', 'dukkan-plugin' ),
-				'op_does_not_contain'         => __( 'does not contain', 'dukkan-plugin' ),
-				'applies_all'           => __( 'Applies to all products.', 'dukkan-plugin' ),
-				'applies_all_cases'     => __( 'Applies in all cases.', 'dukkan-plugin' ),
-				'add_product'           => __( 'Add Product', 'dukkan-plugin' ),
-				'add_condition'         => __( 'Add Condition', 'dukkan-plugin' ),
-				'product_placeholder'   => __( 'Product selector coming soon.', 'dukkan-plugin' ),
-				'condition_placeholder' => __( 'Condition builder coming soon.', 'dukkan-plugin' ),
 			],
 		]);
 

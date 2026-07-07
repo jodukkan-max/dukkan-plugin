@@ -7,7 +7,7 @@
 **Public** — no authentication required.
 
 ## Storage
-Rules are stored in **`rp_wcdpd_settings`** (WCDPD plugin option) and appear in **WooCommerce > PricePep** dashboard.
+Rules stored in **`rp_wcdpd_settings`** → visible in **WooCommerce > PricePep** dashboard.
 
 ---
 
@@ -15,24 +15,52 @@ Rules are stored in **`rp_wcdpd_settings`** (WCDPD plugin option) and appear in 
 
 | Method | Route | Description |
 |--------|-------|-------------|
-| `GET` | `/dukkan-dynamic-pricing/v1/rules` | List all simple rules (paginated, searchable) |
-| `GET` | `/dukkan-dynamic-pricing/v1/rules/{uid}` | Get single rule by UID |
-| `POST` | `/dukkan-dynamic-pricing/v1/rules` | Create a new simple adjustment rule |
-| `PUT` | `/dukkan-dynamic-pricing/v1/rules/{uid}` | Update an existing rule (partial) |
-| `DELETE` | `/dukkan-dynamic-pricing/v1/rules/{uid}` | Delete a rule |
-| `GET` | `/dukkan-dynamic-pricing/v1/products/search` | Search WooCommerce products |
+| `GET` | `/rules?method=simple|bulk` | List rules, optional method filter |
+| `GET` | `/rules/{uid}` | Get single rule by UID |
+| `POST` | `/rules` | Create a new rule (simple or bulk) |
+| `PUT` | `/rules/{uid}` | Update a rule (partial) |
+| `DELETE` | `/rules/{uid}` | Delete a rule |
+| `GET` | `/products/search` | Search WooCommerce products |
 
 ---
 
-## Pricing Methods (`pricing_method`)
+## Rule Types (`method`)
 
-| Key | WCDPD Equivalent | Description |
-|-----|-----------------|-------------|
-| `discount__amount` | Fixed discount | $X off |
-| `discount__percentage` | Percentage discount | X% off |
-| `fee__amount` | Fixed fee | $X added |
-| `fee__percentage` | Percentage fee | X% added |
-| `fixed__price` | Fixed price | Set price to $X |
+| Key | Description |
+|-----|-------------|
+| `simple` (default) | Simple adjustment — one pricing method for all matched products |
+| `bulk` | Bulk pricing — quantity ranges with different pricing per range |
+
+---
+
+## Simple Adjustment: Pricing Methods
+
+| Key | Description |
+|-----|-------------|
+| `discount__amount` | Fixed discount (e.g. $10 off) |
+| `discount__percentage` | Percentage discount (e.g. 15% off) |
+| `fee__amount` | Fixed fee (e.g. $5 added) |
+| `fee__percentage` | Percentage fee (e.g. 10% added) |
+| `fixed__price` | Fixed price (e.g. set to $49) |
+
+## Bulk Pricing: Range Pricing Methods
+
+| Key | Description |
+|-----|-------------|
+| `discount__amount` | Fixed discount |
+| `discount__percentage` | Percentage discount |
+| `fixed__price` | Fixed price per unit |
+| `fixed__price_per_range` | Total price for entire range |
+
+## Bulk: Quantity Grouping (`quantities_based_on`)
+
+| Key | Meaning |
+|-----|---------|
+| `individual__product` | Each individual product counted separately |
+| `individual__variation` | Each individual variation |
+| `individual__configuration` | Each individual cart line item |
+| `cumulative__all` | All matched products added up together |
+| `cumulative__categories` | Quantities added up per category |
 
 ---
 
@@ -47,42 +75,54 @@ Rules are stored in **`rp_wcdpd_settings`** (WCDPD plugin option) and appear in 
 
 ## Cart Conditions
 
-| `type` | Description | `method_option` Options |
-|--------|-------------|--------------------------|
-| `cart_subtotal` | Cart subtotal | `at_least`, `more_than`, `not_more_than`, `less_than` |
-| `cart_quantity` | Total item quantity | `at_least`, `more_than`, `not_more_than`, `less_than` |
-| `cart_count` | Distinct cart items | `at_least`, `more_than`, `not_more_than`, `less_than` |
-| `cart_weight` | Total cart weight | `at_least`, `more_than`, `not_more_than`, `less_than` |
+| `type` | `method_option` Options |
+|--------|--------------------------|
+| `cart_subtotal` | `at_least`, `more_than`, `not_more_than`, `less_than` |
+| `cart_quantity` | `at_least`, `more_than`, `not_more_than`, `less_than` |
+| `cart_count` | `at_least`, `more_than`, `not_more_than`, `less_than` |
+| `cart_weight` | `at_least`, `more_than`, `not_more_than`, `less_than` |
 
 ---
 
-## Example: Create a fixed $5 fee for products 40289, 40372
+## Example: Create Bulk Pricing Rule
 
 ```json
 POST /dukkan-dynamic-pricing/v1/rules
 
 {
-  "note": "Fixed $5 fee",
-  "pricing_method": "fee__amount",
-  "pricing_value": 5,
-  "product_uids": [40289, 40372],
-  "product_method": "in_list"
+  "method": "bulk",
+  "note": "Bulk discount",
+  "quantities_based_on": "individual__product",
+  "product_uids": [40289],
+  "product_method": "in_list",
+  "quantity_ranges": [
+    { "from": 1,  "to": 5,  "pricing_method": "discount__amount",     "pricing_value": 0 },
+    { "from": 6,  "to": 10, "pricing_method": "discount__percentage", "pricing_value": 10 },
+    { "from": 11, "pricing_method": "fixed__price", "pricing_value": 15 }
+  ]
 }
 ```
 
-## Response Format
+> Use `"to": null` or omit `to` for unbounded ranges (e.g. `"from": 11` with no `to` means 11+).
+
+## Bulk Response Format
 
 ```json
 {
-  "uid": "rp_wcdpd_abc123",
-  "note": "Fixed $5 fee",
+  "uid": "rp_wcdpd_xxx",
+  "method": "bulk",
+  "note": "Bulk discount",
   "public_note": "",
-  "pricing_method": "fee__amount",
-  "pricing_value": 5.0,
-  "product_uids": [40289, 40372],
+  "product_uids": [40289],
   "product_method": "in_list",
   "product_category_uids": [],
   "product_category_method": "in_list",
-  "conditions": []
+  "conditions": [],
+  "quantities_based_on": "individual__product",
+  "quantity_ranges": [
+    { "from": 1,  "to": 5,  "pricing_method": "discount__amount",     "pricing_value": 0 },
+    { "from": 6,  "to": 10, "pricing_method": "discount__percentage", "pricing_value": 10 },
+    { "from": 11, "to": null, "pricing_method": "fixed__price", "pricing_value": 15 }
+  ]
 }
 ```

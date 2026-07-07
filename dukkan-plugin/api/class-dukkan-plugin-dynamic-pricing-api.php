@@ -4,7 +4,8 @@
  * The dynamic-pricing-api functionality of the plugin.
  *
  * Bridges between the app and WCDPD (WooCommerce Dynamic Pricing & Discounts).
- * Rules created via this API appear in WooCommerce > PricePep (WCDPD) dashboard.
+ * Supports simple adjustment and bulk pricing rules.
+ * Rules appear in WooCommerce > PricePep (WCDPD) dashboard.
  *
  * @link       https://dukkanjo.com
  * @since      1.0.1
@@ -25,10 +26,11 @@ class Dukkan_Plugin_Dynamic_Pricing_API {
 	 */
 	private $version;
 
-	/**
-	 * Pricing methods map (API key → WCDPD internal key).
-	 */
-	private static $PRICING_METHODS = array(
+	// --- Valid rule methods (method field) ---
+	private static $VALID_METHODS = array( 'simple', 'bulk' );
+
+	// --- Pricing methods for simple rules ---
+	private static $SIMPLE_PRICING_METHODS = array(
 		'discount__amount',
 		'discount__percentage',
 		'fee__amount',
@@ -36,14 +38,28 @@ class Dukkan_Plugin_Dynamic_Pricing_API {
 		'fixed__price',
 	);
 
-	/**
-	 * Valid product/category list methods.
-	 */
+	// --- Pricing methods for bulk quantity ranges ---
+	// NOTE: fees are NOT valid for bulk. The 'fixed__price_per_range' is unique to bulk.
+	private static $BULK_PRICING_METHODS = array(
+		'discount__amount',
+		'discount__percentage',
+		'fixed__price',
+		'fixed__price_per_range',
+	);
+
+	// --- Quantity grouping modes for bulk/tiered ---
+	private static $QUANTITIES_BASED_ON = array(
+		'individual__product',
+		'individual__variation',
+		'individual__configuration',
+		'cumulative__all',
+		'cumulative__categories',
+	);
+
+	// --- Product/category list methods ---
 	private static $LIST_METHODS = array( 'in_list', 'not_in_list' );
 
-	/**
-	 * Valid cart condition types and their internal field names.
-	 */
+	// --- Cart condition types and their internal field names ---
 	private static $CART_FIELDS = array(
 		'cart_subtotal' => 'decimal',
 		'cart_quantity' => 'decimal',
@@ -51,9 +67,7 @@ class Dukkan_Plugin_Dynamic_Pricing_API {
 		'cart_weight'   => 'decimal',
 	);
 
-	/**
-	 * Valid numeric comparison operators for cart conditions.
-	 */
+	// --- Numeric comparison operators for cart conditions ---
 	private static $NUMERIC_METHODS = array(
 		'at_least',
 		'more_than',
@@ -115,15 +129,16 @@ class Dukkan_Plugin_Dynamic_Pricing_API {
 	}
 
 	// =====================================================================
-	// GET /rules  —  List all simple-adjustment rules
+	// GET /rules  —  List rules (supports ?method=simple|bulk filter)
 	// =====================================================================
 
 	public function get_rules( $request ) {
 		$page     = max( 1, (int) ( $request->get_param( 'page' ) ?: 1 ) );
 		$per_page = max( 1, min( 100, (int) ( $request->get_param( 'per_page' ) ?: 10 ) ) );
 		$search   = $request->get_param( 'search' );
+		$method   = $request->get_param( 'method' );  // optional: simple|bulk
 
-		$all   = $this->load_simple_rules();
+		$all   = $this->load_rules( $method );
 		$total = count( $all );
 
 		if ( $search ) {
@@ -146,7 +161,7 @@ class Dukkan_Plugin_Dynamic_Pricing_API {
 	}
 
 	// =====================================================================
-	// GET /rules/{id}
+	// GET /rules/{uid}
 	// =====================================================================
 
 	public function get_rule( $request ) {
@@ -161,45 +176,36 @@ class Dukkan_Plugin_Dynamic_Pricing_API {
 	}
 
 	// =====================================================================
-	// POST /rules  —  Create a new rule
+	// POST /rules  —  Create a new rule (simple or bulk)
 	// =====================================================================
 
 	public function create_rule( $request ) {
 		$body = $request->get_json_params() ?: $request->get_body_params();
 
-		$pricing_method = sanitize_text_field( $body['pricing_method'] ?? '' );
-		$pricing_value  = $body['pricing_value'] ?? null;
-		$product_uids   = $body['product_uids'] ?? null;
-		$product_method = sanitize_text_field( $body['product_method'] ?? 'in_list' );
-		$cat_uids       = $body['product_category_uids'] ?? null;
-		$cat_method     = sanitize_text_field( $body['product_category_method'] ?? 'in_list' );
-		$conditions     = $body['conditions'] ?? null;
-		$note           = sanitize_textarea_field( $body['note'] ?? '' );
-		$public_note    = sanitize_textarea_field( $body['public_note'] ?? '' );
+		$rule_method       = sanitize_text_field( $body['method'] ?? 'simple' );
+		$product_uids      = $body['product_uids'] ?? null;
+		$product_method    = sanitize_text_field( $body['product_method'] ?? 'in_list' );
+		$cat_uids          = $body['product_category_uids'] ?? null;
+		$cat_method        = sanitize_text_field( $body['product_category_method'] ?? 'in_list' );
+		$conditions        = $body['conditions'] ?? null;
+		$note              = sanitize_textarea_field( $body['note'] ?? '' );
+		$public_note       = sanitize_textarea_field( $body['public_note'] ?? '' );
 
-		// --- Validate pricing method ---
-		if ( ! in_array( $pricing_method, self::$PRICING_METHODS, true ) ) {
-			return new WP_Error( 'invalid_pricing_method',
-				'pricing_method must be one of: ' . implode( ', ', self::$PRICING_METHODS ),
+		// --- Validate method ---
+		if ( ! in_array( $rule_method, self::$VALID_METHODS, true ) ) {
+			return new WP_Error( 'invalid_method',
+				'method must be one of: ' . implode( ', ', self::$VALID_METHODS ),
 				array( 'status' => 400 ) );
 		}
 
-		// --- Validate pricing value ---
-		if ( ! is_numeric( $pricing_value ) || $pricing_value < 0 ) {
-			return new WP_Error( 'invalid_pricing_value',
-				'pricing_value must be >= 0.',
-				array( 'status' => 400 ) );
-		}
-
-		// --- At least one product or category required ---
-		$has_products  = is_array( $product_uids ) && ! empty( $product_uids );
-		$has_cats      = is_array( $cat_uids ) && ! empty( $cat_uids );
+		// --- Common validation ---
+		$has_products = is_array( $product_uids ) && ! empty( $product_uids );
+		$has_cats     = is_array( $cat_uids ) && ! empty( $cat_uids );
 		if ( ! $has_products && ! $has_cats ) {
 			return new WP_Error( 'missing_filter',
 				'product_uids or product_category_uids is required.',
 				array( 'status' => 400 ) );
 		}
-
 		if ( ! in_array( $product_method, self::$LIST_METHODS, true ) ) {
 			return new WP_Error( 'invalid_product_method',
 				'product_method must be: ' . implode( ' or ', self::$LIST_METHODS ),
@@ -211,18 +217,60 @@ class Dukkan_Plugin_Dynamic_Pricing_API {
 				array( 'status' => 400 ) );
 		}
 
-		// --- Build WCDPD rule ---
+		// --- Build base rule ---
 		$rule = array(
-			'uid'            => 'rp_wcdpd_' . md5( uniqid( 'rule', true ) ),
-			'exclusivity'    => 'all',
-			'note'           => $note,
-			'public_note'    => $public_note,
-			'method'         => 'simple',
-			'pricing_method' => $pricing_method,
-			'pricing_value'  => (float) $pricing_value,
-			'conditions'     => array(),
+			'uid'         => 'rp_wcdpd_' . md5( uniqid( 'rule', true ) ),
+			'exclusivity' => 'all',
+			'note'        => $note,
+			'public_note' => $public_note,
+			'method'      => $rule_method,
+			'conditions'  => array(),
 		);
 
+		// --- Method-specific fields ---
+		if ( 'simple' === $rule_method ) {
+			// SIMPLE: requires top-level pricing_method + pricing_value
+			$pricing_method = sanitize_text_field( $body['pricing_method'] ?? '' );
+			$pricing_value  = $body['pricing_value'] ?? null;
+
+			if ( ! in_array( $pricing_method, self::$SIMPLE_PRICING_METHODS, true ) ) {
+				return new WP_Error( 'invalid_pricing_method',
+					'pricing_method must be one of: ' . implode( ', ', self::$SIMPLE_PRICING_METHODS ),
+					array( 'status' => 400 ) );
+			}
+			if ( ! is_numeric( $pricing_value ) || $pricing_value < 0 ) {
+				return new WP_Error( 'invalid_pricing_value',
+					'pricing_value must be >= 0.', array( 'status' => 400 ) );
+			}
+			$rule['pricing_method'] = $pricing_method;
+			$rule['pricing_value']  = (float) $pricing_value;
+
+		} else {
+			// BULK: requires quantities_based_on + quantity_ranges
+			$qty_based_on    = sanitize_text_field( $body['quantities_based_on'] ?? '' );
+			$quantity_ranges = $body['quantity_ranges'] ?? null;
+
+			if ( ! in_array( $qty_based_on, self::$QUANTITIES_BASED_ON, true ) ) {
+				return new WP_Error( 'invalid_quantities_based_on',
+					'quantities_based_on must be one of: ' . implode( ', ', self::$QUANTITIES_BASED_ON ),
+					array( 'status' => 400 ) );
+			}
+			if ( ! is_array( $quantity_ranges ) || empty( $quantity_ranges ) ) {
+				return new WP_Error( 'missing_quantity_ranges',
+					'quantity_ranges must be a non-empty array.', array( 'status' => 400 ) );
+			}
+
+			$validated_ranges = array();
+			foreach ( $quantity_ranges as $i => $qr ) {
+				$err = $this->validate_quantity_range( $qr, $i );
+				if ( is_wp_error( $err ) ) return $err;
+				$validated_ranges[] = $this->build_quantity_range( $qr );
+			}
+			$rule['quantities_based_on'] = $qty_based_on;
+			$rule['quantity_ranges']     = $validated_ranges;
+		}
+
+		// --- Build conditions (shared) ---
 		// Product condition
 		if ( $has_products ) {
 			$validated = array();
@@ -241,7 +289,6 @@ class Dukkan_Plugin_Dynamic_Pricing_API {
 				'products'      => $validated,
 			);
 		}
-
 		// Category condition
 		if ( $has_cats ) {
 			$validated = array();
@@ -260,25 +307,21 @@ class Dukkan_Plugin_Dynamic_Pricing_API {
 				'product_categories' => $validated,
 			);
 		}
-
 		// Cart conditions
 		if ( is_array( $conditions ) ) {
 			foreach ( $conditions as $i => $c ) {
 				$err = $this->validate_cart_condition( $c, $i );
-				if ( is_wp_error( $err ) ) {
-					return $err;
-				}
+				if ( is_wp_error( $err ) ) return $err;
 				$rule['conditions'][] = $this->build_cart_condition( $c );
 			}
 		}
 
 		$this->append_rule( $rule );
-
 		return new WP_REST_Response( $this->to_response( $rule ), 201 );
 	}
 
 	// =====================================================================
-	// PUT /rules/{id}  —  Update an existing rule
+	// PUT /rules/{uid}  —  Update an existing rule
 	// =====================================================================
 
 	public function update_rule( $request ) {
@@ -288,27 +331,14 @@ class Dukkan_Plugin_Dynamic_Pricing_API {
 			return new WP_Error( 'rule_not_found', 'Rule not found.', array( 'status' => 404 ) );
 		}
 
-		$body = $request->get_json_params() ?: $request->get_body_params();
+		$body        = $request->get_json_params() ?: $request->get_body_params();
+		$is_simple   = ( $old['method'] ?? 'simple' ) === 'simple';
+
 		if ( empty( $body ) ) {
 			return new WP_Error( 'empty_body', 'Request body is required.', array( 'status' => 400 ) );
 		}
 
-		// --- Simple scalar fields ---
-		if ( isset( $body['pricing_method'] ) ) {
-			$pm = sanitize_text_field( $body['pricing_method'] );
-			if ( ! in_array( $pm, self::$PRICING_METHODS, true ) ) {
-				return new WP_Error( 'invalid_pricing_method',
-					'pricing_method must be one of: ' . implode( ', ', self::$PRICING_METHODS ),
-					array( 'status' => 400 ) );
-			}
-			$old['pricing_method'] = $pm;
-		}
-		if ( isset( $body['pricing_value'] ) ) {
-			if ( ! is_numeric( $body['pricing_value'] ) || $body['pricing_value'] < 0 ) {
-				return new WP_Error( 'invalid_pricing_value', 'pricing_value must be >= 0.', array( 'status' => 400 ) );
-			}
-			$old['pricing_value'] = (float) $body['pricing_value'];
-		}
+		// --- Note / public_note ---
 		if ( isset( $body['note'] ) ) {
 			$old['note'] = sanitize_textarea_field( $body['note'] );
 		}
@@ -316,13 +346,57 @@ class Dukkan_Plugin_Dynamic_Pricing_API {
 			$old['public_note'] = sanitize_textarea_field( $body['public_note'] );
 		}
 
+		// --- Simple: pricing_method / pricing_value ---
+		if ( $is_simple && isset( $body['pricing_method'] ) ) {
+			$pm = sanitize_text_field( $body['pricing_method'] );
+			if ( ! in_array( $pm, self::$SIMPLE_PRICING_METHODS, true ) ) {
+				return new WP_Error( 'invalid_pricing_method',
+					'pricing_method must be one of: ' . implode( ', ', self::$SIMPLE_PRICING_METHODS ),
+					array( 'status' => 400 ) );
+			}
+			$old['pricing_method'] = $pm;
+		}
+		if ( $is_simple && isset( $body['pricing_value'] ) ) {
+			if ( ! is_numeric( $body['pricing_value'] ) || $body['pricing_value'] < 0 ) {
+				return new WP_Error( 'invalid_pricing_value', 'pricing_value must be >= 0.',
+					array( 'status' => 400 ) );
+			}
+			$old['pricing_value'] = (float) $body['pricing_value'];
+		}
+
+		// --- Bulk: quantities_based_on ---
+		if ( ! $is_simple && isset( $body['quantities_based_on'] ) ) {
+			$qbo = sanitize_text_field( $body['quantities_based_on'] );
+			if ( ! in_array( $qbo, self::$QUANTITIES_BASED_ON, true ) ) {
+				return new WP_Error( 'invalid_quantities_based_on',
+					'quantities_based_on must be one of: ' . implode( ', ', self::$QUANTITIES_BASED_ON ),
+					array( 'status' => 400 ) );
+			}
+			$old['quantities_based_on'] = $qbo;
+		}
+
+		// --- Bulk: quantity_ranges ---
+		if ( ! $is_simple && isset( $body['quantity_ranges'] ) ) {
+			$qr = $body['quantity_ranges'];
+			if ( ! is_array( $qr ) || empty( $qr ) ) {
+				return new WP_Error( 'missing_quantity_ranges',
+					'quantity_ranges must be a non-empty array.', array( 'status' => 400 ) );
+			}
+			$validated = array();
+			foreach ( $qr as $i => $r ) {
+				$err = $this->validate_quantity_range( $r, $i );
+				if ( is_wp_error( $err ) ) return $err;
+				$validated[] = $this->build_quantity_range( $r );
+			}
+			$old['quantity_ranges'] = $validated;
+		}
+
+		// --- Conditions (shared) ---
 		$update_products   = isset( $body['product_uids'] );
 		$update_categories = isset( $body['product_category_uids'] );
-		$update_conditions = isset( $body['conditions'] );
+		$update_cart_cond  = isset( $body['conditions'] );
+		$new_conditions    = array();
 
-		$new_conditions = array();
-
-		// --- Rebuild product condition ---
 		if ( $update_products ) {
 			$pids = $body['product_uids'];
 			if ( ! is_array( $pids ) || empty( $pids ) ) {
@@ -330,19 +404,16 @@ class Dukkan_Plugin_Dynamic_Pricing_API {
 					'product_uids must be a non-empty array.', array( 'status' => 400 ) );
 			}
 			$pm = isset( $body['product_method'] )
-				? sanitize_text_field( $body['product_method'] )
-				: null;
+				? sanitize_text_field( $body['product_method'] ) : null;
 			if ( $pm && ! in_array( $pm, self::$LIST_METHODS, true ) ) {
 				return new WP_Error( 'invalid_product_method',
 					'product_method must be: ' . implode( ' or ', self::$LIST_METHODS ),
 					array( 'status' => 400 ) );
 			}
-			// Fall back to old method if not provided
 			if ( ! $pm ) {
 				foreach ( $old['conditions'] as $oc ) {
 					if ( 'product__product' === ( $oc['type'] ?? '' ) ) {
-						$pm = $oc['method_option'];
-						break;
+						$pm = $oc['method_option']; break;
 					}
 				}
 				$pm = $pm ?: 'in_list';
@@ -360,19 +431,15 @@ class Dukkan_Plugin_Dynamic_Pricing_API {
 				'products'      => array_map( 'strval', $pids ),
 			);
 		} else {
-			// Keep existing product condition (possibly with new method)
 			$new_pm = isset( $body['product_method'] ) ? sanitize_text_field( $body['product_method'] ) : null;
 			foreach ( $old['conditions'] as $oc ) {
 				if ( 'product__product' === ( $oc['type'] ?? '' ) ) {
-					if ( $new_pm ) {
-						$oc['method_option'] = $new_pm;
-					}
+					if ( $new_pm ) $oc['method_option'] = $new_pm;
 					$new_conditions[] = $oc;
 				}
 			}
 		}
 
-		// --- Rebuild category condition ---
 		if ( $update_categories ) {
 			$cids = $body['product_category_uids'];
 			if ( ! is_array( $cids ) || empty( $cids ) ) {
@@ -380,8 +447,7 @@ class Dukkan_Plugin_Dynamic_Pricing_API {
 					'product_category_uids must be a non-empty array.', array( 'status' => 400 ) );
 			}
 			$cm = isset( $body['product_category_method'] )
-				? sanitize_text_field( $body['product_category_method'] )
-				: null;
+				? sanitize_text_field( $body['product_category_method'] ) : null;
 			if ( $cm && ! in_array( $cm, self::$LIST_METHODS, true ) ) {
 				return new WP_Error( 'invalid_category_method',
 					'product_category_method must be: ' . implode( ' or ', self::$LIST_METHODS ),
@@ -390,8 +456,7 @@ class Dukkan_Plugin_Dynamic_Pricing_API {
 			if ( ! $cm ) {
 				foreach ( $old['conditions'] as $oc ) {
 					if ( 'product__category' === ( $oc['type'] ?? '' ) ) {
-						$cm = $oc['method_option'];
-						break;
+						$cm = $oc['method_option']; break;
 					}
 				}
 				$cm = $cm ?: 'in_list';
@@ -413,25 +478,20 @@ class Dukkan_Plugin_Dynamic_Pricing_API {
 			$new_cm = isset( $body['product_category_method'] ) ? sanitize_text_field( $body['product_category_method'] ) : null;
 			foreach ( $old['conditions'] as $oc ) {
 				if ( 'product__category' === ( $oc['type'] ?? '' ) ) {
-					if ( $new_cm ) {
-						$oc['method_option'] = $new_cm;
-					}
+					if ( $new_cm ) $oc['method_option'] = $new_cm;
 					$new_conditions[] = $oc;
 				}
 			}
 		}
 
-		// --- Cart conditions ---
-		if ( $update_conditions ) {
+		if ( $update_cart_cond ) {
 			if ( ! is_array( $body['conditions'] ) ) {
 				return new WP_Error( 'invalid_conditions',
 					'conditions must be an array.', array( 'status' => 400 ) );
 			}
 			foreach ( $body['conditions'] as $i => $c ) {
 				$err = $this->validate_cart_condition( $c, $i );
-				if ( is_wp_error( $err ) ) {
-					return $err;
-				}
+				if ( is_wp_error( $err ) ) return $err;
 				$new_conditions[] = $this->build_cart_condition( $c );
 			}
 		} else {
@@ -444,14 +504,13 @@ class Dukkan_Plugin_Dynamic_Pricing_API {
 		}
 
 		$old['conditions'] = $new_conditions;
-
 		$this->replace_rule( $uid, $old );
 
 		return new WP_REST_Response( $this->to_response( $old ), 200 );
 	}
 
 	// =====================================================================
-	// DELETE /rules/{id}
+	// DELETE /rules/{uid}
 	// =====================================================================
 
 	public function delete_rule( $request ) {
@@ -461,8 +520,7 @@ class Dukkan_Plugin_Dynamic_Pricing_API {
 
 		foreach ( $all as $i => $r ) {
 			if ( ( $r['uid'] ?? '' ) === $uid ) {
-				$index = $i;
-				break;
+				$index = $i; break;
 			}
 		}
 
@@ -521,7 +579,6 @@ class Dukkan_Plugin_Dynamic_Pricing_API {
 
 		foreach ( ( $rule['conditions'] ?? array() ) as $c ) {
 			$t = $c['type'] ?? '';
-
 			if ( 'product__product' === $t ) {
 				$pids    = array_map( 'intval', $c['products'] ?? array() );
 				$pmethod = $c['method_option'] ?? 'in_list';
@@ -529,7 +586,7 @@ class Dukkan_Plugin_Dynamic_Pricing_API {
 				$cids    = array_map( 'intval', $c['product_categories'] ?? array() );
 				$cmethod = $c['method_option'] ?? 'in_list';
 			} elseif ( isset( self::$CART_FIELDS[ $t ] ) ) {
-				$field = self::$CART_FIELDS[ $t ];
+				$field   = self::$CART_FIELDS[ $t ];
 				$conds[] = array(
 					'type'          => $t,
 					'method_option' => $c['method_option'] ?? '',
@@ -538,17 +595,70 @@ class Dukkan_Plugin_Dynamic_Pricing_API {
 			}
 		}
 
-		return array(
+		$method = $rule['method'] ?? 'simple';
+		$resp   = array(
 			'uid'                     => $rule['uid'],
+			'method'                  => $method,
 			'note'                    => $rule['note'] ?? '',
 			'public_note'             => $rule['public_note'] ?? '',
-			'pricing_method'          => $rule['pricing_method'] ?? '',
-			'pricing_value'           => (float) ( $rule['pricing_value'] ?? 0 ),
 			'product_uids'            => $pids,
 			'product_method'          => $pmethod,
 			'product_category_uids'   => $cids,
 			'product_category_method' => $cmethod,
 			'conditions'              => $conds,
+		);
+
+		if ( 'simple' === $method ) {
+			$resp['pricing_method'] = $rule['pricing_method'] ?? '';
+			$resp['pricing_value']  = (float) ( $rule['pricing_value'] ?? 0 );
+		} else {
+			// Bulk — no top-level pricing; instead return quantities config + ranges
+			$resp['quantities_based_on'] = $rule['quantities_based_on'] ?? '';
+			$ranges = array();
+			foreach ( ( $rule['quantity_ranges'] ?? array() ) as $qr ) {
+				$ranges[] = array(
+					'from'            => (int) ( $qr['from'] ?? 0 ),
+					'to'              => isset( $qr['to'] ) ? ( $qr['to'] === null ? null : (int) $qr['to'] ) : null,
+					'pricing_method'  => $qr['pricing_method'] ?? '',
+					'pricing_value'   => (float) ( $qr['pricing_value'] ?? 0 ),
+				);
+			}
+			$resp['quantity_ranges'] = $ranges;
+		}
+
+		return $resp;
+	}
+
+	// =====================================================================
+	// QUANTITY RANGE HELPERS (BULK)
+	// =====================================================================
+
+	private function validate_quantity_range( $qr, $i ) {
+		if ( ! isset( $qr['from'] ) || ! is_numeric( $qr['from'] ) || $qr['from'] < 0 ) {
+			return new WP_Error( 'invalid_range_from',
+				'Range #' . ( $i + 1 ) . ': from must be a positive integer.',
+				array( 'status' => 400 ) );
+		}
+		if ( ! isset( $qr['pricing_method'] ) || ! in_array( $qr['pricing_method'], self::$BULK_PRICING_METHODS, true ) ) {
+			return new WP_Error( 'invalid_range_pricing_method',
+				'Range #' . ( $i + 1 ) . ': pricing_method must be one of: ' . implode( ', ', self::$BULK_PRICING_METHODS ),
+				array( 'status' => 400 ) );
+		}
+		if ( ! isset( $qr['pricing_value'] ) || ! is_numeric( $qr['pricing_value'] ) || $qr['pricing_value'] < 0 ) {
+			return new WP_Error( 'invalid_range_pricing_value',
+				'Range #' . ( $i + 1 ) . ': pricing_value must be a positive number.',
+				array( 'status' => 400 ) );
+		}
+		return true;
+	}
+
+	private function build_quantity_range( $qr ) {
+		return array(
+			'uid'            => 'rp_wcdpd_' . md5( uniqid( 'qr', true ) ),
+			'from'           => abs( intval( $qr['from'] ) ),
+			'to'             => ( isset( $qr['to'] ) && is_numeric( $qr['to'] ) ) ? abs( intval( $qr['to'] ) ) : null,
+			'pricing_method' => $qr['pricing_method'],
+			'pricing_value'  => (float) $qr['pricing_value'],
 		);
 	}
 
@@ -589,10 +699,6 @@ class Dukkan_Plugin_Dynamic_Pricing_API {
 	// WCDPD DATA ACCESS
 	// =====================================================================
 
-	/**
-	 * WCDPD uses version '1' as the outer key and product_pricing inside it.
-	 * So the path is: rp_wcdpd_settings['1']['product_pricing'] = array( ...rules... )
-	 */
 	private static $WCDPD_VERSION = '1';
 
 	private function load_all_rules() {
@@ -602,10 +708,17 @@ class Dukkan_Plugin_Dynamic_Pricing_API {
 			: array();
 	}
 
-	private function load_simple_rules() {
-		return array_values( array_filter( $this->load_all_rules(), function ( $r ) {
-			return ( $r['method'] ?? '' ) === 'simple';
-		} ) );
+	/**
+	 * Load rules, optionally filtered by method (simple|bulk).
+	 */
+	private function load_rules( $method = null ) {
+		$all = $this->load_all_rules();
+		if ( $method && in_array( $method, self::$VALID_METHODS, true ) ) {
+			return array_values( array_filter( $all, function ( $r ) use ( $method ) {
+				return ( $r['method'] ?? '' ) === $method;
+			} ) );
+		}
+		return $all;
 	}
 
 	private function save_all_rules( $rules ) {
@@ -619,8 +732,8 @@ class Dukkan_Plugin_Dynamic_Pricing_API {
 	}
 
 	private function append_rule( $rule ) {
-		$all    = $this->load_all_rules();
-		$all[]  = $rule;
+		$all   = $this->load_all_rules();
+		$all[] = $rule;
 		$this->save_all_rules( $all );
 	}
 
@@ -628,15 +741,14 @@ class Dukkan_Plugin_Dynamic_Pricing_API {
 		$all = $this->load_all_rules();
 		foreach ( $all as $i => $r ) {
 			if ( ( $r['uid'] ?? '' ) === $uid ) {
-				$all[ $i ] = $new_rule;
-				break;
+				$all[ $i ] = $new_rule; break;
 			}
 		}
 		$this->save_all_rules( $all );
 	}
 
 	private function find_rule( $uid ) {
-		foreach ( $this->load_simple_rules() as $r ) {
+		foreach ( $this->load_all_rules() as $r ) {
 			if ( ( $r['uid'] ?? '' ) === $uid ) {
 				return $r;
 			}
