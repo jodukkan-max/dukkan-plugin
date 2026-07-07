@@ -1,4 +1,4 @@
-# Dukkan Plugin — Architecture
+# Dukkan — Architecture
 
 > Living blueprint. Update this file whenever structural changes are made (new classes,
 > routes, hooks, options, or tabs).
@@ -7,15 +7,15 @@
 
 ## 1. High-Level Overview
 
-**Plugin Name:** Dukkan Plugin  
+**Plugin Name:** Dukkan  
 **Version:** 1.0.0  
 **Text Domain:** `dukkan-plugin`  
 **Minimum PHP:** 7.4+  
-**Author:** Atul Goyal  
+**Author:** Dukkan Ecommerce LLC  
 **Entry Point:** `dukkan-plugin.php`
 
-The plugin provides a unified admin settings dashboard (`Dukkan Settings`) under
-WordPress Admin > Dukkan Settings. Features are organized as **tabs** within that page.
+The plugin provides a unified admin settings dashboard (`Dukkan`) under
+WordPress Admin > Dukkan. Features are organized as **tabs** within that page.
 Each feature lives in its own class following the `Dukkan_Plugin_{Component}` naming
 convention.
 

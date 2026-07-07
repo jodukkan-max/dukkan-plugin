@@ -25,7 +25,7 @@
  * @since      1.0.0
  * @package    Dukkan_Plugin
  * @subpackage Dukkan_Plugin/includes
- * @author     Atul Goyal <hello@wplogist.com>
+ * @author     Dukkan Ecommerce LLC
  */
 class Dukkan_Plugin {
 
@@ -82,6 +82,7 @@ class Dukkan_Plugin {
 		$this->define_translatepress_api_hooks();
 		$this->define_product_addon_api_hooks();
 		$this->define_order_status_api_hooks();
+		$this->define_dynamic_pricing_api_hooks();
 		$this->define_admin_hooks();
 		$this->define_public_hooks();
 
@@ -148,14 +149,14 @@ class Dukkan_Plugin {
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'api/class-dukkan-plugin-order-status-api.php';
 
 		/**
+		 * The class responsible for defining dynamic pricing REST API endpoints.
+		 */
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'api/class-dukkan-plugin-dynamic-pricing-api.php';
+
+		/**
 		 * The class responsible for defining all actions that occur in the admin area.
 		 */
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'admin/class-dukkan-plugin-admin.php';
-
-		/**
-		 * The class responsible for defining Dukkan store settings in the admin area.
-		 */
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'admin/class-dukkan-plugin-store-settings.php';
 
 		/**
 		 * The class responsible for defining WooCommerce-related admin functionality.
@@ -258,6 +259,17 @@ class Dukkan_Plugin {
 	}
 
 	/**
+	 * Register all of the hooks related to the dynamic pricing api functionality
+	 * of the plugin.
+	 *
+	 * @since    1.0.1
+	 * @access   private
+	 */
+	private function define_dynamic_pricing_api_hooks() {
+		$dynamic_pricing_api = new Dukkan_Plugin_Dynamic_Pricing_API( $this->get_plugin_name(), $this->get_version() );
+	}
+
+	/**
 	 * Register all of the hooks related to the product addon api functionality
 	 * of the plugin.
 	 *
@@ -292,8 +304,6 @@ class Dukkan_Plugin {
 
 		$this->loader->add_action( 'admin_enqueue_scripts', $plugin_admin, 'enqueue_styles' );
 		$this->loader->add_action( 'admin_enqueue_scripts', $plugin_admin, 'enqueue_scripts' );
-
-		$plugin_store_settings = new Dukkan_Plugin_Store_Settings( $this->get_plugin_name(), $this->get_version() );
 
 		$plugin_woocommerce = new Dukkan_Plugin_WooCommerce( $this->get_plugin_name(), $this->get_version() );
 

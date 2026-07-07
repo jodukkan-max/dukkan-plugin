@@ -18,7 +18,7 @@
  *
  * @package    Dukkan_Plugin
  * @subpackage Dukkan_Plugin/public
- * @author     Atul Goyal <hello@wplogist.com>
+ * @author     Dukkan Ecommerce LLC
  */
 class Dukkan_Plugin_Public {
 
@@ -252,6 +252,9 @@ class Dukkan_Plugin_Public {
 	 * @since    1.0.0
 	 */
 	public function enqueue_styles() {
+		if ( ! is_product() ) {
+			return;
+		}
 
 		/**
 		 * This function is provided for demonstration purposes only.
@@ -275,6 +278,9 @@ class Dukkan_Plugin_Public {
 	 * @since    1.0.0
 	 */
 	public function enqueue_scripts() {
+		if ( ! is_product() ) {
+			return;
+		}
 
 		/**
 		 * This function is provided for demonstration purposes only.

@@ -18,7 +18,7 @@
  *
  * @package    Dukkan_Plugin
  * @subpackage Dukkan_Plugin/api/webhook/woo
- * @author     Atul Goyal <hello@wplogist.com>
+ * @author     Dukkan Ecommerce LLC
  */
 class Dukkan_Plugin_Woo_Webhook {
 

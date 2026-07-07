@@ -19,7 +19,7 @@
  *
  * @package    Dukkan_Plugin
  * @subpackage Dukkan_Plugin/admin
- * @author     Atul Goyal <hello@wplogist.com>
+ * @author     Dukkan Ecommerce LLC
  */
 class Dukkan_Plugin_WooCommerce {
 
@@ -30,6 +30,15 @@ class Dukkan_Plugin_WooCommerce {
 	 * @var string
 	 */
 	const USER_STATUSES_OPTION = 'dukkan_custom_order_statuses';
+
+	/**
+	 * Static cache for custom order statuses to avoid
+	 * reading the option more than once per request.
+	 *
+	 * @since 1.0.1
+	 * @var   array|null
+	 */
+	private static $cached_statuses = null;
 
 	/**
 	 * The ID of this plugin.
@@ -80,6 +89,20 @@ class Dukkan_Plugin_WooCommerce {
 	}
 
 	/**
+	 * Retrieve custom order statuses from the option, cached
+	 * statically so the option is only read once per request.
+	 *
+	 * @since  1.0.1
+	 * @return array
+	 */
+	private static function get_user_statuses() {
+		if ( null === self::$cached_statuses ) {
+			self::$cached_statuses = get_option( self::USER_STATUSES_OPTION, array() );
+		}
+		return self::$cached_statuses;
+	}
+
+	/**
 	 * Register all user-managed custom WooCommerce order statuses.
 	 *
 	 * Reads statuses from the `dukkan_custom_order_statuses` option and
@@ -88,7 +111,7 @@ class Dukkan_Plugin_WooCommerce {
 	 * @since 1.0.0
 	 */
 	public function register_custom_order_statuses() {
-		$user_statuses = get_option( self::USER_STATUSES_OPTION, array() );
+		$user_statuses = self::get_user_statuses();
 		if ( ! is_array( $user_statuses ) ) {
 			return;
 		}
@@ -121,7 +144,7 @@ class Dukkan_Plugin_WooCommerce {
 	 * @return array
 	 */
 	public function add_custom_order_statuses( $statuses ) {
-		$user_statuses = get_option( self::USER_STATUSES_OPTION, array() );
+		$user_statuses = self::get_user_statuses();
 		if ( is_array( $user_statuses ) ) {
 			foreach ( $user_statuses as $data ) {
 				$slug              = 'wc-' . sanitize_title( $data['slug'] );

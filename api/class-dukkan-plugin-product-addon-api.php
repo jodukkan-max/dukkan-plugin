@@ -18,7 +18,7 @@
  *
  * @package    Dukkan_Plugin
  * @subpackage Dukkan_Plugin/api
- * @author     Atul Goyal <hello@wplogist.com>
+ * @author     Dukkan Ecommerce LLC
  */
 class Dukkan_Plugin_Product_Addon_API {
 

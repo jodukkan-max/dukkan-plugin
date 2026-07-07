@@ -13,11 +13,11 @@
  * @package           Dukkan_Plugin
  *
  * @wordpress-plugin
- * Plugin Name:       Dukkan Plugin
+ * Plugin Name:       Dukkan
  * Plugin URI:        https://dukkanjo.com
- * Description:       Dukkan Plugin
+ * Description:       WooCommerce companion plugin — REST APIs, product add-ons, dynamic pricing bridge, TranslatePress integration.
  * Version:           1.0.1
- * Author:            Atul Goyal
+ * Author:            Dukkan Ecommerce LLC
  * Author URI:        https://dukkanjo.com/
  * License:           GPL-2.0+
  * License URI:       http://www.gnu.org/licenses/gpl-2.0.txt

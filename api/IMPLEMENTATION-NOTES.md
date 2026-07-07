@@ -31,7 +31,7 @@ A public REST API (6 endpoints) that creates/reads/updates/deletes **simple adju
 ## Architecture
 
 ```
-Mobile App ──REST (public)──▶ Dukkan Plugin API ──read/write──▶ rp_wcdpd_settings['1']['product_pricing']
+Mobile App ──REST (public)──▶ Dukkan API ──read/write──▶ rp_wcdpd_settings['1']['product_pricing']
                                                                           │
                                                                 WCDPD Plugin reads it
                                                                 → WooCommerce > PricePep dashboard

@@ -19,7 +19,7 @@
  * @since      1.0.0
  * @package    Dukkan_Plugin
  * @subpackage Dukkan_Plugin/includes
- * @author     Atul Goyal <hello@wplogist.com>
+ * @author     Dukkan Ecommerce LLC
  */
 class Dukkan_Plugin_Activator {
 
@@ -55,7 +55,7 @@ class Dukkan_Plugin_Activator {
 			),
 		);
 
-		add_option( 'dukkan_custom_order_statuses', $defaults, '', 'no' );
+		add_option( 'dukkan_custom_order_statuses', $defaults, '', 'yes' );
 	}
 
 }

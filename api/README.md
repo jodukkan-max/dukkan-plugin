@@ -38,7 +38,7 @@ curl -X POST https://fashion.dukkanjo.com/wp-json/dukkan-dynamic-pricing/v1/rule
 ## Architecture
 
 ```
-Mobile App → Dukkan Plugin REST API → rp_wcdpd_settings['1']['product_pricing'] → WCDPD/PricePep Dashboard
+Mobile App → Dukkan REST API → rp_wcdpd_settings['1']['product_pricing'] → WCDPD/PricePep Dashboard
 ```
 
 The API follows the same self-registering pattern as all Dukkan API classes (TranslatePress, General, etc.) — it hooks into `rest_api_init` in its constructor and all endpoints are public (`permission_callback => '__return_true'`).

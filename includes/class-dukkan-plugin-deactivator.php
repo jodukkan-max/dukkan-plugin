@@ -18,7 +18,7 @@
  * @since      1.0.0
  * @package    Dukkan_Plugin
  * @subpackage Dukkan_Plugin/includes
- * @author     Atul Goyal <hello@wplogist.com>
+ * @author     Dukkan Ecommerce LLC
  */
 class Dukkan_Plugin_Deactivator {
 

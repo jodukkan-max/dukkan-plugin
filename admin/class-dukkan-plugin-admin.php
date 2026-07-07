@@ -18,7 +18,7 @@
  *
  * @package    Dukkan_Plugin
  * @subpackage Dukkan_Plugin/admin
- * @author     Atul Goyal <hello@wplogist.com>
+ * @author     Dukkan Ecommerce LLC
  */
 class Dukkan_Plugin_Admin {
 
@@ -55,7 +55,7 @@ class Dukkan_Plugin_Admin {
 		add_action('admin_menu', array($this, 'dukkan_add_admin_menu'));
 		add_action('dukkan_settings_tab_content_dukkan_main', array($this, 'dukkan_dukkan_main_tab_content'));
 		add_action('dukkan_settings_tab_content_discounts', array($this, 'dukkan_discounts_tab_content'));	
-
+		add_action('dukkan_settings_tab_content_store_app_connection', array($this, 'dukkan_store_app_connection_tab_content'));
 	}
 
 	/**
@@ -143,8 +143,8 @@ class Dukkan_Plugin_Admin {
 	*/
 	public function dukkan_add_admin_menu(){
 		add_menu_page(
-			'Dukkan Settings',        // Page title
-			'Dukkan Settings',        // Menu title
+			'Dukkan',        // Page title
+			'Dukkan',        // Menu title
 			'manage_options',         // Capability
 			'dukkan-settings',        // Menu slug
 			array($this, 'dukkan_settings_page'),   // Callback
@@ -184,6 +184,10 @@ class Dukkan_Plugin_Admin {
 
 	public function dukkan_discounts_tab_content(){
 		require plugin_dir_path(__FILE__) . 'partials/dukkan-discount-settings.php';
+	}
+
+	public function dukkan_store_app_connection_tab_content(){
+		require plugin_dir_path(__FILE__) . 'partials/dukkan-store-app-connection-settings.php';
 	}
 
 }
