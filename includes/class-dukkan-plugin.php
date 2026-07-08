@@ -83,6 +83,7 @@ class Dukkan_Plugin {
 		$this->define_product_addon_api_hooks();
 		$this->define_order_status_api_hooks();
 		$this->define_dynamic_pricing_api_hooks();
+		$this->define_slim_seo_api_hooks();
 		$this->define_admin_hooks();
 		$this->define_public_hooks();
 
@@ -147,6 +148,11 @@ class Dukkan_Plugin {
 		 * The class responsible for defining dynamic pricing REST API endpoints.
 		 */
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'api/class-dukkan-plugin-dynamic-pricing-api.php';
+
+		/**
+		 * The class responsible for defining Slim SEO REST API endpoints.
+		 */
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'api/class-dukkan-plugin-slim-seo-api.php';
 
 		/**
 		 * The class responsible for defining all actions that occur in the admin area.
@@ -266,6 +272,22 @@ class Dukkan_Plugin {
 	 */
 	private function define_dynamic_pricing_api_hooks() {
 		$dynamic_pricing_api = new Dukkan_Plugin_Dynamic_Pricing_API( $this->get_plugin_name(), $this->get_version() );
+	}
+
+	/**
+	 * Register all of the hooks related to the Slim SEO API bridge.
+	 *
+	 * Only loads when Slim SEO is active on the site.
+	 *
+	 * @since    1.0.5
+	 * @access   private
+	 */
+	private function define_slim_seo_api_hooks() {
+		if ( ! class_exists( 'SlimSEO\Container' ) ) {
+			return;
+		}
+
+		$slim_seo_api = new Dukkan_Plugin_Slim_SEO_API( $this->get_plugin_name(), $this->get_version() );
 	}
 
 	/**
