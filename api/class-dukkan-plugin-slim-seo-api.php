@@ -61,28 +61,12 @@ class Dukkan_Plugin_Slim_SEO_API {
 			'methods'             => 'PUT',
 			'callback'            => array( $this, 'update_title' ),
 			'permission_callback' => '__return_true',
-			'args'                => array(
-				'id' => array(
-					'required'          => true,
-					'validate_callback' => function ( $param ) {
-						return is_numeric( $param ) && get_post( (int) $param );
-					},
-				),
-			),
 		));
 
 		register_rest_route( 'dukkan-seo/v1', '/posts/(?P<id>\d+)/description', array(
 			'methods'             => 'PUT',
 			'callback'            => array( $this, 'update_description' ),
 			'permission_callback' => '__return_true',
-			'args'                => array(
-				'id' => array(
-					'required'          => true,
-					'validate_callback' => function ( $param ) {
-						return is_numeric( $param ) && get_post( (int) $param );
-					},
-				),
-			),
 		));
 	}
 
@@ -95,7 +79,12 @@ class Dukkan_Plugin_Slim_SEO_API {
 	 */
 	public function update_title( $request ) {
 		$post_id = (int) $request->get_param( 'id' );
-		$body    = $request->get_json_params() ?: $request->get_body_params();
+
+		if ( ! get_post( $post_id ) ) {
+			return new WP_Error( 'post_not_found', 'Post not found.', array( 'status' => 404 ) );
+		}
+
+		$body = $request->get_json_params() ?: $request->get_body_params();
 
 		if ( ! isset( $body['title'] ) ) {
 			return new WP_Error( 'missing_title', 'Request body must contain "title".', array( 'status' => 400 ) );
@@ -119,7 +108,12 @@ class Dukkan_Plugin_Slim_SEO_API {
 	 */
 	public function update_description( $request ) {
 		$post_id = (int) $request->get_param( 'id' );
-		$body    = $request->get_json_params() ?: $request->get_body_params();
+
+		if ( ! get_post( $post_id ) ) {
+			return new WP_Error( 'post_not_found', 'Post not found.', array( 'status' => 404 ) );
+		}
+
+		$body = $request->get_json_params() ?: $request->get_body_params();
 
 		if ( ! isset( $body['description'] ) ) {
 			return new WP_Error( 'missing_description', 'Request body must contain "description".', array( 'status' => 400 ) );
