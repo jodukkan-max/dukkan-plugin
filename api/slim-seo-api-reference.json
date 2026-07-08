@@ -1,0 +1,107 @@
+{
+  "base_url": "https://yoursite.com/wp-json/dukkan-seo/v1",
+  "auth": "none (public)",
+  "prerequisite": "Slim SEO plugin must be installed and active",
+
+  "endpoints": {
+    "update_post_seo_title":       "PUT /posts/{id}/title",
+    "update_post_seo_description": "PUT /posts/{id}/description"
+  },
+
+  "notes": [
+    "Works on any post type — posts, pages, products, and custom post types.",
+    "Slim SEO stores all SEO data in a single serialized post meta key: slim_seo.",
+    "Each endpoint changes only the targeted field; all other fields (images, canonical URL, noindex) are left untouched.",
+    "If no Slim SEO meta exists yet for a post, a new entry is created automatically.",
+    "The API class only loads when Slim SEO is active — no overhead otherwise."
+  ],
+
+  "update_seo_title": {
+    "method": "PUT",
+    "route": "/posts/{id}/title",
+    "content_type": "application/json",
+    "request_body": {
+      "title": "Blue Summer Dress — Buy Online in Amman"
+    },
+    "required_fields": ["title"],
+    "validation": "title is sanitized with sanitize_text_field() — HTML tags are stripped.",
+    "success_response": {
+      "status": 200,
+      "body": {
+        "id": 40289,
+        "title": "Blue Summer Dress — Buy Online in Amman"
+      }
+    },
+    "error_responses": [
+      {
+        "status": 400,
+        "when": "Request body is missing the 'title' field.",
+        "body": { "code": "missing_title", "message": "Request body must contain \"title\".", "data": { "status": 400 } }
+      },
+      {
+        "status": 404,
+        "when": "The post ID does not exist.",
+        "body": { "code": "rest_invalid_param", "message": "Invalid parameter(s): id", "data": { "status": 404 } }
+      }
+    ]
+  },
+
+  "update_seo_description": {
+    "method": "PUT",
+    "route": "/posts/{id}/description",
+    "content_type": "application/json",
+    "request_body": {
+      "description": "Shop the Blue Summer Dress. Free shipping over 30 JOD. Available in sizes S–XXL."
+    },
+    "required_fields": ["description"],
+    "validation": "description is sanitized with sanitize_textarea_field() — HTML tags are stripped, newlines are preserved.",
+    "success_response": {
+      "status": 200,
+      "body": {
+        "id": 40289,
+        "description": "Shop the Blue Summer Dress. Free shipping over 30 JOD. Available in sizes S–XXL."
+      }
+    },
+    "error_responses": [
+      {
+        "status": 400,
+        "when": "Request body is missing the 'description' field.",
+        "body": { "code": "missing_description", "message": "Request body must contain \"description\".", "data": { "status": 400 } }
+      },
+      {
+        "status": 404,
+        "when": "The post ID does not exist.",
+        "body": { "code": "rest_invalid_param", "message": "Invalid parameter(s): id", "data": { "status": 404 } }
+      }
+    ]
+  },
+
+  "examples": {
+    "set_product_seo_title": {
+      "desc": "Set the SEO meta title for product ID 40289",
+      "method": "PUT",
+      "url": "/posts/40289/title",
+      "body": { "title": "Blue Summer Dress — Buy Online in Amman" }
+    },
+    "set_product_seo_description": {
+      "desc": "Set the SEO meta description for product ID 40289",
+      "method": "PUT",
+      "url": "/posts/40289/description",
+      "body": { "description": "Shop the Blue Summer Dress. Free shipping over 30 JOD. Available in sizes S–XXL." }
+    },
+    "set_page_seo_title": {
+      "desc": "Set the SEO meta title for page ID 15",
+      "method": "PUT",
+      "url": "/posts/15/title",
+      "body": { "title": "About Dukkan — Your Ecommerce Partner" }
+    },
+    "curl_title": {
+      "desc": "cURL example — set SEO title",
+      "command": "curl -X PUT https://yoursite.com/wp-json/dukkan-seo/v1/posts/40289/title -H 'Content-Type: application/json' -d '{\"title\":\"Blue Summer Dress — Buy Online in Amman\"}'"
+    },
+    "curl_description": {
+      "desc": "cURL example — set SEO description",
+      "command": "curl -X PUT https://yoursite.com/wp-json/dukkan-seo/v1/posts/40289/description -H 'Content-Type: application/json' -d '{\"description\":\"Shop the Blue Summer Dress. Free shipping over 30 JOD.\"}'"
+    }
+  }
+}
