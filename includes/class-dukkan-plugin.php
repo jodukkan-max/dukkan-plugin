@@ -283,11 +283,15 @@ class Dukkan_Plugin {
 	 * @access   private
 	 */
 	private function define_slim_seo_api_hooks() {
-		if ( ! class_exists( 'SlimSEO\Container' ) ) {
-			return;
-		}
-
-		$slim_seo_api = new Dukkan_Plugin_Slim_SEO_API( $this->get_plugin_name(), $this->get_version() );
+		// Defer to init so Slim SEO's Composer autoloader has loaded.
+		// Dukkan loads alphabetically before Slim SEO, so class_exists()
+		// would return false if checked in the constructor.
+		add_action( 'init', function () {
+			if ( ! class_exists( 'SlimSEO\Container' ) ) {
+				return;
+			}
+			new Dukkan_Plugin_Slim_SEO_API( $this->get_plugin_name(), $this->get_version() );
+		}, 10 );
 	}
 
 	/**
