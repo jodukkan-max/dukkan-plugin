@@ -1,54 +1,57 @@
 {
-  "base_url": "https://yoursite.com/wp-json/dukkan-seo/v1",
-  "auth": "none (public) — no API keys or passwords needed",
+  "service": "Slim SEO — Meta Title & Description API",
+  "base_url": "https://{site}/wp-json/dukkan-seo/v1",
+  "auth": "none — no API keys, no passwords, no tokens",
   "prerequisites": [
-    "Slim SEO plugin must be installed and active",
-    "Dukkan plugin must be v1.0.6 or later (the site admin updates this once)"
+    "Slim SEO plugin installed and active on the site",
+    "Dukkan plugin v1.0.7 or newer"
+  ],
+  "post_types": "Works on any post type: products, pages, posts, custom post types. Use the object ID.",
+
+  "endpoints": [
+    {
+      "name": "Set SEO Meta Title",
+      "method": "PUT",
+      "route": "/posts/{id}/title",
+      "content_type": "application/json",
+      "body": { "title": "Blue Summer Dress — Buy Online in Amman | Dukkan Fashion" },
+      "success": { "status": 200, "body": { "id": 42737, "title": "Blue Summer Dress — Buy Online in Amman | Dukkan Fashion" } },
+      "errors": [
+        { "status": 400, "when": "Body missing the 'title' field", "body": { "code": "missing_title", "message": "Request body must contain \"title\"." } },
+        { "status": 404, "when": "Post ID does not exist", "body": { "code": "post_not_found", "message": "Post not found." } }
+      ],
+      "notes": [
+        "Only the title field is modified — description, images, canonical, and noindex are untouched.",
+        "If no Slim SEO meta exists yet for this post, a new entry is created automatically.",
+        "Title is sanitized — HTML tags are stripped."
+      ]
+    },
+    {
+      "name": "Set SEO Meta Description",
+      "method": "PUT",
+      "route": "/posts/{id}/description",
+      "content_type": "application/json",
+      "body": { "description": "Shop the Blue Summer Dress. Free shipping over 30 JOD. Available in sizes S–XXL." },
+      "success": { "status": 200, "body": { "id": 42737, "description": "Shop the Blue Summer Dress. Free shipping over 30 JOD. Available in sizes S–XXL." } },
+      "errors": [
+        { "status": 400, "when": "Body missing the 'description' field", "body": { "code": "missing_description", "message": "Request body must contain \"description\"." } },
+        { "status": 404, "when": "Post ID does not exist", "body": { "code": "post_not_found", "message": "Post not found." } }
+      ],
+      "notes": [
+        "Only the description field is modified — title, images, canonical, and noindex are untouched.",
+        "If no Slim SEO meta exists yet for this post, a new entry is created automatically.",
+        "Description is sanitized — HTML tags are stripped, line breaks are preserved."
+      ]
+    }
   ],
 
-  "why_two_methods": [
-    "METHOD 1 (recommended): Use Dukkan's dedicated endpoint. One field per call, no auth, nothing gets overwritten.",
-    "METHOD 2 (fallback): Use WooCommerce's native meta_data. Requires sending ALL six fields every time to avoid data loss."
-  ],
-
-  "method_1_dukkan_endpoint": {
-    "description": "Preferred. Single-field PUTs — update only the title or only the description. No auth needed. Other SEO fields (images, canonical, noindex) are untouched.",
-    "auth": "none",
-    "endpoints": {
-      "set_title":       { "method": "PUT", "route": "/posts/{id}/title",       "body": { "title": "value" } },
-      "set_description": { "method": "PUT", "route": "/posts/{id}/description", "body": { "description": "value" } }
-    },
-    "examples": {
-      "title":       "curl -X PUT https://fashion.dukkanjo.com/wp-json/dukkan-seo/v1/posts/42737/title       -H 'Content-Type: application/json' -d '{\"title\":\"Blue Summer Dress — Buy Online\"}'",
-      "description": "curl -X PUT https://fashion.dukkanjo.com/wp-json/dukkan-seo/v1/posts/42737/description -H 'Content-Type: application/json' -d '{\"description\":\"Free shipping over 30 JOD.\"}'"
-    },
-    "notes": [
-      "Works on any post type — products, pages, posts.",
-      "POST not supported — use PUT only.",
-      "Returns 200 with { id, title } or { id, description }.",
-      "Returns 404 if the post ID doesn't exist.",
-      "Returns 400 if the request body is missing the required field."
+  "examples": {
+    "curl_set_title": "curl -X PUT https://fashion.dukkanjo.com/wp-json/dukkan-seo/v1/posts/42737/title -H 'Content-Type: application/json' -d '{\"title\":\"Blue Summer Dress — Buy Online in Amman\"}'",
+    "curl_set_description": "curl -X PUT https://fashion.dukkanjo.com/wp-json/dukkan-seo/v1/posts/42737/description -H 'Content-Type: application/json' -d '{\"description\":\"Free shipping over 30 JOD.\"}'",
+    "flow": [
+      "1. Create a product via WC REST API (POST /wp-json/wc/v3/products) → get back the product ID",
+      "2. Set the SEO title: PUT /wp-json/dukkan-seo/v1/posts/{product_id}/title",
+      "3. Set the SEO description: PUT /wp-json/dukkan-seo/v1/posts/{product_id}/description"
     ]
-  },
-
-  "method_2_wc_meta_data": {
-    "description": "Fallback. Uses WooCommerce's native REST API. Must include ALL six Slim SEO fields in every call. Sending only 'title' will erase description, images, canonical, and noindex.",
-    "auth": "WooCommerce consumer_key and consumer_secret (Basic Auth)",
-    "endpoint": { "method": "PUT", "route": "wc/v3/products/{id}" },
-    "body": {
-      "meta_data": [{
-        "key": "slim_seo",
-        "value": {
-          "title": "Your SEO Title",
-          "description": "Your SEO description goes here.",
-          "facebook_image": "",
-          "twitter_image": "",
-          "canonical": "",
-          "noindex": 0
-        }
-      }]
-    },
-    "example": "curl -u 'ck_xxx:cs_xxx' -X PUT https://fashion.dukkanjo.com/wp-json/wc/v3/products/42737 -H 'Content-Type: application/json' -d '{\"meta_data\":[{\"key\":\"slim_seo\",\"value\":{\"title\":\"...\",\"description\":\"...\",\"facebook_image\":\"\",\"twitter_image\":\"\",\"canonical\":\"\",\"noindex\":0}}]}'",
-    "warning": "If you omit any field from the value object, it will be set to empty. Always send all six fields."
   }
 }
