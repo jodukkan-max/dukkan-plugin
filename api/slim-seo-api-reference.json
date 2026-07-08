@@ -1,107 +1,54 @@
 {
   "base_url": "https://yoursite.com/wp-json/dukkan-seo/v1",
-  "auth": "none (public)",
-  "prerequisite": "Slim SEO plugin must be installed and active",
-
-  "endpoints": {
-    "update_post_seo_title":       "PUT /posts/{id}/title",
-    "update_post_seo_description": "PUT /posts/{id}/description"
-  },
-
-  "notes": [
-    "Works on any post type — posts, pages, products, and custom post types.",
-    "Slim SEO stores all SEO data in a single serialized post meta key: slim_seo.",
-    "Each endpoint changes only the targeted field; all other fields (images, canonical URL, noindex) are left untouched.",
-    "If no Slim SEO meta exists yet for a post, a new entry is created automatically.",
-    "The API class only loads when Slim SEO is active — no overhead otherwise."
+  "auth": "none (public) — no API keys or passwords needed",
+  "prerequisites": [
+    "Slim SEO plugin must be installed and active",
+    "Dukkan plugin must be v1.0.6 or later (the site admin updates this once)"
   ],
 
-  "update_seo_title": {
-    "method": "PUT",
-    "route": "/posts/{id}/title",
-    "content_type": "application/json",
-    "request_body": {
-      "title": "Blue Summer Dress — Buy Online in Amman"
+  "why_two_methods": [
+    "METHOD 1 (recommended): Use Dukkan's dedicated endpoint. One field per call, no auth, nothing gets overwritten.",
+    "METHOD 2 (fallback): Use WooCommerce's native meta_data. Requires sending ALL six fields every time to avoid data loss."
+  ],
+
+  "method_1_dukkan_endpoint": {
+    "description": "Preferred. Single-field PUTs — update only the title or only the description. No auth needed. Other SEO fields (images, canonical, noindex) are untouched.",
+    "auth": "none",
+    "endpoints": {
+      "set_title":       { "method": "PUT", "route": "/posts/{id}/title",       "body": { "title": "value" } },
+      "set_description": { "method": "PUT", "route": "/posts/{id}/description", "body": { "description": "value" } }
     },
-    "required_fields": ["title"],
-    "validation": "title is sanitized with sanitize_text_field() — HTML tags are stripped.",
-    "success_response": {
-      "status": 200,
-      "body": {
-        "id": 40289,
-        "title": "Blue Summer Dress — Buy Online in Amman"
-      }
+    "examples": {
+      "title":       "curl -X PUT https://fashion.dukkanjo.com/wp-json/dukkan-seo/v1/posts/42737/title       -H 'Content-Type: application/json' -d '{\"title\":\"Blue Summer Dress — Buy Online\"}'",
+      "description": "curl -X PUT https://fashion.dukkanjo.com/wp-json/dukkan-seo/v1/posts/42737/description -H 'Content-Type: application/json' -d '{\"description\":\"Free shipping over 30 JOD.\"}'"
     },
-    "error_responses": [
-      {
-        "status": 400,
-        "when": "Request body is missing the 'title' field.",
-        "body": { "code": "missing_title", "message": "Request body must contain \"title\".", "data": { "status": 400 } }
-      },
-      {
-        "status": 404,
-        "when": "The post ID does not exist.",
-        "body": { "code": "rest_invalid_param", "message": "Invalid parameter(s): id", "data": { "status": 404 } }
-      }
+    "notes": [
+      "Works on any post type — products, pages, posts.",
+      "POST not supported — use PUT only.",
+      "Returns 200 with { id, title } or { id, description }.",
+      "Returns 404 if the post ID doesn't exist.",
+      "Returns 400 if the request body is missing the required field."
     ]
   },
 
-  "update_seo_description": {
-    "method": "PUT",
-    "route": "/posts/{id}/description",
-    "content_type": "application/json",
-    "request_body": {
-      "description": "Shop the Blue Summer Dress. Free shipping over 30 JOD. Available in sizes S–XXL."
+  "method_2_wc_meta_data": {
+    "description": "Fallback. Uses WooCommerce's native REST API. Must include ALL six Slim SEO fields in every call. Sending only 'title' will erase description, images, canonical, and noindex.",
+    "auth": "WooCommerce consumer_key and consumer_secret (Basic Auth)",
+    "endpoint": { "method": "PUT", "route": "wc/v3/products/{id}" },
+    "body": {
+      "meta_data": [{
+        "key": "slim_seo",
+        "value": {
+          "title": "Your SEO Title",
+          "description": "Your SEO description goes here.",
+          "facebook_image": "",
+          "twitter_image": "",
+          "canonical": "",
+          "noindex": 0
+        }
+      }]
     },
-    "required_fields": ["description"],
-    "validation": "description is sanitized with sanitize_textarea_field() — HTML tags are stripped, newlines are preserved.",
-    "success_response": {
-      "status": 200,
-      "body": {
-        "id": 40289,
-        "description": "Shop the Blue Summer Dress. Free shipping over 30 JOD. Available in sizes S–XXL."
-      }
-    },
-    "error_responses": [
-      {
-        "status": 400,
-        "when": "Request body is missing the 'description' field.",
-        "body": { "code": "missing_description", "message": "Request body must contain \"description\".", "data": { "status": 400 } }
-      },
-      {
-        "status": 404,
-        "when": "The post ID does not exist.",
-        "body": { "code": "rest_invalid_param", "message": "Invalid parameter(s): id", "data": { "status": 404 } }
-      }
-    ]
-  },
-
-  "examples": {
-    "set_product_seo_title": {
-      "desc": "Set the SEO meta title for product ID 40289",
-      "method": "PUT",
-      "url": "/posts/40289/title",
-      "body": { "title": "Blue Summer Dress — Buy Online in Amman" }
-    },
-    "set_product_seo_description": {
-      "desc": "Set the SEO meta description for product ID 40289",
-      "method": "PUT",
-      "url": "/posts/40289/description",
-      "body": { "description": "Shop the Blue Summer Dress. Free shipping over 30 JOD. Available in sizes S–XXL." }
-    },
-    "set_page_seo_title": {
-      "desc": "Set the SEO meta title for page ID 15",
-      "method": "PUT",
-      "url": "/posts/15/title",
-      "body": { "title": "About Dukkan — Your Ecommerce Partner" }
-    },
-    "curl_title": {
-      "desc": "cURL example — set SEO title",
-      "command": "curl -X PUT https://yoursite.com/wp-json/dukkan-seo/v1/posts/40289/title -H 'Content-Type: application/json' -d '{\"title\":\"Blue Summer Dress — Buy Online in Amman\"}'"
-    },
-    "curl_description": {
-      "desc": "cURL example — set SEO description",
-      "command": "curl -X PUT https://yoursite.com/wp-json/dukkan-seo/v1/posts/40289/description -H 'Content-Type: application/json' -d '{\"description\":\"Shop the Blue Summer Dress. Free shipping over 30 JOD.\"}'"
-    }
+    "example": "curl -u 'ck_xxx:cs_xxx' -X PUT https://fashion.dukkanjo.com/wp-json/wc/v3/products/42737 -H 'Content-Type: application/json' -d '{\"meta_data\":[{\"key\":\"slim_seo\",\"value\":{\"title\":\"...\",\"description\":\"...\",\"facebook_image\":\"\",\"twitter_image\":\"\",\"canonical\":\"\",\"noindex\":0}}]}'",
+    "warning": "If you omit any field from the value object, it will be set to empty. Always send all six fields."
   }
 }
