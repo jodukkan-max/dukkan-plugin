@@ -84,6 +84,7 @@ class Dukkan_Plugin {
 		$this->define_order_status_api_hooks();
 		$this->define_dynamic_pricing_api_hooks();
 		$this->define_slim_seo_api_hooks();
+		$this->define_gtm4wp_api_hooks();
 		$this->define_admin_hooks();
 		$this->define_public_hooks();
 
@@ -153,6 +154,11 @@ class Dukkan_Plugin {
 		 * The class responsible for defining Slim SEO REST API endpoints.
 		 */
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'api/class-dukkan-plugin-slim-seo-api.php';
+
+		/**
+		 * The class responsible for defining GTM4WP REST API endpoints.
+		 */
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'api/class-dukkan-plugin-gtm4wp-api.php';
 
 		/**
 		 * The class responsible for defining all actions that occur in the admin area.
@@ -292,6 +298,22 @@ class Dukkan_Plugin {
 			}
 			new Dukkan_Plugin_Slim_SEO_API( $this->get_plugin_name(), $this->get_version() );
 		}, 10 );
+	}
+
+	/**
+	 * Register all of the hooks related to the GTM4WP API functionality.
+	 *
+	 * Only loads when GTM4WP is active on the site. GTM4WP is procedural,
+	 * so we guard with defined('GTM4WP_VERSION') instead of class_exists().
+	 *
+	 * @since    1.0.8
+	 * @access   private
+	 */
+	private function define_gtm4wp_api_hooks() {
+		if ( ! defined( 'GTM4WP_VERSION' ) ) {
+			return;
+		}
+		new Dukkan_Plugin_GTM4WP_API( $this->get_plugin_name(), $this->get_version() );
 	}
 
 	/**
