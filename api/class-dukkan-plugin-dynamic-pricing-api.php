@@ -59,20 +59,24 @@ class Dukkan_Plugin_Dynamic_Pricing_API {
 	// --- Product/category list methods ---
 	private static $LIST_METHODS = array( 'in_list', 'not_in_list' );
 
-	// --- Cart condition types and their internal field names ---
-	private static $CART_FIELDS = array(
-		'cart_subtotal' => 'decimal',
-		'cart_quantity' => 'decimal',
-		'cart_count'    => 'number',
-		'cart_weight'   => 'decimal',
-	);
+	// --- Cart condition type keys accepted by the API ---
+	private static $CONDITION_TYPES = array( 'cart_quantity', 'cart__coupons' );
 
-	// --- Numeric comparison operators for cart conditions ---
+	// --- Numeric comparison operators for cart_quantity conditions ---
 	private static $NUMERIC_METHODS = array(
 		'at_least',
 		'more_than',
 		'not_more_than',
 		'less_than',
+	);
+
+	// --- Method options for cart__coupons conditions ---
+	private static $COUPON_METHODS = array(
+		'at_least_one',
+		'all',
+		'only',
+		'none',
+		'none_at_all',
 	);
 
 	// -------------------------------------------------------------------------
@@ -585,12 +589,17 @@ class Dukkan_Plugin_Dynamic_Pricing_API {
 			} elseif ( 'product__category' === $t ) {
 				$cids    = array_map( 'intval', $c['product_categories'] ?? array() );
 				$cmethod = $c['method_option'] ?? 'in_list';
-			} elseif ( isset( self::$CART_FIELDS[ $t ] ) ) {
-				$field   = self::$CART_FIELDS[ $t ];
+			} elseif ( 'cart_quantity' === $t ) {
 				$conds[] = array(
 					'type'          => $t,
 					'method_option' => $c['method_option'] ?? '',
-					'value'         => isset( $c[ $field ] ) ? (float) $c[ $field ] : 0,
+					'value'         => isset( $c['decimal'] ) ? (float) $c['decimal'] : 0,
+				);
+			} elseif ( 'cart__coupons' === $t ) {
+				$conds[] = array(
+					'type'          => $t,
+					'method_option' => $c['method_option'] ?? '',
+					'coupons'       => $c['coupons'] ?? array(),
 				);
 			}
 		}
@@ -667,32 +676,61 @@ class Dukkan_Plugin_Dynamic_Pricing_API {
 	// =====================================================================
 
 	private function validate_cart_condition( $c, $i ) {
-		if ( ! isset( $c['type'] ) || ! isset( self::$CART_FIELDS[ $c['type'] ] ) ) {
+		$label = 'Condition #' . ( $i + 1 );
+
+		if ( ! isset( $c['type'] ) || ! in_array( $c['type'], self::$CONDITION_TYPES, true ) ) {
 			return new WP_Error( 'invalid_condition_type',
-				'Condition #' . ( $i + 1 ) . ': type must be one of: ' . implode( ', ', array_keys( self::$CART_FIELDS ) ),
+				$label . ': type must be one of: ' . implode( ', ', self::$CONDITION_TYPES ),
 				array( 'status' => 400 ) );
 		}
-		if ( ! isset( $c['method_option'] ) || ! in_array( $c['method_option'], self::$NUMERIC_METHODS, true ) ) {
-			return new WP_Error( 'invalid_condition_method',
-				'Condition #' . ( $i + 1 ) . ': method_option must be one of: ' . implode( ', ', self::$NUMERIC_METHODS ),
-				array( 'status' => 400 ) );
+
+		if ( 'cart_quantity' === $c['type'] ) {
+			if ( ! isset( $c['method_option'] ) || ! in_array( $c['method_option'], self::$NUMERIC_METHODS, true ) ) {
+				return new WP_Error( 'invalid_condition_method',
+					$label . ': method_option must be one of: ' . implode( ', ', self::$NUMERIC_METHODS ),
+					array( 'status' => 400 ) );
+			}
+			if ( ! isset( $c['value'] ) || ! is_numeric( $c['value'] ) || $c['value'] < 0 ) {
+				return new WP_Error( 'invalid_condition_value',
+					$label . ': value must be a positive number.',
+					array( 'status' => 400 ) );
+			}
 		}
-		if ( ! isset( $c['value'] ) || ! is_numeric( $c['value'] ) || $c['value'] < 0 ) {
-			return new WP_Error( 'invalid_condition_value',
-				'Condition #' . ( $i + 1 ) . ': value must be a positive number.',
-				array( 'status' => 400 ) );
+
+		if ( 'cart__coupons' === $c['type'] ) {
+			if ( ! isset( $c['method_option'] ) || ! in_array( $c['method_option'], self::$COUPON_METHODS, true ) ) {
+				return new WP_Error( 'invalid_condition_method',
+					$label . ': method_option must be one of: ' . implode( ', ', self::$COUPON_METHODS ),
+					array( 'status' => 400 ) );
+			}
+			// Coupons field is only required for operators that need a selection.
+			$needs_coupons = in_array( $c['method_option'], array( 'at_least_one', 'all', 'only', 'none' ), true );
+			if ( $needs_coupons && ( ! isset( $c['coupons'] ) || ! is_array( $c['coupons'] ) || empty( $c['coupons'] ) ) ) {
+				return new WP_Error( 'invalid_condition_coupons',
+					$label . ': coupons must be a non-empty array.',
+					array( 'status' => 400 ) );
+			}
 		}
+
 		return true;
 	}
 
 	private function build_cart_condition( $c ) {
-		$field = self::$CART_FIELDS[ $c['type'] ];
-		return array(
+		$cond = array(
 			'uid'           => 'rp_wcdpd_' . md5( uniqid( 'cond', true ) ),
 			'type'          => $c['type'],
 			'method_option' => $c['method_option'],
-			$field          => (string) $c['value'],
 		);
+
+		if ( 'cart_quantity' === $c['type'] ) {
+			$cond['decimal'] = (string) $c['value'];
+		}
+
+		if ( 'cart__coupons' === $c['type'] ) {
+			$cond['coupons'] = isset( $c['coupons'] ) ? array_map( 'strval', $c['coupons'] ) : array();
+		}
+
+		return $cond;
 	}
 
 	// =====================================================================
