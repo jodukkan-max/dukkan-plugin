@@ -245,9 +245,33 @@ class Dukkan_Plugin_Updater {
 			);
 		}
 
+		// Detect the correct source path inside the unzipped archive.
+		//
+		// Zip archives may be flat (files at root) or wrapped in a single
+		// versioned folder (e.g. dukkan-plugin-v1.0.9/). We handle both.
 		$source = $tmp_dir;
-		if ( $wp_filesystem->is_dir( $source . '/' . self::PLUGIN_SLUG ) ) {
-			$source .= '/' . self::PLUGIN_SLUG;
+
+		// Case 1: Flat zip — main plugin file is at the root.
+		if ( $wp_filesystem->exists( $source . '/dukkan-plugin.php' ) ) {
+			// Nothing to adjust — $source is already correct.
+		} else {
+			// Case 2: Look for a subdirectory that contains the plugin file.
+			$subdirs = glob( $source . '/*', GLOB_ONLYDIR );
+
+			if ( ! empty( $subdirs ) ) {
+				// Prefer the single subdirectory case (versioned-folder zip).
+				if ( 1 === count( $subdirs ) ) {
+					$source = reset( $subdirs );
+				} else {
+					// Multiple subdirs — find the one with dukkan-plugin.php.
+					foreach ( $subdirs as $dir ) {
+						if ( $wp_filesystem->exists( $dir . '/dukkan-plugin.php' ) ) {
+							$source = $dir;
+							break;
+						}
+					}
+				}
+			}
 		}
 
 		copy_dir( $source, $plugin_dir );
