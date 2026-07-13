@@ -1,0 +1,177 @@
+{
+  "base_url": "https://fashion.dukkanjo.com/wp-json/dukkan-dynamic-pricing/v1",
+  "auth": "none (public)",
+
+  "endpoints": {
+    "list_rules":           "GET    /rules?page=1&per_page=10&method=simple|bulk&search=keyword",
+    "get_rule":             "GET    /rules/{uid}",
+    "create_rule":          "POST   /rules",
+    "update_rule":          "PUT    /rules/{uid}",
+    "delete_rule":          "DELETE /rules/{uid}",
+    "search_products":      "GET    /products/search?search=shirt&per_page=10"
+  },
+
+  "rule_methods": [
+    { "key": "simple", "meaning": "Simple adjustment — one fixed pricing method for all matching products" },
+    { "key": "bulk",   "meaning": "Bulk pricing — different prices based on quantity ranges" }
+  ],
+
+  "pricing_methods_simple": [
+    { "key": "discount__amount",     "meaning": "Fixed discount",    "example": "$10 off each item" },
+    { "key": "discount__percentage", "meaning": "Percentage discount","example": "15% off" },
+    { "key": "fee__amount",          "meaning": "Fixed fee",         "example": "$5 added per item" },
+    { "key": "fee__percentage",      "meaning": "Percentage fee",    "example": "10% added" },
+    { "key": "fixed__price",         "meaning": "Fixed price",       "example": "Set price to $49.99" }
+  ],
+
+  "pricing_methods_bulk": [
+    { "key": "discount__amount",       "meaning": "Fixed discount per unit in range" },
+    { "key": "discount__percentage",   "meaning": "Percentage discount in range" },
+    { "key": "fixed__price",           "meaning": "Fixed price per unit in range" },
+    { "key": "fixed__price_per_range", "meaning": "Total price for the entire range, divided among units" }
+  ],
+
+  "quantities_based_on": [
+    { "key": "individual__product",        "meaning": "Individual product (variations grouped to parent)" },
+    { "key": "individual__variation",      "meaning": "Individual variation" },
+    { "key": "individual__configuration",  "meaning": "Individual cart line item" },
+    { "key": "cumulative__all",            "meaning": "All matched products added up together" },
+    { "key": "cumulative__categories",     "meaning": "Quantities added up per category" }
+  ],
+
+  "product_method": [
+    { "key": "in_list",     "meaning": "Rule applies to items in the list" },
+    { "key": "not_in_list", "meaning": "Rule applies to items NOT in the list" }
+  ],
+
+  "product_category_method": [
+    { "key": "in_list",     "meaning": "Rule applies to categories in the list" },
+    { "key": "not_in_list", "meaning": "Rule applies to categories NOT in the list" }
+  ],
+
+  "cart_conditions": {
+    "types": [
+      {
+        "type": "cart_quantity",
+        "meaning": "Cart total quantity",
+        "field": "value",
+        "operators": [
+          { "key": "at_least",      "meaning": ">= (greater than or equal)" },
+          { "key": "more_than",     "meaning": "> (greater than)" },
+          { "key": "not_more_than", "meaning": "<= (less than or equal)" },
+          { "key": "less_than",     "meaning": "< (less than)" }
+        ],
+        "example": { "type": "cart_quantity", "method_option": "at_least", "value": 5 }
+      },
+      {
+        "type": "cart__coupons",
+        "meaning": "Coupons applied to cart",
+        "field": "coupons",
+        "note": "Coupons are referenced by WooCommerce coupon post IDs (numeric strings)",
+        "operators": [
+          { "key": "at_least_one",  "meaning": "At least one of selected coupons is applied", "needs_coupons": true },
+          { "key": "all",           "meaning": "All selected coupons are applied",             "needs_coupons": true },
+          { "key": "only",          "meaning": "Only the selected coupons are applied (exact match)", "needs_coupons": true },
+          { "key": "none",          "meaning": "None of the selected coupons are applied",     "needs_coupons": true },
+          { "key": "none_at_all",   "meaning": "No coupons applied at all",                    "needs_coupons": false }
+        ],
+        "example_needs_coupons": { "type": "cart__coupons", "method_option": "at_least_one", "coupons": ["123", "456"] },
+        "example_no_coupons":    { "type": "cart__coupons", "method_option": "none_at_all" }
+      }
+    ]
+  },
+
+  "examples": {
+    "simple_by_product": {
+      "desc": "20% discount on products 40289 and 40372",
+      "method": "POST /rules",
+      "body": {
+        "note": "Summer sale",
+        "pricing_method": "discount__percentage",
+        "pricing_value": 20,
+        "product_uids": [40289, 40372],
+        "product_method": "in_list"
+      }
+    },
+    "simple_with_quantity_condition": {
+      "desc": "10% off products 40289, 40301, 40302 but only when cart has >=5 items",
+      "method": "POST /rules",
+      "body": {
+        "note": "Bulk order discount",
+        "pricing_method": "discount__percentage",
+        "pricing_value": 10,
+        "product_uids": [40289, 40301, 40302],
+        "product_method": "in_list",
+        "conditions": [
+          { "type": "cart_quantity", "method_option": "at_least", "value": 5 }
+        ]
+      }
+    },
+    "simple_with_coupon_condition": {
+      "desc": "10% off products when coupon SUMMER10 or WELCOME5 is applied",
+      "method": "POST /rules",
+      "body": {
+        "note": "Coupon-triggered discount",
+        "pricing_method": "discount__percentage",
+        "pricing_value": 10,
+        "product_uids": [40289, 40301, 40302],
+        "product_method": "in_list",
+        "conditions": [
+          { "type": "cart__coupons", "method_option": "at_least_one", "coupons": ["123", "456"] }
+        ]
+      }
+    },
+    "simple_by_category": {
+      "desc": "$5 discount on all SKIRT category products",
+      "method": "POST /rules",
+      "body": {
+        "note": "Skirt discount",
+        "pricing_method": "discount__amount",
+        "pricing_value": 5,
+        "product_category_uids": [1811],
+        "product_category_method": "in_list"
+      }
+    },
+    "bulk_basic": {
+      "desc": "Bulk pricing: 1-5 items = regular, 6-10 = 10% off, 11+ = $15 each",
+      "method": "POST /rules",
+      "body": {
+        "method": "bulk",
+        "note": "Wholesale bulk pricing",
+        "quantities_based_on": "individual__product",
+        "product_uids": [40289],
+        "product_method": "in_list",
+        "quantity_ranges": [
+          { "from": 1,  "to": 5,  "pricing_method": "discount__amount",     "pricing_value": 0 },
+          { "from": 6,  "to": 10, "pricing_method": "discount__percentage", "pricing_value": 10 },
+          { "from": 11, "pricing_method": "fixed__price", "pricing_value": 15 }
+        ]
+      }
+    },
+    "bulk_by_category": {
+      "desc": "Bulk pricing on SKIRT category: 3+ items = 15% off",
+      "method": "POST /rules",
+      "body": {
+        "method": "bulk",
+        "note": "Skirt bulk discount",
+        "quantities_based_on": "cumulative__all",
+        "product_category_uids": [1811],
+        "product_category_method": "in_list",
+        "quantity_ranges": [
+          { "from": 1, "to": 2, "pricing_method": "discount__amount", "pricing_value": 0 },
+          { "from": 3, "pricing_method": "discount__percentage", "pricing_value": 15 }
+        ]
+      }
+    },
+    "update": {
+      "desc": "Update a simple rule pricing value",
+      "method": "PUT /rules/rp_wcdpd_44f5e892",
+      "note": "Partial update. Only send fields you want to change",
+      "body": { "pricing_value": 40 }
+    },
+    "delete": {
+      "desc": "Delete a rule",
+      "method": "DELETE /rules/rp_wcdpd_abc123"
+    }
+  }
+}
