@@ -60,7 +60,7 @@ class Dukkan_Plugin_Dynamic_Pricing_API {
 	private static $LIST_METHODS = array( 'in_list', 'not_in_list' );
 
 	// --- Condition type keys accepted by the API ---
-	private static $CONDITION_TYPES = array( 'cart_quantity', 'cart__coupons', 'product__attributes', 'product__tags' );
+	private static $CONDITION_TYPES = array( 'cart__quantity', 'cart__coupons', 'product__attributes', 'product__tags' );
 
 	// --- Method options for list_advanced conditions (attributes, tags) ---
 	private static $LIST_ADVANCED_METHODS = array(
@@ -76,7 +76,7 @@ class Dukkan_Plugin_Dynamic_Pricing_API {
 		'product__tags'       => 'product_tags',
 	);
 
-	// --- Numeric comparison operators for cart_quantity conditions ---
+	// --- Numeric comparison operators for cart__quantity conditions ---
 	private static $NUMERIC_METHODS = array(
 		'at_least',
 		'more_than',
@@ -86,6 +86,7 @@ class Dukkan_Plugin_Dynamic_Pricing_API {
 
 	// --- Method options for cart__coupons conditions ---
 	private static $COUPON_METHODS = array(
+		'at_least_one_any',
 		'at_least_one',
 		'all',
 		'only',
@@ -603,7 +604,7 @@ class Dukkan_Plugin_Dynamic_Pricing_API {
 			} elseif ( 'product__category' === $t ) {
 				$cids    = array_map( 'intval', $c['product_categories'] ?? array() );
 				$cmethod = $c['method_option'] ?? 'in_list';
-			} elseif ( 'cart_quantity' === $t ) {
+			} elseif ( 'cart__quantity' === $t ) {
 				$conds[] = array(
 					'type'          => $t,
 					'method_option' => $c['method_option'] ?? '',
@@ -710,7 +711,7 @@ class Dukkan_Plugin_Dynamic_Pricing_API {
 				array( 'status' => 400 ) );
 		}
 
-		if ( 'cart_quantity' === $c['type'] ) {
+		if ( 'cart__quantity' === $c['type'] ) {
 			if ( ! isset( $c['method_option'] ) || ! in_array( $c['method_option'], self::$NUMERIC_METHODS, true ) ) {
 				return new WP_Error( 'invalid_condition_method',
 					$label . ': method_option must be one of: ' . implode( ', ', self::$NUMERIC_METHODS ),
@@ -774,7 +775,7 @@ class Dukkan_Plugin_Dynamic_Pricing_API {
 			'method_option' => $c['method_option'],
 		);
 
-		if ( 'cart_quantity' === $c['type'] ) {
+		if ( 'cart__quantity' === $c['type'] ) {
 			$cond['decimal'] = (string) $c['value'];
 		}
 

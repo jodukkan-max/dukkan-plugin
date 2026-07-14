@@ -52,7 +52,7 @@
   "cart_conditions": {
     "types": [
       {
-        "type": "cart_quantity",
+        "type": "cart__quantity",
         "meaning": "Cart total quantity",
         "field": "value",
         "operators": [
@@ -61,7 +61,7 @@
           { "key": "not_more_than", "meaning": "<= (less than or equal)" },
           { "key": "less_than",     "meaning": "< (less than)" }
         ],
-        "example": { "type": "cart_quantity", "method_option": "at_least", "value": 5 }
+        "example": { "type": "cart__quantity", "method_option": "at_least", "value": 5 }
       },
       {
         "type": "cart__coupons",
@@ -69,6 +69,7 @@
         "field": "coupons",
         "note": "Coupons are referenced by WooCommerce coupon post IDs (numeric strings)",
         "operators": [
+          { "key": "at_least_one_any", "meaning": "At least one coupon of any kind is applied", "needs_coupons": false },
           { "key": "at_least_one",  "meaning": "At least one of selected coupons is applied", "needs_coupons": true },
           { "key": "all",           "meaning": "All selected coupons are applied",             "needs_coupons": true },
           { "key": "only",          "meaning": "Only the selected coupons are applied (exact match)", "needs_coupons": true },
@@ -76,7 +77,8 @@
           { "key": "none_at_all",   "meaning": "No coupons applied at all",                    "needs_coupons": false }
         ],
         "example_needs_coupons": { "type": "cart__coupons", "method_option": "at_least_one", "coupons": ["123", "456"] },
-        "example_no_coupons":    { "type": "cart__coupons", "method_option": "none_at_all" }
+        "example_no_coupons":    { "type": "cart__coupons", "method_option": "none_at_all" },
+        "example_any_coupon":    { "type": "cart__coupons", "method_option": "at_least_one_any", "note": "No coupons array needed" }
       },
       {
         "type": "product__attributes",
@@ -129,7 +131,7 @@
         "product_uids": [40289, 40301, 40302],
         "product_method": "in_list",
         "conditions": [
-          { "type": "cart_quantity", "method_option": "at_least", "value": 5 }
+          { "type": "cart__quantity", "method_option": "at_least", "value": 5 }
         ]
       }
     },

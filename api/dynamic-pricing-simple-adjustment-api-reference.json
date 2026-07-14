@@ -48,7 +48,7 @@
 
   "cart_conditions": [
     {
-      "type": "cart_quantity",
+      "type": "cart__quantity",
       "description": "Trigger based on total cart quantity",
       "operators": [
         { "key": "at_least",      "meaning": ">= (greater than or equal)" },
@@ -61,6 +61,7 @@
       "type": "cart__coupons",
       "description": "Trigger based on coupons applied to cart",
       "operators": [
+        { "key": "at_least_one_any", "meaning": "At least one coupon of any kind is applied (no 'coupons' field needed)" },
         { "key": "at_least_one", "meaning": "At least one of the specified coupons is applied" },
         { "key": "all",          "meaning": "All of the specified coupons are applied" },
         { "key": "only",         "meaning": "Only the specified coupons are applied (exact match)" },
@@ -133,7 +134,7 @@
       "product_category_method": "in_list",
       "conditions": [
         {
-          "type": "cart_quantity",
+          "type": "cart__quantity",
           "method_option": "at_least",
           "value": 5
         }
@@ -168,7 +169,7 @@
         "note": "Coats promotion"
       }
     },
-    "create_with_cart_quantity_condition": {
+    "create_with_cart__quantity_condition": {
       "description": "10% off products, but only when cart has 5 or more items",
       "request": "POST /rules",
       "body": {
@@ -177,7 +178,7 @@
         "product_uids": [40289, 40301, 40302],
         "product_method": "in_list",
         "conditions": [
-          { "type": "cart_quantity", "method_option": "at_least", "value": 5 }
+          { "type": "cart__quantity", "method_option": "at_least", "value": 5 }
         ]
       }
     },
