@@ -105,6 +105,17 @@
           { "key": "none",         "meaning": "Product has none of the selected tags" }
         ],
         "example": { "type": "product__tags", "method_option": "none", "product_tags": [15, 22] }
+      },
+      {
+        "type": "product__variation",
+        "meaning": "Specific product variations (e.g. Size: L, Color: Blue)",
+        "field": "product_variations",
+        "note": "Referenced by variation post IDs (integers). Targets specific children of variable products.",
+        "operators": [
+          { "key": "in_list",     "meaning": "Product is one of the selected variations" },
+          { "key": "not_in_list", "meaning": "Product is NOT one of the selected variations" }
+        ],
+        "example": { "type": "product__variation", "method_option": "in_list", "product_variations": [42736, 42738] }
       }
     ]
   },

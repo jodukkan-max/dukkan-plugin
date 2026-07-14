@@ -60,7 +60,7 @@ class Dukkan_Plugin_Dynamic_Pricing_API {
 	private static $LIST_METHODS = array( 'in_list', 'not_in_list' );
 
 	// --- Condition type keys accepted by the API ---
-	private static $CONDITION_TYPES = array( 'cart__quantity', 'cart__coupons', 'product__attributes', 'product__tags' );
+	private static $CONDITION_TYPES = array( 'cart__quantity', 'cart__coupons', 'product__attributes', 'product__tags', 'product__variation' );
 
 	// --- Method options for list_advanced conditions (attributes, tags) ---
 	private static $LIST_ADVANCED_METHODS = array(
@@ -74,6 +74,7 @@ class Dukkan_Plugin_Dynamic_Pricing_API {
 	private static $CONDITION_FIELD_MAP = array(
 		'product__attributes' => 'product_attributes',
 		'product__tags'       => 'product_tags',
+		'product__variation'  => 'product_variations',
 	);
 
 	// --- Numeric comparison operators for cart__quantity conditions ---
@@ -218,11 +219,22 @@ class Dukkan_Plugin_Dynamic_Pricing_API {
 		}
 
 		// --- Common validation ---
-		$has_products = is_array( $product_uids ) && ! empty( $product_uids );
-		$has_cats     = is_array( $cat_uids ) && ! empty( $cat_uids );
-		if ( ! $has_products && ! $has_cats ) {
+		$has_products   = is_array( $product_uids ) && ! empty( $product_uids );
+		$has_cats       = is_array( $cat_uids ) && ! empty( $cat_uids );
+		$has_attributes = false;
+		$has_tags       = false;
+		$has_variations = false;
+		if ( is_array( $conditions ) ) {
+			foreach ( $conditions as $c ) {
+				$t = $c['type'] ?? '';
+				if ( 'product__attributes' === $t ) $has_attributes = true;
+				if ( 'product__tags' === $t )       $has_tags       = true;
+				if ( 'product__variation' === $t )  $has_variations  = true;
+			}
+		}
+		if ( ! $has_products && ! $has_cats && ! $has_attributes && ! $has_tags && ! $has_variations ) {
 			return new WP_Error( 'missing_filter',
-				'product_uids or product_category_uids is required.',
+				'At least one product filter is required: product_uids, product_category_uids, product__attributes, product__tags, or product__variation.',
 				array( 'status' => 400 ) );
 		}
 		if ( ! in_array( $product_method, self::$LIST_METHODS, true ) ) {
@@ -628,6 +640,12 @@ class Dukkan_Plugin_Dynamic_Pricing_API {
 					'method_option' => $c['method_option'] ?? '',
 					'product_tags'  => isset( $c['product_tags'] ) ? array_map( 'intval', $c['product_tags'] ) : array(),
 				);
+			} elseif ( 'product__variation' === $t ) {
+				$conds[] = array(
+					'type'                => $t,
+					'method_option'       => $c['method_option'] ?? '',
+					'product_variations'  => isset( $c['product_variations'] ) ? array_map( 'intval', $c['product_variations'] ) : array(),
+				);
 			}
 		}
 
@@ -765,6 +783,19 @@ class Dukkan_Plugin_Dynamic_Pricing_API {
 			}
 		}
 
+		if ( 'product__variation' === $c['type'] ) {
+			if ( ! isset( $c['method_option'] ) || ! in_array( $c['method_option'], self::$LIST_METHODS, true ) ) {
+				return new WP_Error( 'invalid_condition_method',
+					$label . ': method_option must be one of: ' . implode( ', ', self::$LIST_METHODS ),
+					array( 'status' => 400 ) );
+			}
+			if ( ! isset( $c['product_variations'] ) || ! is_array( $c['product_variations'] ) || empty( $c['product_variations'] ) ) {
+				return new WP_Error( 'invalid_condition_variations',
+					$label . ': product_variations must be a non-empty array of variation IDs.',
+					array( 'status' => 400 ) );
+			}
+		}
+
 		return true;
 	}
 
@@ -789,6 +820,10 @@ class Dukkan_Plugin_Dynamic_Pricing_API {
 
 		if ( 'product__tags' === $c['type'] ) {
 			$cond['product_tags'] = array_map( 'strval', $c['product_tags'] );
+		}
+
+		if ( 'product__variation' === $c['type'] ) {
+			$cond['product_variations'] = array_map( 'strval', $c['product_variations'] );
 		}
 
 		return $cond;
