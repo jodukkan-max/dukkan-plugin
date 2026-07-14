@@ -1,0 +1,278 @@
+{
+  "api_name": "Dynamic Pricing — Simple Adjustment",
+  "base_url": "https://<YOUR_SITE>/wp-json/dukkan-dynamic-pricing/v1",
+  "auth": "none (public)",
+  "last_updated": "2026-07-13",
+
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/rules?method=simple",
+      "description": "List all simple adjustment rules",
+      "notes": "Optional query params: ?page=1&per_page=10&search=keyword"
+    },
+    {
+      "method": "GET",
+      "path": "/rules/{uid}",
+      "description": "Get a single rule by its unique ID"
+    },
+    {
+      "method": "POST",
+      "path": "/rules",
+      "description": "Create a new simple adjustment rule"
+    },
+    {
+      "method": "PUT",
+      "path": "/rules/{uid}",
+      "description": "Update an existing rule (partial update — send only fields you want to change)"
+    },
+    {
+      "method": "DELETE",
+      "path": "/rules/{uid}",
+      "description": "Delete a rule permanently"
+    }
+  ],
+
+  "pricing_methods": [
+    { "key": "discount__amount",     "description": "Fixed discount off each item",            "example": "5 = $5 off" },
+    { "key": "discount__percentage", "description": "Percentage discount off each item",       "example": "15 = 15% off" },
+    { "key": "fee__amount",          "description": "Fixed fee added to each item",            "example": "5 = $5 added" },
+    { "key": "fee__percentage",      "description": "Percentage fee added to each item",       "example": "10 = 10% added" },
+    { "key": "fixed__price",         "description": "Override price to a fixed amount",        "example": "49.99 = $49.99" }
+  ],
+
+  "product_methods": [
+    { "key": "in_list",     "description": "Rule applies to products/categories in the list" },
+    { "key": "not_in_list", "description": "Rule applies to products/categories NOT in the list" }
+  ],
+
+  "cart_conditions": [
+    {
+      "type": "cart_quantity",
+      "description": "Trigger based on total cart quantity",
+      "operators": [
+        { "key": "at_least",      "meaning": ">= (greater than or equal)" },
+        { "key": "more_than",     "meaning": ">  (greater than)" },
+        { "key": "not_more_than", "meaning": "<= (less than or equal)" },
+        { "key": "less_than",     "meaning": "<  (less than)" }
+      ]
+    },
+    {
+      "type": "cart__coupons",
+      "description": "Trigger based on coupons applied to cart",
+      "operators": [
+        { "key": "at_least_one", "meaning": "At least one of the specified coupons is applied" },
+        { "key": "all",          "meaning": "All of the specified coupons are applied" },
+        { "key": "only",         "meaning": "Only the specified coupons are applied (exact match)" },
+        { "key": "none",         "meaning": "None of the specified coupons are applied"},
+        { "key": "none_at_all",  "meaning": "No coupons applied at all (omit 'coupons' field)" }
+      ],
+      "note": "Coupons are referenced by WooCommerce coupon post IDs (numeric strings)"
+    },
+    {
+      "type": "product__attributes",
+      "description": "Trigger based on product attribute terms (e.g. Color, Size)",
+      "operators": [
+        { "key": "at_least_one", "meaning": "Product has at least one of the selected attribute terms" },
+        { "key": "all",          "meaning": "Product has all of the selected attribute terms" },
+        { "key": "only",         "meaning": "Product has only the selected attribute terms (exact match)" },
+        { "key": "none",         "meaning": "Product has none of the selected attribute terms" }
+      ],
+      "field": "product_attributes",
+      "note": "Referenced by attribute term IDs (integers). Supports term hierarchy — child terms are auto-included."
+    },
+    {
+      "type": "product__tags",
+      "description": "Trigger based on product tags",
+      "operators": [
+        { "key": "at_least_one", "meaning": "Product has at least one of the selected tags" },
+        { "key": "all",          "meaning": "Product has all of the selected tags" },
+        { "key": "only",         "meaning": "Product has only the selected tags (exact match)" },
+        { "key": "none",         "meaning": "Product has none of the selected tags" }
+      ],
+      "field": "product_tags",
+      "note": "Referenced by product tag term IDs (integers). No hierarchy support."
+    }
+  ],
+
+  "request_body_schema": {
+    "POST": {
+      "required": ["pricing_method", "pricing_value"],
+      "at_least_one_of": ["product_uids", "product_category_uids"],
+      "fields": {
+        "pricing_method":          { "type": "string",  "required": true,  "values": "see pricing_methods above" },
+        "pricing_value":           { "type": "number",  "required": true,  "min": 0 },
+        "product_uids":            { "type": "int[]",   "required": false, "description": "Product IDs" },
+        "product_method":          { "type": "string",  "required": false, "default": "in_list", "values": ["in_list", "not_in_list"] },
+        "product_category_uids":   { "type": "int[]",   "required": false, "description": "Category IDs" },
+        "product_category_method": { "type": "string",  "required": false, "default": "in_list", "values": ["in_list", "not_in_list"] },
+        "note":                    { "type": "string",  "required": false, "description": "Admin/internal note" },
+        "public_note":             { "type": "string",  "required": false, "description": "Customer-facing note" },
+        "conditions":              { "type": "array",   "required": false, "description": "Cart-level conditions" }
+      }
+    },
+    "PUT": {
+      "description": "Partial update. Send only the fields you want to change.",
+      "same_fields_as_POST": true,
+      "excludes": ["method"],
+      "note": "Product and category conditions are fully replaced when updated."
+    }
+  },
+
+  "response_format": {
+    "single_rule": {
+      "uid": "rp_wcdpd_a1b2c3d4",
+      "method": "simple",
+      "note": "Admin note text",
+      "public_note": "Customer note text",
+      "pricing_method": "discount__percentage",
+      "pricing_value": 15,
+      "product_uids": [40289, 40301],
+      "product_method": "in_list",
+      "product_category_uids": [1811],
+      "product_category_method": "in_list",
+      "conditions": [
+        {
+          "type": "cart_quantity",
+          "method_option": "at_least",
+          "value": 5
+        }
+      ]
+    },
+    "list_response_headers": {
+      "X-WP-Total": "Total number of rules",
+      "X-WP-TotalPages": "Total number of pages"
+    }
+  },
+
+  "examples": {
+    "create_simple_by_products": {
+      "description": "20% off specific products",
+      "request": "POST /rules",
+      "body": {
+        "pricing_method": "discount__percentage",
+        "pricing_value": 20,
+        "product_uids": [40289, 40372],
+        "product_method": "in_list",
+        "note": "Summer sale"
+      }
+    },
+    "create_simple_by_category": {
+      "description": "15% off all products in the Coats category (category ID 1811)",
+      "request": "POST /rules",
+      "body": {
+        "pricing_method": "discount__percentage",
+        "pricing_value": 15,
+        "product_category_uids": [1811],
+        "product_category_method": "in_list",
+        "note": "Coats promotion"
+      }
+    },
+    "create_with_cart_quantity_condition": {
+      "description": "10% off products, but only when cart has 5 or more items",
+      "request": "POST /rules",
+      "body": {
+        "pricing_method": "discount__percentage",
+        "pricing_value": 10,
+        "product_uids": [40289, 40301, 40302],
+        "product_method": "in_list",
+        "conditions": [
+          { "type": "cart_quantity", "method_option": "at_least", "value": 5 }
+        ]
+      }
+    },
+    "create_with_coupon_condition": {
+      "description": "10% off when coupon SUMMER10 or WELCOME5 is applied (coupon IDs: 123, 456)",
+      "request": "POST /rules",
+      "body": {
+        "pricing_method": "discount__percentage",
+        "pricing_value": 10,
+        "product_uids": [40289, 40301, 40302],
+        "product_method": "in_list",
+        "conditions": [
+          { "type": "cart__coupons", "method_option": "at_least_one", "coupons": ["123", "456"] }
+        ]
+      }
+    },
+    "create_no_coupons_applied": {
+      "description": "20% off, but only when NO coupon is applied at all",
+      "request": "POST /rules",
+      "body": {
+        "pricing_method": "discount__percentage",
+        "pricing_value": 20,
+        "product_uids": [40289],
+        "product_method": "in_list",
+        "conditions": [
+          { "type": "cart__coupons", "method_option": "none_at_all" }
+        ]
+      }
+    },
+    "create_fixed_price": {
+      "description": "Set fixed price of $49.99 on specific products",
+      "request": "POST /rules",
+      "body": {
+        "pricing_method": "fixed__price",
+        "pricing_value": 49.99,
+        "product_uids": [40289],
+        "product_method": "in_list"
+      }
+    },
+    "create_with_attribute_condition": {
+      "description": "25% off products that have attribute term IDs 98 or 142 (e.g. Red or Blue)",
+      "request": "POST /rules",
+      "body": {
+        "pricing_method": "discount__percentage",
+        "pricing_value": 25,
+        "product_uids": [40289],
+        "product_method": "in_list",
+        "conditions": [
+          { "type": "product__attributes", "method_option": "at_least_one", "product_attributes": [98, 142] }
+        ]
+      }
+    },
+    "create_with_tag_condition": {
+      "description": "15% off products that do NOT have tags 15 or 22",
+      "request": "POST /rules",
+      "body": {
+        "pricing_method": "discount__percentage",
+        "pricing_value": 15,
+        "product_category_uids": [1811],
+        "product_category_method": "in_list",
+        "conditions": [
+          { "type": "product__tags", "method_option": "none", "product_tags": [15, 22] }
+        ]
+      }
+    },
+    "update_pricing_value": {
+      "description": "Change discount from 15% to 25%",
+      "request": "PUT /rules/rp_wcdpd_a1b2c3d4",
+      "body": {
+        "pricing_value": 25
+      }
+    },
+    "update_products_and_note": {
+      "description": "Change targeted products and internal note",
+      "request": "PUT /rules/rp_wcdpd_a1b2c3d4",
+      "body": {
+        "product_uids": [40289, 40372],
+        "note": "Updated sale pricing"
+      }
+    },
+    "delete_rule": {
+      "description": "Remove a rule permanently",
+      "request": "DELETE /rules/rp_wcdpd_a1b2c3d4"
+    }
+  },
+
+  "error_responses": {
+    "rule_not_found":   { "status": 404, "code": "rule_not_found",            "message": "Rule not found." },
+    "invalid_method":   { "status": 400, "code": "invalid_method",            "message": "method must be one of: simple, bulk" },
+    "invalid_pricing":  { "status": 400, "code": "invalid_pricing_method",    "message": "pricing_method must be one of: discount__amount, ..." },
+    "invalid_value":    { "status": 400, "code": "invalid_pricing_value",     "message": "pricing_value must be >= 0." },
+    "missing_filter":   { "status": 400, "code": "missing_filter",            "message": "product_uids or product_category_uids is required." },
+    "invalid_product":  { "status": 400, "code": "invalid_product",           "message": "Product ID {id} does not exist." },
+    "invalid_category": { "status": 400, "code": "invalid_category",          "message": "Category ID {id} does not exist." },
+    "invalid_attributes": { "status": 400, "code": "invalid_condition_attributes", "message": "product_attributes must be a non-empty array of attribute term IDs." },
+    "invalid_tags":     { "status": 400, "code": "invalid_condition_tags",     "message": "product_tags must be a non-empty array of product tag term IDs." }
+  }
+}

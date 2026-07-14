@@ -1,6 +1,6 @@
 {
-  "version": "1.0.14",
-  "package": "https://github.com/jodukkan-max/dukkan-plugin/releases/download/v1.0.14/dukkan-plugin.zip",
+  "version": "1.0.15",
+  "package": "https://github.com/jodukkan-max/dukkan-plugin/releases/download/v1.0.15/dukkan-plugin.zip",
   "requires": "5.0",
   "tested": "6.6"
 }
