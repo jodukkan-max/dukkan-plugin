@@ -2,7 +2,7 @@
   "api_name": "Dynamic Pricing — Simple Adjustment",
   "base_url": "https://<YOUR_SITE>/wp-json/dukkan-dynamic-pricing/v1",
   "auth": "none (public)",
-  "last_updated": "2026-07-13",
+  "last_updated": "2026-07-14",
 
   "endpoints": [
     {
@@ -46,7 +46,7 @@
     { "key": "not_in_list", "description": "Rule applies to products/categories NOT in the list" }
   ],
 
-  "cart_conditions": [
+  "conditions": [
     {
       "type": "cart__quantity",
       "description": "Trigger based on total cart quantity",
@@ -99,7 +99,7 @@
   "request_body_schema": {
     "POST": {
       "required": ["pricing_method", "pricing_value"],
-      "at_least_one_of": ["product_uids", "product_category_uids"],
+      "at_least_one_of": ["product_uids", "product_category_uids", "product__attributes", "product__tags"],
       "fields": {
         "pricing_method":          { "type": "string",  "required": true,  "values": "see pricing_methods above" },
         "pricing_value":           { "type": "number",  "required": true,  "min": 0 },
@@ -109,7 +109,7 @@
         "product_category_method": { "type": "string",  "required": false, "default": "in_list", "values": ["in_list", "not_in_list"] },
         "note":                    { "type": "string",  "required": false, "description": "Admin/internal note" },
         "public_note":             { "type": "string",  "required": false, "description": "Customer-facing note" },
-        "conditions":              { "type": "array",   "required": false, "description": "Cart-level conditions" }
+        "conditions":              { "type": "array",   "required": false, "description": "Additional conditions (cart, attributes, tags, coupons)" }
       }
     },
     "PUT": {
@@ -127,16 +127,26 @@
       "note": "Admin note text",
       "public_note": "Customer note text",
       "pricing_method": "discount__percentage",
-      "pricing_value": 15,
-      "product_uids": [40289, 40301],
+      "pricing_value": 25,
+      "product_uids": [42735],
       "product_method": "in_list",
       "product_category_uids": [1811],
       "product_category_method": "in_list",
       "conditions": [
         {
           "type": "cart__quantity",
-          "method_option": "at_least",
-          "value": 5
+          "method_option": "more_than",
+          "value": 30
+        },
+        {
+          "type": "product__attributes",
+          "method_option": "at_least_one",
+          "product_attributes": [1744]
+        },
+        {
+          "type": "product__tags",
+          "method_option": "none",
+          "product_tags": [1816]
         }
       ]
     },
@@ -208,6 +218,37 @@
         ]
       }
     },
+    "create_any_coupon_applied": {
+      "description": "20% off when at least one coupon of any kind is applied (no IDs needed)",
+      "request": "POST /rules",
+      "body": {
+        "pricing_method": "discount__percentage",
+        "pricing_value": 20,
+        "product_uids": [40289],
+        "product_method": "in_list",
+        "conditions": [
+          { "type": "cart__coupons", "method_option": "at_least_one_any" }
+        ]
+      }
+    },
+    "create_mixed_all": {
+      "description": "25% off: Urban Commuter Photography in SKIRT cat + Size:L + cart>30 + no hsshh tag",
+      "request": "POST /rules",
+      "body": {
+        "pricing_method": "discount__percentage",
+        "pricing_value": 25,
+        "product_uids": [42735],
+        "product_method": "in_list",
+        "product_category_uids": [1811],
+        "product_category_method": "in_list",
+        "conditions": [
+          { "type": "cart__quantity", "method_option": "more_than", "value": 30 },
+          { "type": "product__attributes", "method_option": "at_least_one", "product_attributes": [1744] },
+          { "type": "product__tags", "method_option": "none", "product_tags": [1816] }
+        ],
+        "note": "Real-world mixed example from fashion.dukkanjo.com"
+      }
+    },
     "create_fixed_price": {
       "description": "Set fixed price of $49.99 on specific products",
       "request": "POST /rules",
@@ -270,7 +311,7 @@
     "invalid_method":   { "status": 400, "code": "invalid_method",            "message": "method must be one of: simple, bulk" },
     "invalid_pricing":  { "status": 400, "code": "invalid_pricing_method",    "message": "pricing_method must be one of: discount__amount, ..." },
     "invalid_value":    { "status": 400, "code": "invalid_pricing_value",     "message": "pricing_value must be >= 0." },
-    "missing_filter":   { "status": 400, "code": "missing_filter",            "message": "product_uids or product_category_uids is required." },
+    "missing_filter":   { "status": 400, "code": "missing_filter",            "message": "At least one product filter is required: product_uids, product_category_uids, product__attributes, or product__tags." },
     "invalid_product":  { "status": 400, "code": "invalid_product",           "message": "Product ID {id} does not exist." },
     "invalid_category": { "status": 400, "code": "invalid_category",          "message": "Category ID {id} does not exist." },
     "invalid_attributes": { "status": 400, "code": "invalid_condition_attributes", "message": "product_attributes must be a non-empty array of attribute term IDs." },

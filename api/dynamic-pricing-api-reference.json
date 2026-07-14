@@ -49,7 +49,7 @@
     { "key": "not_in_list", "meaning": "Rule applies to categories NOT in the list" }
   ],
 
-  "cart_conditions": {
+  "conditions": {
     "types": [
       {
         "type": "cart__quantity",
@@ -146,6 +146,38 @@
         "product_method": "in_list",
         "conditions": [
           { "type": "cart__coupons", "method_option": "at_least_one", "coupons": ["123", "456"] }
+        ]
+      }
+    },
+    "simple_any_coupon": {
+      "desc": "10% off when at least one coupon of any kind is applied",
+      "method": "POST /rules",
+      "body": {
+        "note": "Any coupon triggers discount",
+        "pricing_method": "discount__percentage",
+        "pricing_value": 10,
+        "product_uids": [40289],
+        "product_method": "in_list",
+        "conditions": [
+          { "type": "cart__coupons", "method_option": "at_least_one_any" }
+        ]
+      }
+    },
+    "simple_mixed_all": {
+      "desc": "25% off: product 42735 in SKIRT cat + Size:L + cart>30 + no hsshh tag (real example from fashion.dukkanjo.com)",
+      "method": "POST /rules",
+      "body": {
+        "note": "Mixed filter example",
+        "pricing_method": "discount__percentage",
+        "pricing_value": 25,
+        "product_uids": [42735],
+        "product_method": "in_list",
+        "product_category_uids": [1811],
+        "product_category_method": "in_list",
+        "conditions": [
+          { "type": "cart__quantity", "method_option": "more_than", "value": 30 },
+          { "type": "product__attributes", "method_option": "at_least_one", "product_attributes": [1744] },
+          { "type": "product__tags", "method_option": "none", "product_tags": [1816] }
         ]
       }
     },
