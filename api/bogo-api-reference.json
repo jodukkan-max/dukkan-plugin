@@ -1,0 +1,312 @@
+{
+  "api_name": "Dynamic Pricing — Buy X Get Y (BOGO)",
+  "base_url": "https://<YOUR_SITE>/wp-json/dukkan-dynamic-pricing/v1",
+  "auth": "none (public)",
+  "last_updated": "2026-07-16",
+
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/rules?method=bogo",
+      "description": "List all Buy X Get Y rules (once, non-repeating)"
+    },
+    {
+      "method": "GET",
+      "path": "/rules?method=bogo_repeat",
+      "description": "List all Buy X Get Y rules (repeating — loops for every X purchased)"
+    },
+    {
+      "method": "GET",
+      "path": "/rules/{uid}",
+      "description": "Get a single rule by its unique ID"
+    },
+    {
+      "method": "POST",
+      "path": "/rules",
+      "description": "Create a new BOGO rule"
+    },
+    {
+      "method": "PUT",
+      "path": "/rules/{uid}",
+      "description": "Update an existing rule (partial update — send only fields you want to change)"
+    },
+    {
+      "method": "DELETE",
+      "path": "/rules/{uid}",
+      "description": "Delete a rule permanently"
+    }
+  ],
+
+  "method_keys": [
+    { "key": "bogo", "description": "Buy X Get Y — applies once per cart (non-repeating)" },
+    { "key": "bogo_repeat", "description": "Buy X Get Y — repeats for every X purchased (e.g. buy 4, get 2 if threshold is buy 2 get 1)" }
+  ],
+
+  "bogo_pricing_methods": [
+    { "key": "discount__percentage", "description": "Percentage off each 'get' item", "example": "100 = free, 50 = 50% off" },
+    { "key": "discount__amount",     "description": "Fixed amount off each 'get' item",   "example": "10 = $10 off" },
+    { "key": "fixed__price",         "description": "Fixed price for each 'get' item",     "example": "5 = $5 each" }
+  ],
+
+  "quantities_based_on_options": [
+    { "key": "individual__product",       "description": "Count each product individually" },
+    { "key": "individual__variation",     "description": "Count each variation separately" },
+    { "key": "individual__configuration", "description": "Auto-detect based on product type" },
+    { "key": "cumulative__categories",    "description": "Sum quantities across same category" },
+    { "key": "cumulative__all",           "description": "Sum quantities across all matching products" }
+  ],
+
+  "conditions": [
+    {
+      "type": "product__product",
+      "description": "Trigger based on specific products",
+      "field": "products",
+      "uidType": "Product IDs (integers)",
+      "operators": [
+        { "key": "in_list",     "meaning": "Product is in the list" },
+        { "key": "not_in_list", "meaning": "Product is NOT in the list" }
+      ]
+    },
+    {
+      "type": "product__category",
+      "description": "Trigger based on product categories",
+      "field": "product_categories",
+      "uidType": "Category term IDs (integers)",
+      "operators": [
+        { "key": "in_list",     "meaning": "Product is in any of the categories" },
+        { "key": "not_in_list", "meaning": "Product is NOT in any of the categories" }
+      ]
+    },
+    {
+      "type": "product__variation",
+      "description": "Trigger based on specific product variations",
+      "field": "product_variations",
+      "uidType": "Variation post IDs (integers)",
+      "operators": [
+        { "key": "in_list",     "meaning": "Product is one of the selected variations" },
+        { "key": "not_in_list", "meaning": "Product is NOT one of the selected variations" }
+      ]
+    },
+    {
+      "type": "product__attributes",
+      "description": "Trigger based on product attribute terms (e.g. Color, Size)",
+      "field": "product_attributes",
+      "uidType": "Attribute term IDs (integers)",
+      "operators": [
+        { "key": "at_least_one", "meaning": "Product has at least one of the selected attribute terms" },
+        { "key": "all",          "meaning": "Product has all of the selected attribute terms" },
+        { "key": "only",         "meaning": "Product has only the selected attribute terms (exact match)" },
+        { "key": "none",         "meaning": "Product has none of the selected attribute terms" }
+      ]
+    },
+    {
+      "type": "product__tags",
+      "description": "Trigger based on product tags",
+      "field": "product_tags",
+      "uidType": "Tag term IDs (integers)",
+      "operators": [
+        { "key": "at_least_one", "meaning": "Product has at least one of the selected tags" },
+        { "key": "all",          "meaning": "Product has all of the selected tags" },
+        { "key": "only",         "meaning": "Product has only the selected tags (exact match)" },
+        { "key": "none",         "meaning": "Product has none of the selected tags" }
+      ]
+    },
+    {
+      "type": "cart__quantity",
+      "description": "Trigger based on total cart quantity",
+      "field": "value",
+      "uidType": "Numeric",
+      "operators": [
+        { "key": "at_least",      "meaning": ">= (greater than or equal)" },
+        { "key": "more_than",     "meaning": ">  (greater than)" },
+        { "key": "not_more_than", "meaning": "<= (less than or equal)" },
+        { "key": "less_than",     "meaning": "<  (less than)" }
+      ]
+    },
+    {
+      "type": "cart__coupons",
+      "description": "Trigger based on coupons applied to cart",
+      "field": "coupons",
+      "uidType": "Coupon post IDs (numeric strings)",
+      "operators": [
+        { "key": "at_least_one_any", "meaning": "At least one coupon of any kind is applied (no 'coupons' field needed)" },
+        { "key": "at_least_one",     "meaning": "At least one of the specified coupons is applied" },
+        { "key": "all",              "meaning": "All of the specified coupons are applied" },
+        { "key": "only",             "meaning": "Only the specified coupons are applied (exact match)" },
+        { "key": "none",             "meaning": "None of the specified coupons are applied" },
+        { "key": "none_at_all",      "meaning": "No coupons applied at all (omit 'coupons' field)" }
+      ]
+    }
+  ],
+
+  "request_body_schema": {
+    "POST": {
+      "required": ["method", "quantities_based_on", "bogo_purchase_quantity", "bogo_receive_quantity", "bogo_pricing_method", "bogo_pricing_value"],
+      "at_least_one_of": ["product_uids", "product_category_uids", "conditions (with product__product or product__category)"],
+      "fields": {
+        "method":                    { "type": "string",  "required": true,  "values": ["bogo", "bogo_repeat"] },
+        "quantities_based_on":       { "type": "string",  "required": true,  "values": "see quantities_based_on_options" },
+        "bogo_purchase_quantity":    { "type": "int",     "required": true,  "min": 1, "description": "How many to buy (the X)" },
+        "bogo_receive_quantity":     { "type": "int",     "required": true,  "min": 1, "description": "How many receive the discount (the Y)" },
+        "bogo_pricing_method":       { "type": "string",  "required": true,  "values": "see bogo_pricing_methods" },
+        "bogo_pricing_value":        { "type": "number",  "required": true,  "min": 0 },
+        "product_uids":              { "type": "int[]",   "required": false, "description": "Product IDs for 'buy' side filter" },
+        "product_method":            { "type": "string",  "required": false, "default": "in_list", "values": ["in_list", "not_in_list"] },
+        "product_category_uids":     { "type": "int[]",   "required": false, "description": "Category IDs for 'buy' side filter" },
+        "product_category_method":   { "type": "string",  "required": false, "default": "in_list", "values": ["in_list", "not_in_list"] },
+        "note":                      { "type": "string",  "required": false, "description": "Admin/internal note" },
+        "public_note":               { "type": "string",  "required": false, "description": "Customer-facing note" },
+        "conditions":                { "type": "array",   "required": false, "description": "Additional 'buy' side conditions (cart, attributes, tags, coupons)" },
+        "bogo_product_conditions":   { "type": "array",   "required": false, "description": "Defines which products are received (the 'get' side). Uses same condition format." }
+      }
+    },
+    "PUT": {
+      "description": "Partial update. Send only the fields you want to change.",
+      "updatable_fields": [
+        "quantities_based_on",
+        "bogo_purchase_quantity",
+        "bogo_receive_quantity",
+        "bogo_pricing_method",
+        "bogo_pricing_value",
+        "product_uids",
+        "product_method",
+        "product_category_uids",
+        "product_category_method",
+        "note",
+        "public_note",
+        "conditions",
+        "bogo_product_conditions"
+      ]
+    }
+  },
+
+  "response_format": {
+    "single_rule": {
+      "uid": "rp_wcdpd_a1b2c3d4",
+      "method": "bogo",
+      "note": "Admin note text",
+      "public_note": "Buy 2 coats, get 1 hat 50% off!",
+      "product_uids": [],
+      "product_method": "in_list",
+      "product_category_uids": [1811],
+      "product_category_method": "in_list",
+      "conditions": [
+        { "type": "product__category", "method_option": "in_list", "product_categories": [1811] },
+        { "type": "cart__quantity", "method_option": "more_than", "value": 3 }
+      ],
+      "quantities_based_on": "individual__product",
+      "bogo_purchase_quantity": 2,
+      "bogo_receive_quantity": 1,
+      "bogo_pricing_method": "discount__percentage",
+      "bogo_pricing_value": 50,
+      "bogo_product_conditions": [
+        { "type": "product__product", "method_option": "in_list", "products": [42] }
+      ]
+    }
+  },
+
+  "examples": {
+    "create_bogo_by_category": {
+      "description": "Buy 2 items from Coats category, get 1 item from Hats category at 50% off",
+      "request": "POST /rules",
+      "body": {
+        "method": "bogo",
+        "quantities_based_on": "individual__product",
+        "bogo_purchase_quantity": 2,
+        "bogo_receive_quantity": 1,
+        "bogo_pricing_method": "discount__percentage",
+        "bogo_pricing_value": 50,
+        "product_category_uids": [1811],
+        "product_category_method": "in_list",
+        "bogo_product_conditions": [
+          { "type": "product__category", "method_option": "in_list", "product_categories": [1900] }
+        ],
+        "note": "Buy coats, get hat 50% off"
+      }
+    },
+    "create_bogo_free_product": {
+      "description": "Buy 3 items from a category, get a specific product FREE",
+      "request": "POST /rules",
+      "body": {
+        "method": "bogo",
+        "quantities_based_on": "individual__product",
+        "bogo_purchase_quantity": 3,
+        "bogo_receive_quantity": 1,
+        "bogo_pricing_method": "discount__percentage",
+        "bogo_pricing_value": 100,
+        "product_category_uids": [1811],
+        "product_category_method": "in_list",
+        "bogo_product_conditions": [
+          { "type": "product__product", "method_option": "in_list", "products": [42] }
+        ]
+      }
+    },
+    "create_bogo_repeat": {
+      "description": "Buy 2 items, get 1 30% off — repeating (buy 4, get 2; buy 6, get 3)",
+      "request": "POST /rules",
+      "body": {
+        "method": "bogo_repeat",
+        "quantities_based_on": "individual__product",
+        "bogo_purchase_quantity": 2,
+        "bogo_receive_quantity": 1,
+        "bogo_pricing_method": "discount__percentage",
+        "bogo_pricing_value": 30,
+        "product_category_uids": [1811],
+        "product_category_method": "in_list",
+        "bogo_product_conditions": [
+          { "type": "product__category", "method_option": "in_list", "product_categories": [1811] }
+        ]
+      }
+    },
+    "create_bogo_with_cart_condition": {
+      "description": "Buy 2 get 1 free, but only when cart has more than 5 items total",
+      "request": "POST /rules",
+      "body": {
+        "method": "bogo",
+        "quantities_based_on": "individual__product",
+        "bogo_purchase_quantity": 2,
+        "bogo_receive_quantity": 1,
+        "bogo_pricing_method": "discount__percentage",
+        "bogo_pricing_value": 100,
+        "product_uids": [42735],
+        "product_method": "in_list",
+        "conditions": [
+          { "type": "cart__quantity", "method_option": "more_than", "value": 5 }
+        ],
+        "bogo_product_conditions": [
+          { "type": "product__product", "method_option": "in_list", "products": [42] }
+        ]
+      }
+    },
+    "create_bogo_fixed_price": {
+      "description": "Buy 1 item, get a different product for $5 fixed price",
+      "request": "POST /rules",
+      "body": {
+        "method": "bogo",
+        "quantities_based_on": "individual__product",
+        "bogo_purchase_quantity": 1,
+        "bogo_receive_quantity": 1,
+        "bogo_pricing_method": "fixed__price",
+        "bogo_pricing_value": 5,
+        "product_uids": [42735],
+        "product_method": "in_list",
+        "bogo_product_conditions": [
+          { "type": "product__product", "method_option": "in_list", "products": [100] }
+        ]
+      }
+    }
+  },
+
+  "error_responses": {
+    "rule_not_found":                { "status": 404, "code": "rule_not_found",                "message": "Rule not found." },
+    "invalid_method":                { "status": 400, "code": "invalid_method",                "message": "method must be one of: simple, bulk, bogo, bogo_repeat" },
+    "invalid_quantities_based_on":   { "status": 400, "code": "invalid_quantities_based_on",   "message": "quantities_based_on must be one of: individual__product, ..." },
+    "invalid_bogo_purchase_quantity": { "status": 400, "code": "invalid_bogo_purchase_quantity", "message": "bogo_purchase_quantity must be an integer >= 1." },
+    "invalid_bogo_receive_quantity":  { "status": 400, "code": "invalid_bogo_receive_quantity",  "message": "bogo_receive_quantity must be an integer >= 1." },
+    "invalid_bogo_pricing_method":   { "status": 400, "code": "invalid_bogo_pricing_method",   "message": "bogo_pricing_method must be one of: discount__percentage, discount__amount, fixed__price" },
+    "invalid_bogo_pricing_value":    { "status": 400, "code": "invalid_bogo_pricing_value",    "message": "bogo_pricing_value must be >= 0." },
+    "missing_filter":                { "status": 400, "code": "missing_filter",                "message": "At least one product filter is required." },
+    "invalid_product":               { "status": 400, "code": "invalid_product",               "message": "Product ID {id} does not exist." },
+    "invalid_category":              { "status": 400, "code": "invalid_category",              "message": "Category ID {id} does not exist." }
+  }
+}
