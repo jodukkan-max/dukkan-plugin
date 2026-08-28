@@ -67,17 +67,8 @@ class Dukkan_Plugin_Admin {
 		if ($hook_suffix !== 'toplevel_page_dukkan-settings') {
 			return;
 		}
-		/**
-		 * This function is provided for demonstration purposes only.
-		 *
-		 * An instance of this class should be passed to the run() function
-		 * defined in Dukkan_Plugin_Loader as all of the hooks are defined
-		 * in that particular class.
-		 *
-		 * The Dukkan_Plugin_Loader will then create the relationship
-		 * between the defined hooks and the functions defined in this
-		 * class.
-		 */
+
+		wp_enqueue_style('dashicons');
 		wp_enqueue_style('select2'); // WP registered style
 
 		wp_enqueue_style( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'css/dukkan-plugin-admin.css', array(), $this->version, 'all' );
@@ -160,22 +151,11 @@ class Dukkan_Plugin_Admin {
 	*/
 
 	public function dukkan_settings_page() {
-	?>
-		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+		?>
 		<div class="wrap">
-			<?php require plugin_dir_path(__FILE__) . 'partials/dukkan-settings-main.php'; ?>
-			<!-- <form method="post" action="options.php">
-				
-				<?php
-				// settings_fields('dukkan_settings_group');
-				// do_settings_sections('dukkan-settings');
-				// submit_button();
-				?>
-
-			</form> -->
+			<?php require plugin_dir_path( __FILE__ ) . 'partials/dukkan-settings-main.php'; ?>
 		</div>
-
-	<?php
+		<?php
 	}
 
 	public function dukkan_dukkan_main_tab_content(){

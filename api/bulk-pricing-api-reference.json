@@ -1,0 +1,304 @@
+{
+  "api_name": "Dynamic Pricing — Bulk Pricing",
+  "base_url": "https://<YOUR_SITE>/wp-json/dukkan-dynamic-pricing/v1",
+  "auth": "none (public)",
+  "last_updated": "2026-07-16",
+
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/rules?method=bulk",
+      "description": "List all bulk pricing rules",
+      "notes": "Optional query params: ?page=1&per_page=10&search=keyword"
+    },
+    {
+      "method": "GET",
+      "path": "/rules/{uid}",
+      "description": "Get a single bulk rule by its unique ID"
+    },
+    {
+      "method": "POST",
+      "path": "/rules",
+      "description": "Create a new bulk pricing rule"
+    },
+    {
+      "method": "PUT",
+      "path": "/rules/{uid}",
+      "description": "Update an existing bulk rule (partial update — send only fields you want to change)"
+    },
+    {
+      "method": "DELETE",
+      "path": "/rules/{uid}",
+      "description": "Delete a bulk rule permanently"
+    }
+  ],
+
+  "bulk_pricing_methods": [
+    { "key": "discount__amount",       "description": "Fixed discount per unit in range",        "example": "5 = $5 off each" },
+    { "key": "discount__percentage",   "description": "Percentage discount in range",            "example": "10 = 10% off" },
+    { "key": "fixed__price",           "description": "Fixed price per unit in range",           "example": "15 = $15 each" },
+    { "key": "fixed__price_per_range", "description": "Total price for entire range divided among units", "example": "99 = $99 flat for range" }
+  ],
+
+  "quantities_based_on_options": [
+    { "key": "individual__product",       "description": "Count each product individually" },
+    { "key": "individual__variation",     "description": "Count each variation separately" },
+    { "key": "individual__configuration", "description": "Count each cart line item" },
+    { "key": "cumulative__categories",    "description": "Sum quantities across same category" },
+    { "key": "cumulative__all",           "description": "Sum quantities across all matching products" }
+  ],
+
+  "product_methods": [
+    { "key": "in_list",     "description": "Rule applies to products/categories in the list" },
+    { "key": "not_in_list", "description": "Rule applies to products/categories NOT in the list" }
+  ],
+
+  "conditions": [
+    {
+      "type": "product__product",
+      "description": "Trigger based on specific products",
+      "field": "products",
+      "uidType": "Product IDs (integers)",
+      "operators": [
+        { "key": "in_list",     "meaning": "Product is in the list" },
+        { "key": "not_in_list", "meaning": "Product is NOT in the list" }
+      ]
+    },
+    {
+      "type": "product__category",
+      "description": "Trigger based on product categories",
+      "field": "product_categories",
+      "uidType": "Category term IDs (integers)",
+      "operators": [
+        { "key": "in_list",     "meaning": "Product is in any of the categories" },
+        { "key": "not_in_list", "meaning": "Product is NOT in any of the categories" }
+      ]
+    },
+    {
+      "type": "product__variation",
+      "description": "Trigger based on specific product variations",
+      "field": "product_variations",
+      "uidType": "Variation post IDs (integers)",
+      "operators": [
+        { "key": "in_list",     "meaning": "Product is one of the selected variations" },
+        { "key": "not_in_list", "meaning": "Product is NOT one of the selected variations" }
+      ]
+    },
+    {
+      "type": "product__attributes",
+      "description": "Trigger based on product attribute terms (e.g. Color, Size)",
+      "field": "product_attributes",
+      "uidType": "Attribute term IDs (integers)",
+      "operators": [
+        { "key": "at_least_one", "meaning": "Product has at least one of the selected attribute terms" },
+        { "key": "all",          "meaning": "Product has all of the selected attribute terms" },
+        { "key": "only",         "meaning": "Product has only the selected attribute terms" },
+        { "key": "none",         "meaning": "Product has none of the selected attribute terms" }
+      ]
+    },
+    {
+      "type": "product__tags",
+      "description": "Trigger based on product tags",
+      "field": "product_tags",
+      "uidType": "Tag term IDs (integers)",
+      "operators": [
+        { "key": "at_least_one", "meaning": "Product has at least one of the selected tags" },
+        { "key": "all",          "meaning": "Product has all of the selected tags" },
+        { "key": "only",         "meaning": "Product has only the selected tags" },
+        { "key": "none",         "meaning": "Product has none of the selected tags" }
+      ]
+    },
+    {
+      "type": "cart__quantity",
+      "description": "Trigger based on total cart quantity",
+      "field": "value",
+      "uidType": "Numeric",
+      "operators": [
+        { "key": "at_least",      "meaning": ">= (greater than or equal)" },
+        { "key": "more_than",     "meaning": ">  (greater than)" },
+        { "key": "not_more_than", "meaning": "<= (less than or equal)" },
+        { "key": "less_than",     "meaning": "<  (less than)" }
+      ]
+    },
+    {
+      "type": "cart__coupons",
+      "description": "Trigger based on coupons applied to cart",
+      "field": "coupons",
+      "uidType": "Coupon post IDs (numeric strings)",
+      "operators": [
+        { "key": "at_least_one_any", "meaning": "At least one coupon of any kind is applied (no 'coupons' field needed)" },
+        { "key": "at_least_one",     "meaning": "At least one of the specified coupons is applied" },
+        { "key": "all",              "meaning": "All of the specified coupons are applied" },
+        { "key": "only",             "meaning": "Only the specified coupons are applied (exact match)" },
+        { "key": "none",             "meaning": "None of the specified coupons are applied" },
+        { "key": "none_at_all",      "meaning": "No coupons applied at all (omit 'coupons' field)" }
+      ]
+    }
+  ],
+
+  "request_body_schema": {
+    "POST": {
+      "required": ["method", "quantities_based_on", "quantity_ranges"],
+      "at_least_one_of": ["product_uids", "product_category_uids", "conditions (with product__product or product__category)"],
+      "fields": {
+        "method":                    { "type": "string",  "required": true,  "values": ["bulk"] },
+        "quantities_based_on":       { "type": "string",  "required": true,  "values": "see quantities_based_on_options above" },
+        "quantity_ranges":           { "type": "array",   "required": true,  "description": "Array of quantity range objects (see quantity_range_schema below)" },
+        "product_uids":              { "type": "int[]",   "required": false, "description": "Product IDs for filter" },
+        "product_method":            { "type": "string",  "required": false, "default": "in_list", "values": ["in_list", "not_in_list"] },
+        "product_category_uids":     { "type": "int[]",   "required": false, "description": "Category IDs for filter" },
+        "product_category_method":   { "type": "string",  "required": false, "default": "in_list", "values": ["in_list", "not_in_list"] },
+        "note":                      { "type": "string",  "required": false, "description": "Admin/internal note" },
+        "public_note":               { "type": "string",  "required": false, "description": "Customer-facing note" },
+        "conditions":                { "type": "array",   "required": false, "description": "Additional conditions (cart, attributes, tags, coupons)" }
+      }
+    },
+    "PUT": {
+      "description": "Partial update. Send only the fields you want to change.",
+      "updatable_fields": [
+        "quantities_based_on",
+        "quantity_ranges",
+        "product_uids",
+        "product_method",
+        "product_category_uids",
+        "product_category_method",
+        "note",
+        "public_note",
+        "conditions"
+      ],
+      "note": "When quantity_ranges is sent, it fully replaces the existing ranges. Product/category conditions are fully replaced when updated."
+    }
+  },
+
+  "quantity_range_schema": {
+    "description": "Each object in the quantity_ranges array",
+    "fields": {
+      "from":            { "type": "int",        "required": true,  "min": 0, "description": "Starting quantity for this range" },
+      "to":              { "type": "int or null", "required": false, "description": "Ending quantity. Omit or set to null for unlimited." },
+      "pricing_method":  { "type": "string",     "required": true,  "values": "see bulk_pricing_methods above" },
+      "pricing_value":   { "type": "number",     "required": true,  "min": 0, "description": "Value for the pricing method" }
+    },
+    "rules": [
+      "Ranges must be contiguous and non-overlapping",
+      "The first range's 'from' should typically be 1",
+      "The last range can omit 'to' for unlimited",
+      "Range IDs (uid) are auto-generated"
+    ]
+  },
+
+  "response_format": {
+    "single_rule": {
+      "uid": "rp_wcdpd_a1b2c3d4",
+      "method": "bulk",
+      "note": "Wholesale bulk pricing",
+      "public_note": "Buy more, save more!",
+      "product_uids": [40289],
+      "product_method": "in_list",
+      "product_category_uids": [],
+      "product_category_method": "in_list",
+      "conditions": [],
+      "quantities_based_on": "individual__product",
+      "quantity_ranges": [
+        { "from": 1,  "to": 5,  "pricing_method": "discount__amount",     "pricing_value": 0 },
+        { "from": 6,  "to": 10, "pricing_method": "discount__percentage", "pricing_value": 10 },
+        { "from": 11, "to": null, "pricing_method": "fixed__price",        "pricing_value": 15 }
+      ]
+    },
+    "list_response_headers": {
+      "X-WP-Total": "Total number of rules",
+      "X-WP-TotalPages": "Total number of pages"
+    }
+  },
+
+  "examples": {
+    "create_bulk_by_product": {
+      "description": "Tiered pricing: 1-5 = regular, 6-10 = 10% off, 11+ = $15 each",
+      "request": "POST /rules",
+      "body": {
+        "method": "bulk",
+        "quantities_based_on": "individual__product",
+        "product_uids": [40289],
+        "product_method": "in_list",
+        "quantity_ranges": [
+          { "from": 1,  "to": 5,  "pricing_method": "discount__amount",     "pricing_value": 0 },
+          { "from": 6,  "to": 10, "pricing_method": "discount__percentage", "pricing_value": 10 },
+          { "from": 11, "pricing_method": "fixed__price", "pricing_value": 15 }
+        ],
+        "note": "Wholesale bulk pricing"
+      }
+    },
+    "create_bulk_by_category": {
+      "description": "Bulk pricing on COATS category: 3+ items = 15% off",
+      "request": "POST /rules",
+      "body": {
+        "method": "bulk",
+        "quantities_based_on": "cumulative__all",
+        "product_category_uids": [1806],
+        "product_category_method": "in_list",
+        "quantity_ranges": [
+          { "from": 1, "to": 2, "pricing_method": "discount__amount", "pricing_value": 0 },
+          { "from": 3, "pricing_method": "discount__percentage", "pricing_value": 15 }
+        ],
+        "note": "Coats bulk discount"
+      }
+    },
+    "create_bulk_mixed": {
+      "description": "Bulk pricing with product + attribute + cart conditions",
+      "request": "POST /rules",
+      "body": {
+        "method": "bulk",
+        "quantities_based_on": "cumulative__categories",
+        "product_category_uids": [1796],
+        "product_category_method": "in_list",
+        "conditions": [
+          { "type": "product__attributes", "method_option": "at_least_one", "product_attributes": [1744] },
+          { "type": "cart__quantity", "method_option": "at_least", "value": 5 }
+        ],
+        "quantity_ranges": [
+          { "from": 1,  "to": 4,  "pricing_method": "discount__amount",     "pricing_value": 0 },
+          { "from": 5,  "to": 9,  "pricing_method": "discount__percentage", "pricing_value": 20 },
+          { "from": 10, "to": null, "pricing_method": "fixed__price",       "pricing_value": 25.00 }
+        ],
+        "note": "SHIRT category + Size:L + cart>=5 bulk pricing"
+      }
+    },
+    "create_bulk_fixed_per_range": {
+      "description": "Fixed price per range: 1-3 = $99, 4-6 = $149, 7+ = $199",
+      "request": "POST /rules",
+      "body": {
+        "method": "bulk",
+        "quantities_based_on": "individual__product",
+        "product_uids": [42735],
+        "product_method": "in_list",
+        "quantity_ranges": [
+          { "from": 1, "to": 3,  "pricing_method": "fixed__price_per_range", "pricing_value": 99 },
+          { "from": 4, "to": 6,  "pricing_method": "fixed__price_per_range", "pricing_value": 149 },
+          { "from": 7, "pricing_method": "fixed__price_per_range", "pricing_value": 199 }
+        ]
+      }
+    },
+    "update_bulk_ranges": {
+      "description": "Replace quantity ranges for a bulk rule",
+      "request": "PUT /rules/rp_wcdpd_a1b2c3d4",
+      "body": {
+        "quantity_ranges": [
+          { "from": 1, "to": 9,  "pricing_method": "discount__amount", "pricing_value": 0 },
+          { "from": 10, "pricing_method": "discount__percentage", "pricing_value": 25 }
+        ]
+      }
+    }
+  },
+
+  "error_responses": {
+    "rule_not_found":                 { "status": 404, "code": "rule_not_found",                  "message": "Rule not found." },
+    "invalid_method":                 { "status": 400, "code": "invalid_method",                  "message": "method must be one of: simple, bulk, bogo, bogo_repeat" },
+    "invalid_quantities_based_on":    { "status": 400, "code": "invalid_quantities_based_on",     "message": "quantities_based_on must be one of: individual__product, ..." },
+    "missing_quantity_ranges":        { "status": 400, "code": "missing_quantity_ranges",         "message": "quantity_ranges must be a non-empty array." },
+    "invalid_range_from":             { "status": 400, "code": "invalid_range_from",              "message": "Range #N: from must be a positive integer." },
+    "invalid_range_pricing_method":   { "status": 400, "code": "invalid_range_pricing_method",    "message": "Range #N: pricing_method must be one of: discount__amount, ..." },
+    "invalid_range_pricing_value":    { "status": 400, "code": "invalid_range_pricing_value",     "message": "Range #N: pricing_value must be >= 0." },
+    "missing_filter":                 { "status": 400, "code": "missing_filter",                  "message": "At least one product filter is required." },
+    "invalid_product":                { "status": 400, "code": "invalid_product",                 "message": "Product ID {id} does not exist." },
+    "invalid_category":               { "status": 400, "code": "invalid_category",                "message": "Category ID {id} does not exist." }
+  }
+}

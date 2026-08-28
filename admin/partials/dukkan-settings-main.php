@@ -1,81 +1,58 @@
 <?php
+/**
+ * Dukkan settings page — native WordPress tabs.
+ *
+ * Tabs are rendered with the WordPress `nav-tab-wrapper` component and each
+ * tab is a full page-load link (`?tab=...`). Only the active tab's content is
+ * rendered, so inactive tabs are never generated on page load.
+ */
 
-$tabs = apply_filters('dukkan_settings_tabs', array(
+$tabs = apply_filters( 'dukkan_settings_tabs', array(
 
     'dukkan_main' => array(
-        'title' => 'Dukkan Mobile',
-        'icon'  => 'fa-solid fa-mobile-screen',
+        'title' => __( 'Dukkan Mobile', 'dukkan-plugin' ),
+        'icon'  => 'dashicons-smartphone',
     ),
 
     'store_app_connection' => array(
-        'title' => 'Store OTP',
-        'icon'  => 'fa-solid fa-key',
+        'title' => __( 'Store OTP', 'dukkan-plugin' ),
+        'icon'  => 'dashicons-lock',
     ),
-
-    // 'addons' => array(
-    //     'title' => 'Product Add-Ons',
-    //     'icon'  => 'fa-solid fa-dollar-sign',
-    // ),
-
-    // 'discounts' => array(
-    //     'title' => 'Dynamic Pricing & Discounts',
-    //     'icon'  => 'fa-solid fa-percent',
-    // )
 
 ));
 
-$active_tab = isset($_GET['tab']) ? sanitize_key(wp_unslash($_GET['tab'])) : '';
+$active_tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : '';
 
-if (!$active_tab || !isset($tabs[$active_tab])) {
-    $active_tab = key($tabs);
+if ( ! $active_tab || ! isset( $tabs[ $active_tab ] ) ) {
+    $active_tab = key( $tabs );
 }
 
 ?>
-<div class="wpldp-wrapper">
+<div class="wrap dukkan-settings-wrap">
 
-    <div class="wpldp-tabs">
+    <h1><?php esc_html_e( 'Dukkan', 'dukkan-plugin' ); ?></h1>
 
-        <?php 
-        foreach ($tabs as $tab_id => $tab) : 
+    <nav class="nav-tab-wrapper">
+
+        <?php foreach ( $tabs as $tab_id => $tab ) : ?>
+
+            <?php
+            $tab_url   = admin_url( 'admin.php?page=dukkan-settings&tab=' . $tab_id );
             $is_active = $active_tab === $tab_id;
-        ?>
+            $icon      = ! empty( $tab['icon'] ) ? $tab['icon'] : 'dashicons-admin-generic';
+            ?>
 
-            <div class="tab <?php echo $is_active ? 'active' : ''; ?>" data-tab="<?php echo esc_attr($tab_id); ?>">
+            <a href="<?php echo esc_url( $tab_url ); ?>" class="nav-tab <?php echo $is_active ? 'nav-tab-active' : ''; ?>">
+                <span class="dashicons <?php echo esc_attr( $icon ); ?>"></span>
+                <span><?php echo esc_html( $tab['title'] ); ?></span>
+            </a>
 
-                <i class="<?php echo esc_attr($tab['icon']); ?>"></i>
-                <?php echo esc_html($tab['title']); ?>
+        <?php endforeach; ?>
 
-            </div>
+    </nav>
 
-        <?php 
-        endforeach; 
-        ?>
-
+    <div class="dukkan-tab-content">
+        <?php do_action( 'dukkan_settings_tab_content_' . $active_tab ); ?>
     </div>
 
-
-    <div class="tab-content">
-
-        <?php
-
-        foreach ($tabs as $tab_id => $tab) :
-            $is_active = $active_tab === $tab_id;
-
-        ?>
-
-            <div class="wpldp-tab-panel <?php echo $is_active ? 'active' : ''; ?>" id="<?php echo esc_attr($tab_id); ?>">
-
-                <?php
-                do_action('dukkan_settings_tab_content_' . $tab_id);
-                ?>
-
-            </div>
-
-        <?php
-
-        endforeach;
-
-        ?>
-
-    </div>
 </div>

@@ -162,31 +162,9 @@ class Dukkan_Plugin_Dynamic_Pricing_API {
 	// =====================================================================
 
 	public function get_rules( $request ) {
-		$page     = max( 1, (int) ( $request->get_param( 'page' ) ?: 1 ) );
-		$per_page = max( 1, min( 100, (int) ( $request->get_param( 'per_page' ) ?: 10 ) ) );
-		$search   = $request->get_param( 'search' );
-		$method   = $request->get_param( 'method' );  // optional: simple|bulk
-
-		$all   = $this->load_rules( $method );
-		$total = count( $all );
-
-		if ( $search ) {
-			$all = array_values( array_filter( $all, function ( $r ) use ( $search ) {
-				$n  = isset( $r['note'] ) ? $r['note'] : '';
-				$pn = isset( $r['public_note'] ) ? $r['public_note'] : '';
-				return false !== stripos( $n . ' ' . $pn, $search );
-			} ) );
-			$total = count( $all );
-		}
-
-		$page_rules = array_slice( $all, ( $page - 1 ) * $per_page, $per_page );
-		$data       = array_map( array( $this, 'to_response' ), $page_rules );
-		$pages      = (int) ceil( $total / $per_page );
-
-		$response = new WP_REST_Response( $data, 200 );
-		$response->header( 'X-WP-Total', $total );
-		$response->header( 'X-WP-TotalPages', $pages );
-		return $response;
+		$all  = $this->load_rules( $request->get_param( 'method' ) );
+		$data = array_map( array( $this, 'to_response' ), $all );
+		return new WP_REST_Response( $data, 200 );
 	}
 
 	// =====================================================================
@@ -1095,6 +1073,7 @@ class Dukkan_Plugin_Dynamic_Pricing_API {
 		}
 		$settings[ self::$WCDPD_VERSION ]['product_pricing'] = $rules;
 		update_option( 'rp_wcdpd_settings', $settings );
+		wp_cache_delete( 'rp_wcdpd_settings', 'options' );
 		$this->bust_wcdpd_cache();
 	}
 

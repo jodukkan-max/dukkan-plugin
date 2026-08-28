@@ -1,8 +1,4 @@
-body{
-font-family: Arial;
-background:#f4f6f9;
-margin:0;
-}
+/* Dukkan admin — scoped styles. No global overrides; WordPress admin chrome is preserved. */
 
 .wpldp-wrapper{
 width:100%;
@@ -1453,4 +1449,197 @@ span.wpldp-store-connection-auth-code {
 span.wpldp-store-connection-auth-code strong {
     color: #ff5a00;
     font-size: 40px;
+}
+
+/* ==========================================================================
+   Native WordPress tabs (nav-tab-wrapper) + Dashicons
+   ========================================================================== */
+
+.dukkan-settings-wrap .nav-tab-wrapper .nav-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.dukkan-settings-wrap .nav-tab-wrapper .dashicons {
+    width: auto;
+    height: auto;
+    font-size: 16px;
+    line-height: 1;
+}
+
+.dukkan-tab-content {
+    margin-top: 20px;
+}
+
+/* Dashicons inside order-status controls — size to the parent font */
+.dukkan-os .dashicons {
+    width: auto;
+    height: auto;
+    line-height: 1;
+}
+
+.dukkan-os__add-btn .dashicons,
+.dukkan-os__item-btn .dashicons,
+.dukkan-os__modal-close .dashicons {
+    font-size: inherit;
+}
+
+.dukkan-os__empty-icon .dashicons {
+    font-size: 28px;
+}
+
+/* ==========================================================================
+   Dukkan Mobile dashboard (moved from inline styles)
+   ========================================================================== */
+
+.dukkan-main-d-wrapper {
+    width: 100%;
+    max-width: 1200px;
+    padding: 40px 40px 60px;
+}
+
+.dukkan-main-d-card__icon img {
+    width: 100%;
+}
+
+.dukkan-main-d-card:hover {
+    border: 1px solid #ff5a00;
+}
+
+.dukkan-main-d-hero {
+    text-align: center;
+    margin-bottom: 60px;
+}
+
+.dukkan-main-d-hero__title {
+    font-size: clamp(2rem, 5vw, 2.25rem);
+    font-weight: 800;
+    color: #0f1523;
+    line-height: 1.18;
+    letter-spacing: -0.02em;
+    margin: 0 auto 22px;
+}
+
+.dukkan-main-d-hero__subtitle {
+    font-size: clamp(0.95rem, 1.5vw, 1.1rem);
+    font-weight: 400;
+    color: #5a6072;
+    line-height: 1.7;
+    max-width: 700px;
+    margin: 0 auto 40px;
+}
+
+.dukkan-main-d-btn {
+    display: inline-block;
+    padding: 18px 52px;
+    background: #ff5a00;
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 700;
+    border: 1px solid #ff5a00;
+    border-radius: 15px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+    position: relative;
+}
+
+.dukkan-main-d-btn-invert {
+    display: inline-block;
+    padding: 18px 52px;
+    color: #ff5a00;
+    font-size: 1rem;
+    font-weight: 700;
+    border: 1px solid #ff5a00;
+    border-radius: 15px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+    position: relative;
+    margin-left: 16px;
+}
+
+.dukkan-main-d-btn::after {
+    content: '';
+    position: absolute;
+    bottom: -18px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 70%;
+    height: 24px;
+    background: radial-gradient(ellipse at center, rgba(255, 90, 0, 0.35) 0%, transparent 75%);
+    pointer-events: none;
+    border-radius: 50%;
+    filter: blur(4px);
+}
+
+.dukkan-main-d-btn:hover {
+    transform: translateY(-2px);
+    background: #ff5a00;
+    color: #fff;
+}
+
+.dukkan-main-d-btn-invert:hover {
+    transform: translateY(-2px);
+    color: #ff5a00;
+}
+
+.dukkan-main-d-btn:active {
+    transform: translateY(0);
+}
+
+.dukkan-main-d-features {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 16px;
+    margin-top: 72px;
+}
+
+.dukkan-main-d-card {
+    background: #ffffff;
+    border-radius: 20px;
+    padding: 32px 16px 28px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    box-shadow: 0 2px 16px rgba(0, 0, 0, 0.06);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.dukkan-main-d-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.10);
+}
+
+.dukkan-main-d-card__icon {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #9aa0b0;
+}
+
+.dukkan-main-d-card__label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #0f1523;
+    text-align: center;
+    line-height: 1.4;
+    letter-spacing: 0.01em;
+}
+
+@media (max-width: 900px) {
+    .dukkan-main-d-features {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 540px) {
+    .dukkan-main-d-wrapper { padding: 48px 20px 40px; }
+    .dukkan-main-d-features {
+        grid-template-columns: repeat(2, 1fr);
+    }
 }

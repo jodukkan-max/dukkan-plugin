@@ -72,30 +72,8 @@
 
 	$(document).ready(function(){
 
-		$(".tab").click(function(){
-
-			var tab = $(this).data("tab");
-
-			$(".tab").removeClass("active");
-			$(this).addClass("active");
-
-			$(".wpldp-tab-panel").removeClass("active");
-
-			$("#"+tab).addClass("active");
-
-		});
-
-		$('.dukkan-menu-item').on('click',function(){
-
-			let tab = $(this).data('tab');
-
-			$('.dukkan-menu-item').removeClass('active');
-			$(this).addClass('active');
-
-			$('.dukkan-tab').removeClass('active');
-			$('#dukkan-tab-'+tab).addClass('active');
-
-		});
+		// Tabs are now native WordPress nav-tab links (full page reload), so no
+		// client-side tab switching is required here.
 
 		// ================================================================
 		// Order Status Management
@@ -202,7 +180,7 @@
 						var $item = $(`
 							<div class="dukkan-os__item" data-slug="${os.escAttr(status.slug)}">
 								<div class="dukkan-os__item-drag">
-									<i class="fa-solid fa-grip-vertical"></i>
+									<span class="dashicons dashicons-move"></span>
 								</div>
 								<div class="dukkan-os__item-content">
 									<div class="dukkan-os__item-name">${os.escHtml(status.name)}</div>
@@ -216,13 +194,13 @@
 											data-slug="${os.escAttr(status.slug)}"
 											data-name="${os.escAttr(status.name)}"
 											title="${os.escAttr(i18n.edit || 'Edit')}">
-										<i class="fa-solid fa-pen-to-square"></i>
+										<span class="dashicons dashicons-edit"></span>
 									</button>
 									<button type="button"
 											class="dukkan-os__item-btn dukkan-os__item-btn--delete"
 											data-slug="${os.escAttr(status.slug)}"
 											title="${os.escAttr(i18n.delete || 'Delete')}">
-										<i class="fa-solid fa-trash-can"></i>
+										<span class="dashicons dashicons-trash"></span>
 									</button>
 								</div>
 							</div>

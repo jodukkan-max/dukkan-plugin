@@ -92,7 +92,7 @@ class Dukkan_Plugin_Order_Status {
 	public function add_order_status_tab( $tabs ) {
 		$tabs['order_status'] = array(
 			'title' => __( 'Order Status', 'dukkan-plugin' ),
-			'icon'  => 'fa-solid fa-truck-fast',
+			'icon'  => 'dashicons-car',
 		);
 		return $tabs;
 	}

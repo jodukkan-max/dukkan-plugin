@@ -8,7 +8,7 @@
 		</div>
 		<div class="dukkan-os__header-right">
 			<button type="button" class="dukkan-os__add-btn" id="dukkan-os-add-btn">
-				<i class="fa-solid fa-plus"></i>
+				<span class="dashicons dashicons-plus-alt2"></span>
 				<?php esc_html_e( 'Add Status', 'dukkan-plugin' ); ?>
 			</button>
 		</div>
@@ -19,7 +19,7 @@
 		<?php if ( empty( $statuses ) ) : ?>
 			<div class="dukkan-os__empty" id="dukkan-os-empty">
 				<div class="dukkan-os__empty-icon">
-					<i class="fa-solid fa-truck-fast"></i>
+					<span class="dashicons dashicons-car"></span>
 				</div>
 				<h3><?php esc_html_e( 'No custom order statuses yet', 'dukkan-plugin' ); ?></h3>
 				<p><?php esc_html_e( 'Click the "Add Status" button above to create your first custom order status.', 'dukkan-plugin' ); ?></p>
@@ -30,7 +30,7 @@
 			<?php foreach ( $statuses as $status ) : ?>
 				<div class="dukkan-os__item" data-slug="<?php echo esc_attr( $status['slug'] ); ?>">
 					<div class="dukkan-os__item-drag">
-						<i class="fa-solid fa-grip-vertical"></i>
+						<span class="dashicons dashicons-move"></span>
 					</div>
 					<div class="dukkan-os__item-content">
 						<div class="dukkan-os__item-name"><?php echo esc_html( $status['name'] ); ?></div>
@@ -44,13 +44,13 @@
 								data-slug="<?php echo esc_attr( $status['slug'] ); ?>"
 								data-name="<?php echo esc_attr( $status['name'] ); ?>"
 								title="<?php esc_attr_e( 'Edit', 'dukkan-plugin' ); ?>">
-							<i class="fa-solid fa-pen-to-square"></i>
+							<span class="dashicons dashicons-edit"></span>
 						</button>
 						<button type="button"
 								class="dukkan-os__item-btn dukkan-os__item-btn--delete"
 								data-slug="<?php echo esc_attr( $status['slug'] ); ?>"
 								title="<?php esc_attr_e( 'Delete', 'dukkan-plugin' ); ?>">
-							<i class="fa-solid fa-trash-can"></i>
+							<span class="dashicons dashicons-trash"></span>
 						</button>
 					</div>
 				</div>
@@ -66,7 +66,7 @@
 		<div class="dukkan-os__modal-header">
 			<h3 id="dukkan-os-modal-title"><?php esc_html_e( 'Add New Order Status', 'dukkan-plugin' ); ?></h3>
 			<button type="button" class="dukkan-os__modal-close" id="dukkan-os-modal-close">
-				<i class="fa-solid fa-times"></i>
+				<span class="dashicons dashicons-no-alt"></span>
 			</button>
 		</div>
 		<div class="dukkan-os__modal-body">
@@ -127,7 +127,7 @@
 		<div class="dukkan-os__modal-header">
 			<h3><?php esc_html_e( 'Delete Order Status', 'dukkan-plugin' ); ?></h3>
 			<button type="button" class="dukkan-os__modal-close" id="dukkan-os-delete-close">
-				<i class="fa-solid fa-times"></i>
+				<span class="dashicons dashicons-no-alt"></span>
 			</button>
 		</div>
 		<div class="dukkan-os__modal-body">
