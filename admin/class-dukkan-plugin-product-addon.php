@@ -115,7 +115,8 @@ class Dukkan_Plugin_Product_Addon {
 		 * between the defined hooks and the functions defined in this
 		 * class.
 		 */
-		wp_enqueue_style( $this->plugin_name . '-product-addon', plugin_dir_url( __FILE__ ) . 'css/dp-product-addon.css', array(), $this->version, 'all' );
+		$addon_css_version = filemtime( plugin_dir_path( __FILE__ ) . 'css/dp-product-addon.css' );
+		wp_enqueue_style( $this->plugin_name . '-product-addon', plugin_dir_url( __FILE__ ) . 'css/dp-product-addon.css', array(), $addon_css_version, 'all' );
 
 	}
 
@@ -140,7 +141,8 @@ class Dukkan_Plugin_Product_Addon {
 		 * class.
 		 */
 
-		wp_enqueue_script( $this->plugin_name . '-product-addon', plugin_dir_url( __FILE__ ) . 'js/dp-product-addon.js', array( 'jquery', 'selectWoo', $this->plugin_name ), $this->version, false );
+		$addon_js_version = filemtime( plugin_dir_path( __FILE__ ) . 'js/dp-product-addon.js' );
+		wp_enqueue_script( $this->plugin_name . '-product-addon', plugin_dir_url( __FILE__ ) . 'js/dp-product-addon.js', array( 'jquery', 'jquery-ui-sortable', 'selectWoo', $this->plugin_name ), $addon_js_version, false );
 
 	}
 
@@ -528,6 +530,34 @@ class Dukkan_Plugin_Product_Addon {
 
 		foreach($form_fields_data as $field_id => $field_data){
 			$this->dukkan_wpldp_update_group_field_data($group_id, $field_id, $field_data); // reuse existing function to update each field data
+		}
+
+		// Reorder fields to match the posted drag order (if provided).
+		$field_order = isset($_POST['field_order']) ? json_decode(wp_unslash($_POST['field_order']), true) : null;
+
+		if ( is_array($field_order) && !empty($field_order) ) {
+			$groups = get_option('wpldp_product_addon_groups', []);
+
+			if ( isset($groups[$group_id]['fields']) && is_array($groups[$group_id]['fields']) ) {
+				$current_fields = $groups[$group_id]['fields'];
+				$ordered_fields = [];
+
+				foreach ( $field_order as $field_id ) {
+					$field_id = sanitize_text_field($field_id);
+					if ( isset($current_fields[$field_id]) ) {
+						$ordered_fields[$field_id] = $current_fields[$field_id];
+					}
+				}
+
+				foreach ( $current_fields as $field_id => $field_data ) {
+					if ( ! isset($ordered_fields[$field_id]) ) {
+						$ordered_fields[$field_id] = $field_data;
+					}
+				}
+
+				$groups[$group_id]['fields'] = $ordered_fields;
+				update_option('wpldp_product_addon_groups', $groups);
+			}
 		}
 
 		wp_send_json_success();

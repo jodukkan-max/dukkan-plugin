@@ -30,8 +30,6 @@ if ( ! $active_tab || ! isset( $tabs[ $active_tab ] ) ) {
 ?>
 <div class="wrap dukkan-settings-wrap">
 
-    <h1><?php esc_html_e( 'Dukkan', 'dukkan-plugin' ); ?></h1>
-
     <nav class="nav-tab-wrapper">
 
         <?php foreach ( $tabs as $tab_id => $tab ) : ?>

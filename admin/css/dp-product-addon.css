@@ -113,7 +113,7 @@ box-shadow:inset 0 0 0 1px #9ca3af;
 }
 
 /* EXACT FIELD STYLE */
-.wpldp-wrapper #addons .wpldp-field input:not([type="checkbox"]),
+.wpldp-wrapper #addons .wpldp-field input:not([type="checkbox"]):not(.wpldp-combo-input),
 .wpldp-wrapper #addons .wpldp-field textarea,
 .wpldp-wrapper #addons .wpldp-field select{
 width:100%;
@@ -129,7 +129,7 @@ max-width: 100%;
 
  
 
-.wpldp-wrapper #addons .wpldp-edit-box .wpldp-field input:not([type="checkbox"]),
+.wpldp-wrapper #addons .wpldp-edit-box .wpldp-field input:not([type="checkbox"]):not(.wpldp-combo-input),
 .wpldp-wrapper #addons .wpldp-edit-box .wpldp-field textarea,
 .wpldp-wrapper #addons .wpldp-edit-box .wpldp-field select{
     padding: 4px 12px;
@@ -148,6 +148,41 @@ form#wpldp-group-form-edit {
     margin: 0;
 }
 .wpldp-wrapper #addons .wpldp-edit-box .wpldp-field {
+    margin-bottom: 10px;
+}
+
+/* One-line Group Name + Applied to row (edit panel) */
+#wpldp-group-form-edit .wpldp-field-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 12px;
+}
+
+#wpldp-group-form-edit .wpldp-field-row .wpldp-field {
+    flex: 1;
+    min-width: 0;
+    margin-bottom: 0;
+}
+
+#wpldp-group-form-edit .wpldp-field-row .wpldp-field input:not([type="checkbox"]):not(.wpldp-combo-input),
+#wpldp-group-form-edit .wpldp-field-row .wpldp-field select {
+    height: 36px;
+    min-height: 36px;
+    padding: 0 8px;
+    line-height: 2;
+    box-sizing: border-box;
+}
+
+#wpldp-group-form-edit .wpldp-field-row .wpldp-combo-input {
+    height: 36px;
+    min-height: 36px;
+    line-height: 2;
+    padding: 0 30px 0 8px;
+    box-sizing: border-box;
+}
+
+#wpldp-group-form-edit .wpldp-target-box {
     margin-bottom: 10px;
 }
 
@@ -351,6 +386,14 @@ gap:6px;
     display: inline-flex;
 }
 
+.wpldp-add-another-field-wrap{
+    margin-top: 16px;
+}
+
+.wpldp-add-another-field-wrap .wpldp-add-field-btn{
+    display: inline-flex;
+}
+
 /* EMPTY BOX */
 .wpldp-product-addon-fields .wpldp-fields-empty{
     border: 2px dashed #cfd8dc;
@@ -407,7 +450,10 @@ background:#fafafa;
 .wpldp-drag{
 cursor:move;
 color:#9aa0a6;
-font-size:14px;
+font-size:16px;
+width:auto;
+height:auto;
+line-height:1;
 }
 
 .wpldp-field-type-label{
@@ -431,8 +477,22 @@ color:#374151;
 cursor:pointer;
 }
 
-.wpldp-field-actions i{
+.wpldp-field-actions i,
+.wpldp-field-actions .dashicons{
 cursor:pointer;
+line-height:1;
+}
+
+.wpldp-field-actions .wpldp-delete-addon-field:hover{
+color:#d63638;
+}
+
+.wpldp-field-actions .wpldp-copy-addon-field:hover{
+color:#2271b1;
+}
+
+.wpldp-field-actions .toggle:hover{
+color:#2271b1;
 }
 
 /* BODY */
@@ -450,6 +510,71 @@ display:block;
 font-size:14px;
 margin-bottom:6px;
 color:#374151;
+}
+
+/* FIELD ROW (type + title + width on one line) */
+.wpldp-field-box .wpldp-field-row{
+display:flex;
+align-items:flex-start;
+gap:16px;
+margin-bottom:16px;
+}
+
+.wpldp-field-box .wpldp-field-row .wpldp-field{
+flex:1;
+min-width:0;
+margin-bottom:0;
+}
+
+.wpldp-field-box .wpldp-field-row .wpldp-field input:not([type="checkbox"]),
+.wpldp-field-box .wpldp-field-row .wpldp-field select{
+height:36px;
+min-height:36px;
+box-sizing:border-box;
+}
+
+.wpldp-field-box .wpldp-field-row .wpldp-custom-select .wpldp-selected{
+position:relative;
+height:36px;
+min-height:36px;
+box-sizing:border-box;
+padding:0 28px 0 8px;
+display:flex;
+align-items:center;
+gap:8px;
+}
+
+.wpldp-field-box .wpldp-field-row .wpldp-select-wrap{
+position:relative;
+}
+
+.wpldp-field-box .wpldp-field-row .wpldp-select-wrap select{
+-webkit-appearance:none;
+-moz-appearance:none;
+appearance:none;
+padding-right:28px;
+}
+
+.wpldp-field-box .wpldp-selected-label{
+overflow:hidden;
+text-overflow:ellipsis;
+white-space:nowrap;
+}
+
+.wpldp-field-box .wpldp-select-caret{
+position:absolute;
+right:8px;
+top:50%;
+transform:translateY(-50%);
+font-size:20px;
+width:20px;
+height:20px;
+color:#787c82;
+pointer-events:none;
+}
+
+.wpldp-field-box .wpldp-field label span.wpldp-required-star{
+color:#dc2626;
 }
 
 /* INPUT */
@@ -542,6 +667,12 @@ flex:1;
 .remove-option{
 color:#ef4444;
 cursor:pointer;
+line-height:1;
+font-size:16px;
+}
+
+.remove-option:hover{
+color:#d63638;
 }
 
 /* ADD OPTION BUTTON */
@@ -745,4 +876,355 @@ gap:6px;
 }
 .wpldp-color-row input.color-picker {
     padding: 5px !important;
+}
+
+/* CREATE GROUP PANEL (right side) — matches edit panel design */
+.wpldp-create-panel {
+    background: #fff;
+    border: 1px solid #cfd4da;
+    padding: 16px;
+}
+
+.wpldp-create-panel .wpldp-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 4px;
+}
+
+.wpldp-create-panel .wpldp-panel-header h2 {
+    margin: 0;
+    font-size: 1.3em;
+    font-weight: 600;
+    color: #1d2327;
+    line-height: 1.4;
+}
+
+.wpldp-create-panel .wpldp-panel-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    padding: 2px;
+    cursor: pointer;
+    color: #787c82;
+}
+
+.wpldp-create-panel .wpldp-panel-close:hover {
+    color: #d63638;
+}
+
+.wpldp-create-panel .wpldp-panel-close .dashicons {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+}
+
+.wpldp-create-panel .wpldp-panel-subtitle {
+    margin: 0;
+    font-size: 13px;
+    color: #646970;
+}
+
+.wpldp-create-panel .wpldp-divider {
+    height: 1px;
+    background: #dcdcde;
+    margin: 14px 0 18px;
+}
+
+.wpldp-create-panel .wpldp-field {
+    margin-bottom: 10px;
+}
+
+.wpldp-create-panel .wpldp-field label {
+    display: block;
+    font-size: .75rem;
+    font-weight: 400;
+    color: #6a7282;
+    margin: 0;
+}
+
+.wpldp-create-panel .wpldp-field label span.wpldp-required-star {
+    color: #d63638;
+}
+
+.wpldp-create-panel .wpldp-field input:not([type="checkbox"]):not(.wpldp-combo-input),
+.wpldp-create-panel .wpldp-field textarea,
+.wpldp-create-panel .wpldp-field select,
+.wpldp-create-panel .wpldp-select-wrap select {
+    width: 100%;
+    max-width: 100%;
+    min-height: 30px;
+    padding: 4px 12px;
+    font-size: .875rem;
+    line-height: calc(1.25 / .875);
+    color: #2c3338;
+    border: 1px solid #cfd4da;
+    border-radius: 0;
+    background: #fff;
+    box-shadow: none;
+}
+
+.wpldp-create-panel .wpldp-field textarea {
+    min-height: 90px;
+    padding: 6px 8px;
+    line-height: 1.5;
+    resize: none;
+}
+
+.wpldp-create-panel .wpldp-field input:focus,
+.wpldp-create-panel .wpldp-field textarea:focus,
+.wpldp-create-panel .wpldp-field select:focus {
+    border-color: #2271b1;
+    box-shadow: 0 0 0 1px #2271b1;
+    outline: 2px solid transparent;
+}
+
+.wpldp-create-panel .wpldp-select-wrap {
+    position: relative;
+}
+
+.wpldp-create-panel .wpldp-sub-section {
+    margin-top: 8px;
+    padding: 14px 16px;
+    border: 1px solid #dcdcde;
+    background: #f6f7f7;
+}
+
+.wpldp-create-panel .wpldp-sub-section + .wpldp-sub-section {
+    margin-top: 14px;
+}
+
+.wpldp-create-panel .wpldp-sub-section h4 {
+    margin: 0 0 10px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #1d2327;
+}
+
+.wpldp-create-panel .wpldp-search-box input {
+    background: #fff;
+    border-color: #8c8f94;
+}
+
+.wpldp-create-panel .wpldp-category-list {
+    background: #fff;
+    border-color: #8c8f94;
+}
+
+.wpldp-create-panel .product-select-wrapper .select2-container--default .select2-selection--multiple {
+    border-radius: 0;
+    border-color: #8c8f94;
+    background: #fff;
+}
+
+.wpldp-create-panel .wpldp-panel-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 6px;
+}
+
+/* APPLIED-TO INLINE SELECTOR (create + edit panels) */
+.wpldp-applied-field {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 18px;
+}
+
+.wpldp-applied-select {
+    flex: 0 0 220px;
+    min-width: 0;
+}
+
+.wpldp-applied-select > label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1d2327;
+    margin-bottom: 4px;
+}
+
+.wpldp-applied-select > label span.wpldp-required-star {
+    color: #d63638;
+}
+
+.wpldp-applied-select .wpldp-select-wrap {
+    position: relative;
+}
+
+.wpldp-applied-select select {
+    width: 100%;
+    max-width: 100%;
+    min-height: 36px;
+    padding: 0 8px;
+    font-size: 14px;
+    line-height: 2;
+    color: #2c3338;
+    border: 1px solid #8c8f94;
+    border-radius: 0;
+    background: #fff;
+    box-shadow: none;
+}
+
+.wpldp-applied-select select:focus {
+    border-color: #2271b1;
+    box-shadow: 0 0 0 1px #2271b1;
+    outline: 2px solid transparent;
+}
+
+/* One-line Group Name + Applied to + Search row (create panel) */
+.wpldp-create-panel .wpldp-field-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 12px;
+}
+
+.wpldp-create-panel .wpldp-field-row .wpldp-field {
+    flex: 1;
+    min-width: 0;
+    margin-bottom: 0;
+}
+
+.wpldp-create-panel .wpldp-field-row .wpldp-field input:not([type="checkbox"]):not(.wpldp-combo-input),
+.wpldp-create-panel .wpldp-field-row .wpldp-field select {
+    height: 36px;
+    min-height: 36px;
+    padding: 0 8px;
+    line-height: 2;
+    box-sizing: border-box;
+}
+
+.wpldp-create-panel .wpldp-field-row .wpldp-combo-input {
+    height: 36px;
+    min-height: 36px;
+    line-height: 2;
+    padding: 0 30px 0 8px;
+    box-sizing: border-box;
+}
+
+.wpldp-create-panel .wpldp-target-box {
+    margin-top: 0;
+}
+
+.wpldp-target-box {
+    width: 100%;
+}
+
+/* ================= COMBO (dropdown multi-select) ================= */
+.wpldp-combo {
+    position: relative;
+}
+
+.wpldp-combo-control {
+    position: relative;
+}
+
+.wpldp-combo-input {
+    width: 100%;
+    min-height: 36px;
+    padding: 0 30px 0 8px;
+    font-size: 14px;
+    line-height: 2;
+    color: #2c3338;
+    border: 1px solid #cfd4da;
+    border-radius: 0;
+    background: #fff;
+    box-shadow: none;
+}
+
+.wpldp-combo-input:focus {
+    border-color: #2271b1;
+    box-shadow: 0 0 0 1px #2271b1;
+    outline: 2px solid transparent;
+}
+
+.wpldp-combo-caret {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+    color: #787c82;
+    pointer-events: none;
+}
+
+.wpldp-combo-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    z-index: 30;
+    display: none;
+    background: #fff;
+    border: 1px solid #8c8f94;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    max-height: 220px;
+    overflow: auto;
+}
+
+.wpldp-combo-option {
+    padding: 8px 10px;
+    font-size: 14px;
+    color: #1d2327;
+    cursor: pointer;
+}
+
+.wpldp-combo-option:hover {
+    background: #f0f6fc;
+}
+
+.wpldp-combo-empty {
+    padding: 10px 12px;
+    font-size: 13px;
+    color: #787c82;
+}
+
+.wpldp-combo-tags {
+    display: none;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.wpldp-combo-tags.is-visible {
+    display: flex;
+}
+
+.wpldp-combo-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 8px;
+    background: #e6f4ea;
+    border: 1px solid #34a853;
+    border-radius: 3px;
+    font-size: 13px;
+    color: #1e7e34;
+}
+
+.wpldp-combo-tag-text {
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.wpldp-combo-tag-remove {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 15px;
+    line-height: 1;
+    color: #1e7e34;
+    padding: 0;
+}
+
+.wpldp-combo-tag-remove:hover {
+    color: #d63638;
 }

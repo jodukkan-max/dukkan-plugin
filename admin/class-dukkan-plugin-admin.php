@@ -71,7 +71,8 @@ class Dukkan_Plugin_Admin {
 		wp_enqueue_style('dashicons');
 		wp_enqueue_style('select2'); // WP registered style
 
-		wp_enqueue_style( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'css/dukkan-plugin-admin.css', array(), $this->version, 'all' );
+		$admin_css_version = filemtime( plugin_dir_path( __FILE__ ) . 'css/dukkan-plugin-admin.css' );
+		wp_enqueue_style( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'css/dukkan-plugin-admin.css', array(), $admin_css_version, 'all' );
 
 	}
 
@@ -98,8 +99,9 @@ class Dukkan_Plugin_Admin {
 		// Select2
 		// WooCommerce / WP Select2
 		wp_enqueue_script('selectWoo'); // safer than select2
-		
-		wp_enqueue_script( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'js/dukkan-plugin-admin.js', array( 'jquery', 'jquery-ui-sortable', 'selectWoo' ), $this->version, false );
+
+		$admin_js_version = filemtime( plugin_dir_path( __FILE__ ) . 'js/dukkan-plugin-admin.js' );
+		wp_enqueue_script( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'js/dukkan-plugin-admin.js', array( 'jquery', 'jquery-ui-sortable', 'selectWoo' ), $admin_js_version, false );
 
 		wp_localize_script($this->plugin_name, 'wpldp_ajax', [
 			'url' => admin_url('admin-ajax.php'),

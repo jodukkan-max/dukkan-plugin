@@ -13,12 +13,8 @@
 
         <h3><?php esc_html_e('Add-On Groups', 'dukkan-plugin'); ?></h3>
 
-        <p class="wpldp-subtitle">
-            <?php esc_html_e('Manage product customizations', 'dukkan-plugin'); ?>
-        </p>
-
         <button type="button" class="wpldp-new-group">
-            <i class="fa-solid fa-plus"></i>
+            <span class="dashicons dashicons-plus-alt2"></span>
             <?php esc_html_e('New Group', 'dukkan-plugin'); ?>
         </button>
 
@@ -30,14 +26,15 @@
                     <div class="wpldp-group" data-id="<?php echo esc_attr($group_key); ?>">
                         <div class="wpldp-group-top">
                             <span><?php echo esc_html($group['group_name']); ?></span>
-                            <label class="wpldp-switch">
-                                <input type="checkbox" class="wpldp-toggle-product-addon-status" data-id="<?php echo esc_attr($group_key); ?>" <?php checked($group['status'], 1); ?>>
-                                <span class="wpldp-slider"></span>
-                            </label>
-                        </div>
-                        <div class="wpldp-group-actions">
-                            <i class="fa-regular fa-copy wpldp-duplicate-product-addon-group"></i>
-                            <i class="fa-solid fa-trash wpldp-delete-product-addon-group"></i>
+                            <div class="wpldp-group-top-controls">
+                                <button type="button" class="wpldp-trash-btn" data-id="<?php echo esc_attr($group_key); ?>" title="<?php esc_attr_e('Delete group', 'dukkan-plugin'); ?>">
+                                    <span class="dashicons dashicons-trash"></span>
+                                </button>
+                                <label class="wpldp-switch">
+                                    <input type="checkbox" class="wpldp-toggle-product-addon-status" data-id="<?php echo esc_attr($group_key); ?>" <?php checked($group['status'], 1); ?>>
+                                    <span class="wpldp-slider"></span>
+                                </label>
+                            </div>
                         </div>
                     </div>
                 <?php endforeach; ?>
@@ -49,21 +46,63 @@
 
     <div class="wpldp-main" id="wpldpAddonFieldsContainer">
 
-        <div class="empty-box wpldp-no-selection-box">
+        <div id="wpldp-create-group-panel" class="wpldp-create-panel" style="display:none;">
 
-            <div class="wpldp-icon">
-                <i class="fa-solid fa-magnifying-glass"></i>
-            </div>
+            <form id="wpldp-group-form">
+                <div class="wpldp-field-row">
+                    <div class="wpldp-field">
+                        <label><?php esc_html_e('Group Name', 'dukkan-plugin'); ?> <span class="wpldp-required-star">*</span></label>
+                        <input type="text" name="product_addon[group_name]" placeholder="<?php esc_attr_e('e.g., Gift Options', 'dukkan-plugin'); ?>">
+                    </div>
 
-            <h2>
-                <?php esc_html_e('Select a Group', 'dukkan-plugin'); ?>
-            </h2>
+                    <div class="wpldp-field">
+                        <label><?php esc_html_e('Applied to', 'dukkan-plugin'); ?> <span class="wpldp-required-star">*</span></label>
+                        <div class="wpldp-select-wrap">
+                            <select name="product_addon[applied_to]" id="wpldp-applied-to">
+                                <option value="all"><?php esc_html_e('All products', 'dukkan-plugin'); ?></option>
+                                <option value="specific_products"><?php esc_html_e('Specific Products', 'dukkan-plugin'); ?></option>
+                                <option value="specific_categories"><?php esc_html_e('Specific Categories', 'dukkan-plugin'); ?></option>
+                            </select>
+                        </div>
+                    </div>
 
-            <p>
-                <?php esc_html_e('Choose an add-on group from the sidebar to view and manage its fields', 'dukkan-plugin'); ?>
-            </p>
+                    <div class="wpldp-field wpldp-search-column" style="display:none;">
+                        <label><?php esc_html_e('Search', 'dukkan-plugin'); ?></label>
+                        <!-- SELECT PRODUCTS -->
+                        <div id="wpldp-products-box" class="wpldp-target-box" style="display:none;">
+                            <div class="wpldp-combo" data-combo="products" data-name="product_addon[products][]">
+                                <div class="wpldp-combo-control">
+                                    <input type="text" class="wpldp-combo-input" placeholder="<?php esc_attr_e( 'Search for products…', 'dukkan-plugin' ); ?>" autocomplete="off">
+                                    <span class="dashicons dashicons-arrow-down-alt2 wpldp-combo-caret"></span>
+                                </div>
+                                <div class="wpldp-combo-menu"></div>
+                            </div>
+                        </div>
 
+                        <!-- SELECT CATEGORIES -->
+                        <div id="wpldp-categories-box" class="wpldp-target-box" style="display:none;">
+                            <div class="wpldp-combo" data-combo="categories" data-name="product_addon[categories][]">
+                                <div class="wpldp-combo-control">
+                                    <input type="text" class="wpldp-combo-input" placeholder="<?php esc_attr_e('Search categories...', 'dukkan-plugin'); ?>" autocomplete="off">
+                                    <span class="dashicons dashicons-arrow-down-alt2 wpldp-combo-caret"></span>
+                                </div>
+                                <div class="wpldp-combo-menu"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Selected labels (full width, under the fields) -->
+                <div class="wpldp-combo-tags" data-tags-for="products"></div>
+                <div class="wpldp-combo-tags" data-tags-for="categories"></div>
+
+                <div class="wpldp-panel-footer">
+                    <button type="button" class="button wpldp-cancel"><?php esc_html_e('Cancel', 'dukkan-plugin'); ?></button>
+                    <button type="submit" class="button button-primary wpldp-create"><?php esc_html_e('Create Group', 'dukkan-plugin'); ?></button>
+                </div>
+            </form>
         </div>
+
         <div id="wpldp-addon-group-form-global" style="display:none;">
             
             <div class="wpldp-addon-group-details">
@@ -84,91 +123,17 @@
 
 </div>
 
-<div class="wpldp-modal-overlay" id="wpldpModal">
-
-    <div class="wpldp-modal">
-
-        <div class="wpldp-modal-header">
-            <h2><?php esc_html_e('Create New Group', 'dukkan-plugin'); ?></h2>
-            <button class="wpldp-close">&times;</button>
+<!-- Delete group confirmation modal -->
+<div class="wpldp-confirm-overlay" id="wpldp-confirm-overlay" style="display:none;">
+    <div class="wpldp-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="wpldp-confirm-title">
+        <div class="wpldp-confirm-icon">
+            <span class="dashicons dashicons-trash"></span>
         </div>
-
-        <p class="wpldp-modal-subtitle">
-            <?php esc_html_e('Add a new add-on group to organize your product customizations', 'dukkan-plugin'); ?>
-        </p>
-
-        <div class="wpldp-divider"></div>
-
-        <form id="wpldp-group-form">
-            <div class="wpldp-field">
-                <label><?php esc_html_e('Group Name', 'dukkan-plugin'); ?> <span class="wpldp-required-star">*</span></label>
-                <input type="text" name="product_addon[group_name]" placeholder="<?php esc_attr_e('e.g., Gift Options', 'dukkan-plugin'); ?>">
-            </div>
-
-            <div class="wpldp-field">
-                <label><?php esc_html_e('Description', 'dukkan-plugin'); ?></label>
-                <textarea name="product_addon[description]" placeholder="<?php esc_attr_e('Brief description of this group', 'dukkan-plugin'); ?>"></textarea>
-            </div>
-
-            <div class="wpldp-field">
-                <label><?php esc_html_e('Applied to', 'dukkan-plugin'); ?> <span class="wpldp-required-star">*</span></label>
-                <div class="wpldp-select-wrap">
-                    <select name="product_addon[applied_to]" id="wpldp-applied-to">
-                        <option value="all"><?php esc_html_e('All products', 'dukkan-plugin'); ?></option>
-                        <option value="specific"><?php esc_html_e('Specific products or categories', 'dukkan-plugin'); ?></option>
-                    </select>
-                </div>
-            </div>
-
-            <div id="wpldp-conditional-box" style="display:none;">
-                <!-- SELECT PRODUCTS -->
-                <div class="wpldp-sub-section product-select-wrapper">
-                    <h4><?php esc_html_e('Select Products', 'dukkan-plugin'); ?></h4>
-                    <!-- Tags render here, ABOVE the input -->
-                    <div class="selected-products-tags" style="display:none;"></div>
-                    <div class="wpldp-search-box">
-                        <i class="fa-solid fa-magnifying-glass"></i>
-                        <select name="product_addon[products][]" class="wc-product-search" id="wpldp-product-search" data-action="wpldp_search_products" data-dropdownparent="#wpldpModal" data-placeholder="<?php esc_attr_e( 'Search for products…', 'dukkan-plugin' ); ?>" multiple style="width:100%" data-allow_clear="true"></select>
-                    </div>
-                </div>
-
-                <!-- SELECT CATEGORIES -->
-                <div class="wpldp-sub-section">
-                    <h4><?php esc_html_e('Select Categories', 'dukkan-plugin'); ?></h4>
-
-                    <div class="wpldp-search-box">
-                        <i class="fa-solid fa-magnifying-glass"></i>
-                        <input type="text" id="wpldp-category-search" placeholder="<?php esc_attr_e('Search categories...', 'dukkan-plugin'); ?>">
-                    </div>
-
-                    <div class="wpldp-category-list">
-
-                        <label><input type="checkbox"> Food</label>
-
-                        <div class="wpldp-sub-cat">
-                            <label><input type="checkbox"> Pizza</label>
-                            <label><input type="checkbox"> Pasta</label>
-                        </div>
-
-                        <label><input type="checkbox"> Beverages</label>
-
-                        <div class="wpldp-sub-cat">
-                            <label><input type="checkbox"> Soft Drinks</label>
-                            <label><input type="checkbox"> Alcoholic</label>
-                        </div>
-
-                    </div>
-                </div>
-
-            </div>
-
-            <div class="wpldp-divider"></div>
-
-            <div class="wpldp-modal-footer">
-                <button type="button" class="wpldp-cancel"><?php esc_html_e('Cancel', 'dukkan-plugin'); ?></button>
-                <button type="submit" class="wpldp-create"><?php esc_html_e('Create Group', 'dukkan-plugin'); ?></button>
-            </div>
-        </form>
+        <h3 id="wpldp-confirm-title"><?php esc_html_e('Are you sure you want to delete this group?', 'dukkan-plugin'); ?></h3>
+        <p><?php esc_html_e('This action cannot be undone.', 'dukkan-plugin'); ?></p>
+        <div class="wpldp-confirm-actions">
+            <button type="button" class="button wpldp-confirm-cancel"><?php esc_html_e('Cancel', 'dukkan-plugin'); ?></button>
+            <button type="button" class="button button-primary wpldp-confirm-delete"><?php esc_html_e('Delete', 'dukkan-plugin'); ?></button>
+        </div>
     </div>
-
 </div>

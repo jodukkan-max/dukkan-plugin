@@ -29,70 +29,6 @@
 	 * practising this, we should strive to set a better example in our own work.
 	 */
 
-	function initProductSelect( $el ) {
-        $el.selectWoo( {
-            ajax: {
-                url:      wpldp_ajax.url,
-                dataType: 'json',
-                delay:    250,
-                data: function ( params ) {
-                    return {
-						action: $el.data( 'action' ),
-						nonce: wpldp_ajax.nonce,
-						q: params.term
-                    };
-                },
-                processResults: function ( data ) {
-                    return { results: data };
-                },
-                cache: true,
-            },
-            minimumInputLength: 3,
-            allowClear:         false, // we handle remove on the external tags
-            placeholder:        $el.data( 'placeholder' ),
-            width:              '100%',
-			dropdownParent:        $($el.data( 'dropdownparent' ) || null )
-        } ).on( 'select2:select select2:unselect', function () {
-            renderExternalTags( $el );
-        } );
-    }
-
-	/**
-     * Render selected values as pills OUTSIDE the SelectWoo input box,
-     * into a dedicated tag container above it.
-     */
-    function renderExternalTags( $el ) {
-        var $wrapper    = $el.closest( '.product-select-wrapper' );
-        var $tagWrapper = $wrapper.find( '.selected-products-tags' );
-        $tagWrapper.empty();
-
-        var selected = $el.select2( 'data' );
-        if ( ! selected || ! selected.length ) {
-            $tagWrapper.hide();
-            return;
-        }
-
-        $tagWrapper.show();
-        $.each( selected, function ( i, item ) {
-            var $tag = $(
-                '<span class="product-tag">' +
-                    '<span class="product-tag__text">' + $( '<div>' ).text( item.text ).html() + '</span>' +
-                    '<button type="button" class="product-tag__remove" data-id="' + item.id + '" aria-label="Remove">&times;</button>' +
-                '</span>'
-            );
-            $tagWrapper.append( $tag );
-        } );
-
-        // Remove tag on click
-        $tagWrapper.find( '.product-tag__remove' ).on( 'click', function () {
-            var id      = $( this ).data( 'id' ).toString();
-            var current = $el.val() || [];
-            var updated = current.filter( function ( v ) { return v !== id; } );
-            $el.val( updated ).trigger( 'change' );
-            renderExternalTags( $el );
-        } );
-    }
-
 	$(document).ready(function(){
         function addGroupToSidebar(group){
 
@@ -103,14 +39,15 @@
 				<div class="wpldp-group" data-id="${group.id}">
 					<div class="wpldp-group-top">
 						<span>${group.group_name}</span>
-						<label class="wpldp-switch">
-							<input type="checkbox" class="wpldp-toggle-product-addon-status" data-id="${group.id}" checked>
-							<span class="wpldp-slider"></span>
-						</label>
-					</div>
-					<div class="wpldp-group-actions">
-						<i class="fa-regular fa-copy wpldp-duplicate-product-addon-group"></i>
-                        <i class="fa-solid fa-trash wpldp-delete-product-addon-group"></i>
+						<div class="wpldp-group-top-controls">
+							<button type="button" class="wpldp-trash-btn" data-id="${group.id}">
+								<span class="dashicons dashicons-trash"></span>
+							</button>
+							<label class="wpldp-switch">
+								<input type="checkbox" class="wpldp-toggle-product-addon-status" data-id="${group.id}" checked>
+								<span class="wpldp-slider"></span>
+							</label>
+						</div>
 					</div>
 				</div>
 			`;
@@ -118,57 +55,149 @@
 			$('.wpldp-group-list').append(html);
 		}
 
-        /* LOAD CATEGORIES */
-		function loadCategories(){
-			$.post(wpldp_ajax.url, {
-				action: 'wpldp_get_categories',
-				nonce: wpldp_ajax.nonce
-			}, function(res){
-				$('.wpldp-category-list').html(res);
-			});
+        /* ================= COMBO (products / categories picker) ================= */
+
+		var categoriesCache = null;
+
+		function escHtml( s ) {
+			return String( s == null ? '' : s ).replace( /[&<>"']/g, function ( c ) {
+				return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ c ];
+			} );
 		}
 
-        function loadCategoriesForEdit(selected){
-
-			$.post(wpldp_ajax.url, {
+		function loadCategoriesData( cb ) {
+			if ( categoriesCache ) {
+				cb( categoriesCache );
+				return;
+			}
+			$.post( wpldp_ajax.url, {
 				action: 'wpldp_get_categories',
 				nonce: wpldp_ajax.nonce
-			}, function(res){
-
-				$('.wpldp-category-list').html(res);
-
-				// preselect
-				selected.forEach(function(id){
-					$('.cat-checkbox[value="'+id+'"]').prop('checked', true);
-				});
-
-			});
-		}
-
-        function initEditSelect(group){
-
-			$('#wpldp-edit-products').selectWoo({
-				placeholder: "Type to search products...",
-				width: '100%',
-				//dropdownParent: $('.wpldp-main'),
-				minimumInputLength: 3, // allow initial load
-				allowClear: true,
-				ajax: {
-					url: wpldp_ajax.url,
-					dataType: 'json',
-					delay: 250,
-					data: function(params){
-						return {
-							action: 'wpldp_search_products',
-							nonce: wpldp_ajax.nonce,
-							q: params.term || ''
-						};
-					},
-					processResults: function(data){
-						return { results: data };
+			}, function ( res ) {
+				var items = [];
+				var $container = $( '<div>' ).html( res );
+				$container.find( '.wpldp-cat-item' ).each( function () {
+					var id   = $( this ).find( '.cat-checkbox' ).first().val();
+					var name = $( this ).find( '.cat-name' ).first().text().trim();
+					var depth = $( this ).parents( '.wpldp-sub-cat' ).length;
+					if ( id ) {
+						items.push( { id: id, name: name, label: ( depth ? '— ' : '' ) + name } );
 					}
+				} );
+				categoriesCache = items;
+				cb( items );
+			} );
+		}
+
+		// Tags for a combo live in a full-width container scoped to the same form.
+		function comboTags( $combo ) {
+			var $form = $combo.closest( 'form' );
+			return $form.find( '.wpldp-combo-tags[data-tags-for="' + $combo.data( 'combo' ) + '"]' );
+		}
+
+		function comboRenderMenu( $combo, items ) {
+			var $menu = $combo.find( '.wpldp-combo-menu' );
+			$menu.empty();
+
+			var selectedIds = comboTags( $combo ).find( '.wpldp-combo-hidden' ).map( function () {
+				return String( $( this ).val() );
+			} ).get();
+
+			var filtered = items.filter( function ( it ) {
+				return selectedIds.indexOf( String( it.id ) ) === -1;
+			} );
+
+			if ( ! filtered.length ) {
+				$menu.append( '<div class="wpldp-combo-empty">' + escHtml( 'No results found' ) + '</div>' );
+			} else {
+				filtered.forEach( function ( it ) {
+					var label = it.label || it.text || it.name || '';
+					$menu.append(
+						'<div class="wpldp-combo-option" data-id="' + escHtml( it.id ) + '" data-label="' + escHtml( label ) + '">' + escHtml( label ) + '</div>'
+					);
+				} );
+			}
+			$menu.show();
+		}
+
+		function comboAddTag( $combo, id, label ) {
+			var idStr = String( id );
+			var $tags = comboTags( $combo );
+			if ( $tags.find( '.wpldp-combo-hidden[value="' + idStr + '"]' ).length ) {
+				return;
+			}
+
+			var $tag = $( '<span class="wpldp-combo-tag"></span>' );
+			$( '<span class="wpldp-combo-tag-text"></span>' ).text( label ).appendTo( $tag );
+			$( '<button type="button" class="wpldp-combo-tag-remove" aria-label="Remove">&times;</button>' )
+				.attr( 'data-id', idStr )
+				.appendTo( $tag );
+			$tags.append( $tag );
+
+			$( '<input>' ).attr( {
+				type: 'hidden',
+				'class': 'wpldp-combo-hidden',
+				name: $combo.data( 'name' ),
+				value: idStr
+			} ).appendTo( $tags );
+		}
+
+		function comboRemoveTag( $combo, id ) {
+			var idStr = String( id );
+			var $tags = comboTags( $combo );
+			$tags.find( '.wpldp-combo-tag' ).each( function () {
+				if ( String( $( this ).find( '.wpldp-combo-tag-remove' ).data( 'id' ) ) === idStr ) {
+					$( this ).remove();
 				}
-			});
+			} );
+			$tags.find( '.wpldp-combo-hidden' ).each( function () {
+				if ( String( $( this ).val() ) === idStr ) {
+					$( this ).remove();
+				}
+			} );
+		}
+
+		function searchProducts( $combo, q ) {
+			$.get( wpldp_ajax.url, {
+				action: 'wpldp_search_products',
+				nonce: wpldp_ajax.nonce,
+				q: q
+			}, function ( data ) {
+				var items = ( data || [] ).map( function ( p ) {
+					return { id: p.id, label: p.text };
+				} );
+				comboRenderMenu( $combo, items );
+			} );
+		}
+
+		function searchCategories( $combo, q ) {
+			loadCategoriesData( function ( items ) {
+				var needle = ( q || '' ).toLowerCase();
+				var filtered = items.filter( function ( it ) {
+					return ! needle || ( it.name && it.name.toLowerCase().indexOf( needle ) !== -1 );
+				} );
+				comboRenderMenu( $combo, filtered );
+			} );
+		}
+
+		function comboOpen( $combo ) {
+			var type = $combo.data( 'combo' );
+			var q    = $combo.find( '.wpldp-combo-input' ).val() || '';
+			if ( type === 'categories' ) {
+				searchCategories( $combo, q );
+			} else if ( q.length >= 2 ) {
+				searchProducts( $combo, q );
+			} else {
+				$combo.find( '.wpldp-combo-menu' )
+					.html( '<div class="wpldp-combo-empty">' + escHtml( 'Type at least 2 characters to search' ) + '</div>' )
+					.show();
+			}
+		}
+
+		function comboReset( $combo ) {
+			comboTags( $combo ).empty();
+			$combo.find( '.wpldp-combo-input' ).val( '' );
+			$combo.find( '.wpldp-combo-menu' ).hide();
 		}
 
         function loadGroupData(groupId){
@@ -191,70 +220,103 @@
 		function resetEditPanel(){
 			$('.wpldp-addon-group-details').html('');
 			$('.wpldp-product-addon-fields').html('');
-			$('.wpldp-no-selection-box').show();
 			$('#wpldp-addon-group-form-global').hide();
+			$('#wpldp-create-group-panel').hide();
+		}
+
+		function openCreatePanel(){
+			$('.wpldp-group').removeClass('active');
+			resetEditPanel();
+			$('#wpldp-create-group-panel').show();
+		}
+
+		function resetCreateForm(){
+			$('#wpldp-group-form')[0].reset();
+			$('#wpldp-group-form .wpldp-combo').each( function () {
+				comboReset( $( this ) );
+			} );
+			$('#wpldp-applied-to').val('all');
+			$('#wpldp-products-box').hide();
+			$('#wpldp-categories-box').hide();
+			$('#wpldp-group-form .wpldp-search-column').hide();
+			$('#wpldp-group-form .wpldp-combo-tags').removeClass('is-visible');
+		}
+
+		function closeCreatePanel(){
+			resetCreateForm();
+			$('#wpldp-create-group-panel').hide();
 		}
 
         function renderEditPanel(group){
-			let selected_product_options = '';
-			if(group.products && group.products.length){
-
-				group.products.forEach(function(product){
-					selected_product_options += ` <option value="${product.id}" selected>${product.name}</option>`;
-					
-				});
+			var editApplied = group.applied_to || 'all';
+			var editSubtype = 'all';
+			if(editApplied === 'specific_products'){
+				editSubtype = 'products';
+			} else if(editApplied === 'specific_categories'){
+				editSubtype = 'categories';
+			} else if(editApplied === 'specific'){
+				if(group.categories && group.categories.length && !(group.products && group.products.length)){
+					editSubtype = 'categories';
+				} else {
+					editSubtype = 'products';
+				}
 			}
 
 			let html = `
 			<form id="wpldp-group-form-edit">
 				<div class="wpldp-edit-box" data-id="${group.id}">
 
-					<div class="wpldp-field">
-						<label>Group Name</label>
-						<input type="text" name="product_addon[group_name]" value="${group.group_name}">
-					</div>
-
-					<div class="wpldp-field">
-						<label>Description</label>
-						<textarea name="product_addon[description]" placeholder="Brief description of this group">${group.description}</textarea>
-					</div>
-
-					<div class="wpldp-field">
-						<label>Applied To</label>
-						<select name="product_addon[applied_to]" id="wpldp-edit-applied-to">
-							<option value="all" ${group.applied_to=='all'?'selected':''}>All products</option>
-							<option value="specific" ${group.applied_to=='specific'?'selected':''}>Specific products or categories</option>
-						</select>
-					</div>
-
-					<div id="wpldp-conditional-edit-box" style="${group.applied_to=='specific'?'display:block;':'display:none;'}">
-						<div class="wpldp-field product-select-wrapper">
-							<label>Show in products:</label>
-							<div class="selected-products-tags" style="display:none;"></div>
-							<select name="product_addon[products][]" data-dropdownparent="#wpldp-group-form-edit" id="wpldp-edit-products" class="wc-product-search" data-allow_clear="true" data-placeholder="Search for products…"  data-action="wpldp_search_products" multiple style="width:100%">${selected_product_options}</select>
-						</div>
+					<div class="wpldp-field-row">
 						<div class="wpldp-field">
-							<label>Show in categories:</label>
-							<input type="text" id="wpldp-category-search-edit" placeholder="Type to search categories...">
-							<div class="wpldp-category-list"></div>
+							<label>Group Name</label>
+							<input type="text" name="product_addon[group_name]" value="${group.group_name}">
+						</div>
+
+						<div class="wpldp-field">
+							<label>Applied To</label>
+							<select name="product_addon[applied_to]" id="wpldp-edit-applied-to">
+								<option value="all" ${editSubtype==='all'?'selected':''}>All products</option>
+								<option value="specific_products" ${editSubtype==='products'?'selected':''}>Specific Products</option>
+								<option value="specific_categories" ${editSubtype==='categories'?'selected':''}>Specific Categories</option>
+							</select>
+						</div>
+
+						<div class="wpldp-field wpldp-search-column" style="${editSubtype==='all'?'display:none;':''}">
+							<label>Search</label>
+							<div id="wpldp-edit-products-box" class="wpldp-target-box" style="${editSubtype==='products'?'display:block;':'display:none;'}">
+								<div class="wpldp-combo" data-combo="products" data-name="product_addon[products][]">
+									<div class="wpldp-combo-control">
+										<input type="text" class="wpldp-combo-input" placeholder="Search for products…" autocomplete="off">
+										<span class="dashicons dashicons-arrow-down-alt2 wpldp-combo-caret"></span>
+									</div>
+									<div class="wpldp-combo-menu"></div>
+								</div>
+							</div>
+
+							<div id="wpldp-edit-categories-box" class="wpldp-target-box" style="${editSubtype==='categories'?'display:block;':'display:none;'}">
+								<div class="wpldp-combo" data-combo="categories" data-name="product_addon[categories][]">
+									<div class="wpldp-combo-control">
+										<input type="text" class="wpldp-combo-input" placeholder="Search categories..." autocomplete="off">
+										<span class="dashicons dashicons-arrow-down-alt2 wpldp-combo-caret"></span>
+									</div>
+									<div class="wpldp-combo-menu"></div>
+								</div>
+							</div>
 						</div>
 					</div>
+
+					<!-- Selected labels (full width, under the fields) -->
+					<div class="wpldp-combo-tags${editSubtype==='products'?' is-visible':''}" data-tags-for="products"></div>
+					<div class="wpldp-combo-tags${editSubtype==='categories'?' is-visible':''}" data-tags-for="categories"></div>
 			`;
 
 			html += `</div></form>`;
 
-			$('.wpldp-no-selection-box').hide();
-
 			$('.wpldp-addon-group-details').html(html);
 
-			let fields_html = `<div class="wpldp-fields-header">
-                <h3>Fields</h3>
-                <button data-id="${group.id}" type="button" class="wpldp-add-field-btn">
-                    <i class="fa-solid fa-plus"></i> Add Field
-                </button>
-            </div>`;
+			let has_fields = group.fields && Object.keys(group.fields).length > 0;
 
-			fields_html += `<div class="wpldp-fields-empty" style="${(group.fields && Object.keys(group.fields).length > 0) ? 'display:none;' : 'display:block;'}">
+			let fields_html = `<div class="wpldp-fields-empty" style="${has_fields ? 'display:none;' : 'display:block;'}">
 
 					<div class="wpldp-empty-icon">
 						<i class="fa-solid fa-plus"></i>
@@ -275,173 +337,161 @@
 				
             </div></form>`;
 
+			fields_html += `<div class="wpldp-add-another-field-wrap" style="${has_fields ? '' : 'display:none;'}">
+				<button data-id="${group.id}" type="button" class="wpldp-add-field-btn">
+					<i class="fa-solid fa-plus"></i> Add Another Field
+				</button>
+			</div>`;
+
 			$('.wpldp-product-addon-fields').html(fields_html);
 			$('#wpldp-addon-group-form-global').show();
 
-			// init selectWoo
-			//initEditSelect(group);
-			
-			var $productSelectEdit = $('#wpldp-edit-products');
-			initProductSelect( $productSelectEdit );
-			$productSelectEdit.trigger( 'change' );
-            renderExternalTags( $productSelectEdit );
+			// Prefill selected products as labels.
+			var $productCombo = $('#wpldp-group-form-edit .wpldp-combo[data-combo="products"]');
+			if ( group.products && group.products.length ) {
+				group.products.forEach( function ( product ) {
+					comboAddTag( $productCombo, product.id, product.name );
+				} );
+			}
 
-			// load categories
-			// if(group.applied_to === 'specific'){
-				loadCategoriesForEdit(group.categories);
-			//}
+			// Prefill selected categories as labels.
+			var $categoryCombo = $('#wpldp-group-form-edit .wpldp-combo[data-combo="categories"]');
+			if ( group.categories && group.categories.length ) {
+				loadCategoriesData( function ( items ) {
+					var map = {};
+					items.forEach( function ( it ) { map[ it.id ] = it.name; } );
+					group.categories.forEach( function ( id ) {
+						comboAddTag( $categoryCombo, id, map[ id ] || ( '#' + id ) );
+					} );
+				} );
+			}
 
-			if(group.fields && Object.keys(group.fields).length > 0){
+			if(has_fields){
 				$('.wpldp-fields-empty').hide();
 				for(let field_id in group.fields){
 					appendFieldBuilder(group.id, field_id, group.fields[field_id]);
 				}
+				initFieldSortable();
 			}else{
 				$('.wpldp-fields-empty').show();
 			}
 		}
         
-        // OPEN MODAL
+        // OPEN CREATE PANEL
 		$('.wpldp-new-group').on('click', function(){
-
-			$('#wpldpModal')
-				.css({
-					display: 'flex',
-					alignItems: 'center',
-					justifyContent: 'center'
-				})
-				.hide()
-				.fadeIn(120);
-
+			openCreatePanel();
 		});
 
-        $('.wpldp-close, .wpldp-cancel').on('click', function(){
-			$('#wpldpModal').fadeOut(120);
-		});
-
-        $('#wpldpModal').on('click', function(e){
-			if($(e.target).is('#wpldpModal')){
-				$(this).fadeOut(120);
-			}
+        $('.wpldp-panel-close, .wpldp-cancel').on('click', function(){
+			closeCreatePanel();
 		});
 
         /* TRIGGER ON SELECT */
 		$('#wpldp-applied-to').on('change', function(){
 
-			if($(this).val() === 'specific'){
-				$('#wpldp-conditional-box').slideDown(150);
-				loadCategories();
+			var val = $(this).val();
+			var $searchColumn = $('#wpldp-group-form .wpldp-search-column');
+			var $productTags = $('#wpldp-group-form .wpldp-combo-tags[data-tags-for="products"]');
+			var $categoryTags = $('#wpldp-group-form .wpldp-combo-tags[data-tags-for="categories"]');
+
+			$('#wpldp-products-box').slideUp(150);
+			$('#wpldp-categories-box').slideUp(150);
+			$productTags.removeClass('is-visible');
+			$categoryTags.removeClass('is-visible');
+
+			if(val === 'specific_products'){
+				$searchColumn.show();
+				$('#wpldp-products-box').slideDown(150);
+				$productTags.addClass('is-visible');
+			} else if(val === 'specific_categories'){
+				$searchColumn.show();
+				$('#wpldp-categories-box').slideDown(150);
+				$categoryTags.addClass('is-visible');
 			} else {
-				$('#wpldp-conditional-box').slideUp(150);
+				$searchColumn.hide();
 			}
 
 		});
 
 		$(document).on('change', '#wpldp-edit-applied-to', function(){
 
-			if($(this).val() === 'specific'){
-				$('#wpldp-conditional-edit-box').slideDown(150);
-				//loadCategoriesForEdit();
+			var val = $(this).val();
+			var $form = $(this).closest('form');
+			var $searchColumn = $form.find('.wpldp-field-row .wpldp-search-column');
+			var $productTags = $form.find('.wpldp-combo-tags[data-tags-for="products"]');
+			var $categoryTags = $form.find('.wpldp-combo-tags[data-tags-for="categories"]');
+
+			$form.find('#wpldp-edit-products-box').slideUp(150);
+			$form.find('#wpldp-edit-categories-box').slideUp(150);
+			$productTags.removeClass('is-visible');
+			$categoryTags.removeClass('is-visible');
+
+			if(val === 'specific_products'){
+				$searchColumn.show();
+				$form.find('#wpldp-edit-products-box').slideDown(150);
+				$productTags.addClass('is-visible');
+			} else if(val === 'specific_categories'){
+				$searchColumn.show();
+				$form.find('#wpldp-edit-categories-box').slideDown(150);
+				$categoryTags.addClass('is-visible');
 			} else {
-				$('#wpldp-conditional-edit-box').slideUp(150);
+				$searchColumn.hide();
 			}
 
 		});
 
-        /* CATEGORY SEARCH (FRONTEND ONLY) */
-		$(document).on('keyup', '#wpldp-category-search', function(){
+        /* ================= COMBO EVENT HANDLERS ================= */
 
-			let value = $(this).val().toLowerCase();
-
-			$('.wpldp-cat-item').each(function(){
-
-				let text = $(this).find('.cat-name').text().toLowerCase();
-
-				if(text.includes(value)){
-					$(this).show();
-				} else {
-					$(this).hide();
-				}
-
-			});
-
-			// hide empty sub categories
-			// $('.wpldp-sub-cat').each(function(){
-
-			// 	let visibleChildren = $(this).find('.wpldp-cat-item:visible').length;
-
-			// 	if(visibleChildren > 0){
-			// 		$(this).show();
-			// 	} else {
-			// 		$(this).hide();
-			// 	}
-
-			// });
-
+		// Open dropdown on focus.
+		$(document).on('focus', '.wpldp-combo-input', function(){
+			comboOpen( $( this ).closest( '.wpldp-combo' ) );
 		});
 
-        /* CHECKBOX TREE LOGIC (UPDATED) */
-		$(document).on('change', '.cat-checkbox', function(){
+		// Search as the user types.
+		$(document).on('keyup', '.wpldp-combo-input', function(){
+			var $combo = $( this ).closest( '.wpldp-combo' );
+			var q      = $( this ).val() || '';
+			var type   = $combo.data( 'combo' );
 
-			let isChecked = $(this).is(':checked');
+			clearTimeout( $combo.data( 'timer' ) );
 
-			let currentLabel = $(this).closest('.wpldp-cat-item');
-
-			// 1. PARENT → CHILD
-			let subCat = currentLabel.next('.wpldp-sub-cat');
-
-			if(subCat.length){
-				subCat.find('.cat-checkbox').prop('checked', isChecked);
+			if ( type === 'categories' ) {
+				searchCategories( $combo, q );
+			} else {
+				$combo.data( 'timer', setTimeout( function () {
+					if ( q.length >= 2 ) {
+						searchProducts( $combo, q );
+					} else {
+						$combo.find( '.wpldp-combo-menu' )
+							.html( '<div class="wpldp-combo-empty">' + escHtml( 'Type at least 2 characters to search' ) + '</div>' )
+							.show();
+					}
+				}, 250 ) );
 			}
-
-			// 2. CHILD → PARENT
-			let parentSubCat = currentLabel.closest('.wpldp-sub-cat');
-
-			if(parentSubCat.length){
-
-				let parentLabel = parentSubCat.prev('.wpldp-cat-item');
-
-				let allChecked = parentSubCat.find('.cat-checkbox').length === parentSubCat.find('.cat-checkbox:checked').length;
-
-				let anyChecked = parentSubCat.find('.cat-checkbox:checked').length > 0;
-
-				if(allChecked){
-					parentLabel.find('.cat-checkbox').prop('checked', true);
-				} else if(!anyChecked){
-					parentLabel.find('.cat-checkbox').prop('checked', false);
-				} else {
-					// optional: partial state (not native checkbox UI but useful)
-					parentLabel.find('.cat-checkbox').prop('checked', false);
-				}
-			}
-
 		});
 
-        /* SELECT2 PRODUCT SEARCH */
-		var $productSelect = $( '#wpldp-product-search' );
-		initProductSelect( $productSelect );
-		// $('#wpldp-product-search').selectWoo({
-		// 	placeholder: "Type to search products...",
-		// 	width: '100%',
-		// 	dropdownParent: $('#wpldpModal'), // THIS FIXES IT
-		// 	minimumInputLength: 3,
-        // 	allowClear: true,
-		// 	ajax: {
-		// 		url: wpldp_ajax.url,
-		// 		dataType: 'json',
-		// 		delay: 250,
-		// 		data: function (params) {
-		// 			return {
-		// 				action: 'wpldp_search_products',
-		// 				nonce: wpldp_ajax.nonce,
-		// 				q: params.term
-		// 			};
-		// 		},
-		// 		processResults: function (data) {
-		// 			return { results: data };
-		// 		}
-		// 	}
-		// });
+		// Pick an option → add as a label under the field.
+		$(document).on('click', '.wpldp-combo-option', function(){
+			var $combo = $( this ).closest( '.wpldp-combo' );
+			comboAddTag( $combo, $( this ).data( 'id' ), $( this ).data( 'label' ) );
+			$combo.find( '.wpldp-combo-menu' ).hide();
+			$combo.find( '.wpldp-combo-input' ).val( '' ).focus();
+		});
+
+		// Remove a label.
+		$(document).on('click', '.wpldp-combo-tag-remove', function(){
+			var $tags = $( this ).closest( '.wpldp-combo-tags' );
+			var type  = $tags.data( 'tags-for' );
+			var $combo = $tags.closest( 'form' ).find( '.wpldp-combo[data-combo="' + type + '"]' );
+			comboRemoveTag( $combo, $( this ).data( 'id' ) );
+		});
+
+		// Close menus when clicking outside the combo.
+		$(document).on('click', function(e){
+			if ( ! $( e.target ).closest( '.wpldp-combo' ).length ) {
+				$( '.wpldp-combo-menu' ).hide();
+			}
+		});
 
         /* FORM SUBMIT -- adding product addon group */
 		$('#wpldp-group-form').on('submit', function(e){
@@ -450,6 +500,19 @@
 
 			let form = $(this)[0];
 			let formData = new FormData(form);
+
+			// Map the 3-option UI back to the backend's all/specific values.
+			let appliedTo = formData.get('product_addon[applied_to]');
+			if(appliedTo === 'specific_products'){
+				formData.set('product_addon[applied_to]', 'specific');
+				formData.delete('product_addon[categories][]');
+			} else if(appliedTo === 'specific_categories'){
+				formData.set('product_addon[applied_to]', 'specific');
+				formData.delete('product_addon[products][]');
+			} else {
+				formData.delete('product_addon[products][]');
+				formData.delete('product_addon[categories][]');
+			}
 
 			// manually append action + nonce
 			formData.append('action', 'wpldp_save_group');
@@ -471,29 +534,86 @@
 
 						addGroupToSidebar(res.data);
 
-						$('#wpldpModal').fadeOut(150);
-
-						// reset form
-						$('#wpldp-group-form')[0].reset();
-						$('.cat-checkbox').prop('checked', false);
-						$('#wpldp-product-search').val(null).trigger('change');
+						resetCreateForm();
+						$('.wpldp-group').removeClass('active');
+						$('.wpldp-group[data-id="' + res.data.id + '"]').addClass('active');
+						loadGroupData(res.data.id); // manages its own loader
 
 					} else {
 						showToast(res.data?.message || 'Error saving', 'error');
+						hideLoader();
 					}
-					hideLoader();
 				}
 			});
 
 		});
 
-        /* DELETE GROUP */
-		$(document).on('click', '.wpldp-delete-product-addon-group', function(){
+        /* DELETE (shared confirmation modal) */
+		var pendingDelete = null;
 
-			if(!confirm('Are you sure you want to delete this group?')) return;
+		function showConfirmModal(title){
+			$('#wpldp-confirm-title').text(title);
+			$('#wpldp-confirm-overlay').show();
+		}
 
-			let groupEl = $(this).closest('.wpldp-group');
-			let groupId = groupEl.data('id');
+		function closeConfirmModal(){
+			$('#wpldp-confirm-overlay').hide();
+			pendingDelete = null;
+		}
+
+		// Group trash button → open the confirmation modal.
+		$(document).on('click', '.wpldp-trash-btn', function(e){
+			e.stopPropagation();
+			pendingDelete = { kind: 'group', groupId: $(this).closest('.wpldp-group').data('id') };
+			showConfirmModal('Are you sure you want to delete this group?');
+		});
+
+		// Field trash button → open the same confirmation modal.
+		$(document).on('click', '.wpldp-delete-addon-field', function(e){
+			e.stopPropagation();
+			pendingDelete = {
+				kind: 'field',
+				groupId: $(this).data('groupid'),
+				fieldId: $(this).data('fieldid'),
+				fieldEl: $(this).closest('.wpldp-field-box')
+			};
+			showConfirmModal('Are you sure you want to delete this field?');
+		});
+
+		// Cancel / close the confirmation modal.
+		$(document).on('click', '.wpldp-confirm-cancel', closeConfirmModal);
+
+		$(document).on('click', '.wpldp-confirm-overlay', function(e){
+			if($(e.target).is(this)){
+				closeConfirmModal();
+			}
+		});
+
+		// Confirm deletion.
+		$(document).on('click', '.wpldp-confirm-delete', function(){
+
+			var target = pendingDelete;
+			closeConfirmModal();
+
+			if(!target){
+				return;
+			}
+
+			if(target.kind === 'group'){
+				deleteGroup(target.groupId);
+			} else if(target.kind === 'field'){
+				deleteField(target.groupId, target.fieldId, target.fieldEl);
+			}
+
+		});
+
+		function deleteGroup(groupId){
+
+			let groupEl = $('.wpldp-group[data-id="' + groupId + '"]');
+
+			if(!groupId || !groupEl.length){
+				return;
+			}
 
 			showLoader();
 
@@ -517,9 +637,9 @@
 								</p>
 							`);
 
-							$('.wpldp-no-selection-box').show();
 							$('.wpldp-addon-group-details').html('');
 							$('.wpldp-product-addon-fields').html('');
+							$('#wpldp-addon-group-form-global').hide();
 						}
 					});
 
@@ -534,8 +654,44 @@
 				}
 				hideLoader();
 			});
+		}
 
-		});
+		function deleteField(groupId, fieldId, fieldEl){
+
+			if(!groupId || !fieldId || !fieldEl || !fieldEl.length){
+				return;
+			}
+
+			showLoader();
+
+			$.post(wpldp_ajax.url, {
+				action: 'wpldp_delete_group_addon_field',
+				nonce: wpldp_ajax.nonce,
+				field_id: fieldId,
+				group_id: groupId
+			}, function(res){
+
+				if(res.success){
+
+					// remove from UI
+					fieldEl.fadeOut(200, function(){
+						$(this).remove();
+
+						// show empty message if no fields left
+						if($('.wpldp-product-addon-fields-list .wpldp-field-box').length === 0){
+							$('.wpldp-fields-empty').show();
+							$('.wpldp-add-another-field-wrap').hide();
+						}
+					});
+
+					showToast('Field deleted successfully');
+
+				} else {
+					showToast(res.data?.message || 'Delete failed', 'error');
+				}
+				hideLoader();
+			});
+		}
 
         /* DUPLICATE GROUP */
 		$(document).on('click', '.wpldp-duplicate-product-addon-group', function(){
@@ -611,6 +767,9 @@
 			if ($(e.target).closest('.wpldp-switch').length) {
 				return; // ignore clicks inside actions
 			}
+			if ($(e.target).closest('.wpldp-trash-btn').length) {
+				return; // ignore clicks on the delete button
+			}
 
 			let groupId = $(this).data('id');
 
@@ -635,6 +794,19 @@
 			let box = $(this).find('.wpldp-edit-box');
 
 			let groupId = box.data('id');
+
+			// Map the 3-option UI back to the backend's all/specific values.
+			let appliedTo = formData.get('product_addon[applied_to]');
+			if(appliedTo === 'specific_products'){
+				formData.set('product_addon[applied_to]', 'specific');
+				formData.delete('product_addon[categories][]');
+			} else if(appliedTo === 'specific_categories'){
+				formData.set('product_addon[applied_to]', 'specific');
+				formData.delete('product_addon[products][]');
+			} else {
+				formData.delete('product_addon[products][]');
+				formData.delete('product_addon[categories][]');
+			}
 
 			// manually append action + nonce
 			formData.append('action', 'wpldp_update_group');
@@ -723,52 +895,55 @@
 				<div class="wpldp-addon-field-data-form" data-groupid="${groupId}" data-fieldid="${fieldId}">
 
 					<div class="wpldp-field-header">
-						<span class="wpldp-drag">⋮⋮</span>
+						<span class="dashicons dashicons-menu wpldp-drag"></span>
 
 						<strong class="wpldp-field-type-label">${getFieldTypeSelectedOption(field_data ? field_data.type : 'text')}</strong>
-						<span class="wpldp-field-title-label">${field_data ? field_data.title : 'New Add-On Field'}</span>
+						<span class="wpldp-field-title-label">${field_data && field_data.title ? field_data.title : ''}</span>
 
 						<div class="wpldp-field-actions">
-							<i class="fa-regular fa-copy wpldp-copy-addon-field" data-groupid="${groupId}" data-fieldid="${fieldId}"></i>
-							<i class="fa-solid fa-trash wpldp-delete-addon-field" data-groupid="${groupId}" data-fieldid="${fieldId}"></i>
-							<i class="fa-solid fa-angle-up toggle"></i>
+							<span class="dashicons dashicons-trash wpldp-delete-addon-field" data-groupid="${groupId}" data-fieldid="${fieldId}"></span>
+							<span class="dashicons dashicons-arrow-up-alt2 toggle"></span>
 						</div>
 					</div>
 
 					<div class="wpldp-field-body">
 
-						<!-- FIELD TYPE -->
-						<div class="wpldp-field">
-							<label>Field Type</label>
+						<!-- FIELD TYPE + TITLE + WIDTH -->
+						<div class="wpldp-field-row">
+							<div class="wpldp-field">
+								<label>Field Type</label>
 
-							<div class="wpldp-custom-select">
-								<div class="wpldp-selected">
-									${getFieldTypeSelectedOption(field_data ? field_data.type : 'text')}
+								<div class="wpldp-custom-select">
+									<div class="wpldp-selected">
+										<span class="wpldp-selected-label">${getFieldTypeSelectedOption(field_data ? field_data.type : 'text')}</span>
+										<span class="dashicons dashicons-arrow-down-alt2 wpldp-select-caret"></span>
+									</div>
+
+									<div class="wpldp-options" data-fieldid="${fieldId}">
+										${getFieldTypeOptions()}
+									</div>
+
+									<input type="hidden" class="wpldp-field-type" name="fields[${fieldId}][type]" value="${field_data ? field_data.type : 'text'}">
 								</div>
-
-								<div class="wpldp-options" data-fieldid="${fieldId}">
-									${getFieldTypeOptions()}
-								</div>
-
-								<input type="hidden" class="wpldp-field-type" name="fields[${fieldId}][type]" value="${field_data ? field_data.type : 'text'}">
 							</div>
-						</div>
 
-						<!-- FIELD TITLE -->
-						<div class="wpldp-field">
-							<label>Field Title</label>
-							<input type="text" name="fields[${fieldId}][title]" class="wpldp-input-title" value="${field_data ? field_data.title : 'New Add-On Field'}">
-						</div>
+							<div class="wpldp-field">
+								<label>Field Title <span class="wpldp-required-star">*</span></label>
+								<input type="text" name="fields[${fieldId}][title]" class="wpldp-title-input" value="${field_data && field_data.title ? field_data.title : ''}" required>
+							</div>
 
-						<!-- FIELD WIDTH -->
-						<div class="wpldp-field">
-							<label>Field Width</label>
-							<select class="wpldp-input-title" name="fields[${fieldId}][width]">
-								<option ${(field_data && (field_data.width == '100%')) ? 'selected' : ''} value="100%">100%</option>
-								<option ${(field_data && (field_data.width == '75%')) ? 'selected' : ''} value="75%">75%</option>
-								<option ${(field_data && (field_data.width == '50%')) ? 'selected' : ''} value="50%">50%</option>
-								<option ${(field_data && (field_data.width == '25%')) ? 'selected' : ''} value="25%">25%</option>
-							</select>
+							<div class="wpldp-field">
+								<label>Field Width</label>
+								<div class="wpldp-select-wrap">
+									<select name="fields[${fieldId}][width]">
+										<option ${(field_data && (field_data.width == '100%')) ? 'selected' : ''} value="100%">100%</option>
+										<option ${(field_data && (field_data.width == '75%')) ? 'selected' : ''} value="75%">75%</option>
+										<option ${(field_data && (field_data.width == '50%')) ? 'selected' : ''} value="50%">50%</option>
+										<option ${(field_data && (field_data.width == '25%')) ? 'selected' : ''} value="25%">25%</option>
+									</select>
+									<span class="dashicons dashicons-arrow-down-alt2 wpldp-select-caret"></span>
+								</div>
+							</div>
 						</div>
 
 						<!-- REQUIRED -->
@@ -789,6 +964,23 @@
 			`;
 
 			$('.wpldp-product-addon-fields-list').append(html);
+		}
+
+		function initFieldSortable(){
+			var $list = $('.wpldp-product-addon-fields-list');
+			if ( ! $list.length || typeof $list.sortable !== 'function' ) {
+				return;
+			}
+			if ( $list.data('ui-sortable') ) {
+				$list.sortable('destroy');
+			}
+			$list.sortable({
+				handle: '.wpldp-drag',
+				items: '.wpldp-field-box',
+				axis: 'y',
+				containment: 'parent',
+				tolerance: 'pointer'
+			});
 		}
 
 		function getFieldTypeHTML(type, fieldId, field_data = null){
@@ -929,7 +1121,7 @@
 
 					<input type="number" name="fields[${fieldId}][options][${index}][price]" value="${option_data ? option_data.price : 0}">
 
-					<i class="fa-solid fa-trash remove-option"></i>
+					<span class="dashicons dashicons-trash remove-option"></span>
 
 				</div>
 			`;
@@ -955,14 +1147,14 @@
 					<div class="wpldp-image-upload">
 						
 						<button type="button" class="upload-btn">
-							<i class="fa-solid fa-upload"></i>
+							<span class="dashicons dashicons-upload"></span>
 						</button>
 						<input type="hidden" name="fields[${fieldId}][options][${index}][image_id]" value="${option_data ? option_data.image_id : ''}" class="image-id">
 					</div>
 
 					<input type="number" name="fields[${fieldId}][options][${index}][price]" value="${option_data ? option_data.price : 0}">
 
-					<i class="fa-solid fa-trash remove-option"></i>
+					<span class="dashicons dashicons-trash remove-option"></span>
 
 				</div>
 			`;
@@ -977,7 +1169,7 @@
 				<div class="wpldp-option-row">
 					<input type="text" name="fields[${fieldId}][options][${index}][label]" placeholder="Option label" value="${option_data ? option_data.label : ''}">
 					<input type="number" name="fields[${fieldId}][options][${index}][price]" placeholder="Price" value="${option_data ? option_data.price : 0}">
-					<i class="fa-solid fa-trash remove-option"></i>
+					<span class="dashicons dashicons-trash remove-option"></span>
 				</div>
 			`;
 		}
@@ -985,7 +1177,15 @@
 		$(document).on('click', '.wpldp-add-field-btn', function(){
 			var groupId = $(this).data('id');
 			appendFieldBuilder(groupId);
+			initFieldSortable();
 			$('.wpldp-fields-empty').hide();
+			$('.wpldp-add-another-field-wrap').show();
+		});
+
+		// Live-update the header title label as the user types the field title.
+		$(document).on('input', '.wpldp-title-input', function(){
+			var $box = $(this).closest('.wpldp-field-box');
+			$box.find('.wpldp-field-title-label').text($(this).val());
 		});
 
 		$(document).on('click', '.toggle', function(e){
@@ -1072,7 +1272,7 @@
 			let box = option.closest('.wpldp-field-box');
 
 			// Update selected UI
-			select.find('.wpldp-selected').html(icon + ' ' + text);
+			select.find('.wpldp-selected .wpldp-selected-label').html(icon + ' ' + text);
 			box.find('.wpldp-field-type-label').text(text);
 
 			// Update dynamic fields
@@ -1176,6 +1376,12 @@
 			formData.append('nonce', wpldp_ajax.nonce);
 			formData.append('group_id', groupId);
 
+			// current visual order of fields (for drag-to-reorder persistence)
+			let fieldOrder = $('.wpldp-product-addon-fields-list .wpldp-field-box').map(function(){
+				return $(this).data('fieldid');
+			}).get();
+			formData.append('field_order', JSON.stringify(fieldOrder));
+
 			showLoader();
 			$.ajax({
 				url: wpldp_ajax.url,
@@ -1254,50 +1460,11 @@
 
 				if(res.success){
 					appendFieldBuilder(groupId, res.data.field_id, res.data.field_data);
+					initFieldSortable();
 					showToast('Field duplicated successfully');
 
 				} else {
 					showToast(res.data?.message || 'Duplicate failed', 'error');
-				}
-				hideLoader();
-			});
-
-		});
-
-		/* DELETE GROUP field */
-		$(document).on('click', '.wpldp-delete-addon-field', function(){
-
-			if(!confirm('Are you sure you want to delete this field?')) return;
-
-			let groupId = $(this).data('groupid');
-			let fieldId = $(this).data('fieldid');
-			let fieldEl = $(this).closest('.wpldp-field-box');
-
-			showLoader();
-
-			$.post(wpldp_ajax.url, {
-				action: 'wpldp_delete_group_addon_field',
-				nonce: wpldp_ajax.nonce,
-				field_id: fieldId,
-				group_id: groupId
-			}, function(res){
-
-				if(res.success){
-
-					// remove from UI
-					fieldEl.fadeOut(200, function(){
-						$(this).remove();
-
-						// show empty message if no groups left
-						if($('.wpldp-product-addon-fields-list .wpldp-field-box').length === 0){
-							$('.wpldp-fields-empty').show();
-						}
-					});
-
-					showToast('Field deleted successfully');
-
-				} else {
-					showToast(res.data?.message || 'Delete failed', 'error');
 				}
 				hideLoader();
 			});

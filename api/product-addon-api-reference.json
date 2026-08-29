@@ -1,0 +1,127 @@
+{
+  "service": "Dukkan — Product Add-Ons API",
+  "base_url": "https://{site}/wp-json/wc/v3",
+  "auth": "WooCommerce REST API (Consumer Key / Consumer Secret) — requires manage_woocommerce capability",
+  "prerequisites": [
+    "WooCommerce installed and active",
+    "Dukkan plugin v1.0.21 or newer (this is the version that introduces these RESTful routes)"
+  ],
+  "note": "This is a BREAKING change from the legacy /get_groups, /create_group, /update_group, /delete_group, /duplicate_group routes, which have been removed.",
+
+  "endpoints": {
+    "list":           "GET    /product-addons",
+    "get":            "GET    /product-addons/{id}",
+    "create":         "POST   /product-addons",
+    "update":         "PUT    /product-addons/{id}",
+    "delete":         "DELETE /product-addons/{id}",
+    "duplicate":      "POST   /product-addons/{id}/duplicate",
+    "toggle":         "POST   /product-addons/{id}/toggle",
+    "reorder_fields": "POST   /product-addons/{id}/reorder-fields",
+    "delete_field":   "DELETE /product-addons/{id}/fields/{field_id}"
+  },
+
+  "group_shape": {
+    "id": "string — group id (slug-timestamp)",
+    "group_name": "string",
+    "description": "string",
+    "applied_to": "string — 'all' | 'specific'",
+    "categories": ["array of category term ids"],
+    "products": ["array of { id, name } objects (resolved on read)"],
+    "status": "integer — 1 enabled, 0 disabled",
+    "fields": "object keyed by field id"
+  },
+
+  "field_shape": {
+    "id": "string — field id",
+    "type": "string — text | textarea | number | date | file | select | radio | checkbox | image | color",
+    "title": "string",
+    "width": "string — 100% | 75% | 50% | 25%",
+    "required": "integer — 1 or 0",
+    "price": "number",
+    "options": "object keyed by option id"
+  },
+
+  "option_shape": {
+    "id": "string — option id",
+    "label": "string",
+    "price": "number",
+    "color": "string — only for color fields",
+    "color_code": "string — only for color fields",
+    "image_id": "integer — only for image fields",
+    "image_url": "string — only for image fields"
+  },
+
+  "requests": {
+    "create": {
+      "method": "POST /product-addons",
+      "body": {
+        "group_name": "Gift Options",
+        "description": "Optional extras",
+        "applied_to": "specific",
+        "categories": [12, 34],
+        "products": [101, 102],
+        "status": 1,
+        "fields": [
+          { "type": "text", "title": "Gift note", "width": "100%", "required": 1, "price": 0 },
+          {
+            "type": "select",
+            "title": "Wrap style",
+            "width": "50%",
+            "required": 0,
+            "price": 0,
+            "options": [
+              { "label": "Standard", "price": 0 },
+              { "label": "Premium", "price": 2.5 }
+            ]
+          }
+        ]
+      },
+      "note": "fields is a JSON ARRAY (order preserved). ids are generated server-side."
+    },
+    "update": {
+      "method": "PUT /product-addons/{id}",
+      "body": { "group_name": "New name", "status": 0 },
+      "note": "Partial update — only sent keys overwrite. fields is replaced only when the 'fields' key is present."
+    },
+    "toggle": {
+      "method": "POST /product-addons/{id}/toggle",
+      "body": { "status": 0 }
+    },
+    "reorder_fields": {
+      "method": "POST /product-addons/{id}/reorder-fields",
+      "body": { "field_order": ["field_2", "field_1", "field_3"] },
+      "note": "Unlisted fields are appended to the end."
+    },
+    "delete_field": {
+      "method": "DELETE /product-addons/{id}/fields/{field_id}"
+    }
+  },
+
+  "responses": {
+    "list": "JSON array of group objects",
+    "get": "single group object",
+    "create": "201 + created group object",
+    "duplicate": "201 + duplicated group object",
+    "update": "updated group object",
+    "toggle": "{ id, status }",
+    "reorder_fields": "updated group object",
+    "delete": "{ deleted: true, id }",
+    "delete_field": "{ deleted: true, group_id, field_id }"
+  },
+
+  "errors": [
+    { "status": 400, "code": "missing_group_name", "when": "group_name missing or empty on create" },
+    { "status": 400, "code": "missing_group_id", "when": "group id missing" },
+    { "status": 400, "code": "missing_field_order", "when": "field_order missing or empty on reorder" },
+    { "status": 404, "code": "not_found", "when": "group does not exist" },
+    { "status": 404, "code": "field_not_found", "when": "field does not exist" },
+    { "status": 401, "code": "woocommerce_rest_cannot_view", "when": "missing/invalid WooCommerce API auth" }
+  ],
+
+  "examples": {
+    "curl_list": "curl https://{site}/wp-json/wc/v3/product-addons -u consumer_key:consumer_secret",
+    "curl_create": "curl -X POST https://{site}/wp-json/wc/v3/product-addons -u ck:cs -H 'Content-Type: application/json' -d '{\"group_name\":\"Gift Options\",\"fields\":[{\"type\":\"text\",\"title\":\"Gift note\"}]}'",
+    "curl_toggle": "curl -X POST https://{site}/wp-json/wc/v3/product-addons/{id}/toggle -u ck:cs -H 'Content-Type: application/json' -d '{\"status\":0}'",
+    "curl_reorder": "curl -X POST https://{site}/wp-json/wc/v3/product-addons/{id}/reorder-fields -u ck:cs -H 'Content-Type: application/json' -d '{\"field_order\":[\"field_2\",\"field_1\"]}'"
+  }
+}
