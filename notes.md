@@ -6,6 +6,12 @@
 
 ## Recent Changes
 
+### v1.0.22 — Manual updates (auto-update removed)
+
+- Removed the daily WP-Cron self-update and the background `dukkan/v1/update` REST endpoint.
+- Removed the 12-hour `version.json` cache; the update UI now reads `version.json` live.
+- Updates are applied only via the WordPress "update now" button (or WP auto-updates if enabled).
+
 ### v1.0.5 — Slim SEO API Bridge
 
 Two write-only REST endpoints under `dukkan-seo/v1` that let the mobile app set Slim SEO meta titles and descriptions on posts (including products).
@@ -46,14 +52,14 @@ Also: TranslatePress API class now conditionally loaded only when `TRP_Translate
 
 ---
 
-## Plugin Self-Update Mechanism
+## Plugin Update Mechanism (manual)
 
-No wordpress.org hosting required. The updater file is `version.json` at the repo root:
+No wordpress.org hosting required. The plugin reads `version.json` from the repo root and injects the latest release into WordPress's native update UI:
 
 ```json
 {
-  "version": "1.0.5",
-  "package": "https://github.com/jodukkan-max/dukkan-plugin/releases/download/v1.0.5/dukkan-plugin-v1.0.5.zip",
+  "version": "1.0.22",
+  "package": "https://github.com/jodukkan-max/dukkan-plugin/releases/download/v1.0.22/dukkan-plugin.zip",
   "requires": "5.0",
   "tested": "6.6"
 }
@@ -61,15 +67,13 @@ No wordpress.org hosting required. The updater file is `version.json` at the rep
 
 **Release workflow:**
 
-1. Build the ZIP: `zip -r dukkan-plugin-vX.Y.Z.zip dukkan-plugin -x "dukkan-plugin/.git/*" ...`
+1. Build the ZIP: `zip -r dukkan-plugin.zip dukkan-plugin -x "dukkan-plugin/.git/*" "*.DS_Store" "*.backup"`
 2. Bump version in `dukkan-plugin.php` (header comment + `DUKKAN_PLUGIN_VERSION` constant)
 3. Bump version and package URL in `version.json`
 4. Commit and push
 5. Create a GitHub Release with the same tag (`vX.Y.Z`) and attach the ZIP
 
-Sites running v1.0.4+ will auto-update at 4 AM without any user action.
-
-**To seed the updater on old sites:** Upload the latest ZIP (`dukkan-plugin-v1.0.5.zip`) manually once per site. From that point on, the site auto-updates.
+Updates are applied manually by the admin via the "update now" button on the Plugins screen (or WordPress auto-updates if enabled). There is no scheduled cron and no automatic background install.
 
 ---
 
@@ -78,7 +82,7 @@ Sites running v1.0.4+ will auto-update at 4 AM without any user action.
 ```
 dukkan-plugin/
 ├── dukkan-plugin.php              # Bootstrap — constants, activation, updater init
-├── version.json                   # Single source of truth for auto-updater
+├── version.json                   # Version manifest read by the update UI
 ├── index.php                      # Silence is golden
 ├── uninstall.php                  # Cleanup on uninstall
 ├── README.txt                     # Plugin readme
@@ -93,7 +97,7 @@ dukkan-plugin/
 │   ├── class-dukkan-plugin-deactivator.php
 │   ├── class-dukkan-plugin-i18n.php       # Internationalization
 │   ├── class-dukkan-plugin-loader.php     # Hook orchestrator
-│   └── class-dukkan-plugin-updater.php    # Self-updater (cron + async background)
+│   └── class-dukkan-plugin-updater.php    # Update notification (native WP update UI)
 │
 ├── admin/                         # WordPress admin area
 │   ├── class-dukkan-plugin-admin.php
@@ -143,6 +147,5 @@ dukkan-plugin/
 | `dukkan-dynamic-pricing/v1` | `/products/search` | GET |
 | `dukkan-seo/v1` | `/posts/{id}/title` | PUT |
 | `dukkan-seo/v1` | `/posts/{id}/description` | PUT |
-| `dukkan/v1` | `/update` | POST (internal, token-protected) |
 
-All endpoints except `/update` are publicly accessible (`__return_true` permission callback).
+All endpoints are publicly accessible (`__return_true` permission callback).

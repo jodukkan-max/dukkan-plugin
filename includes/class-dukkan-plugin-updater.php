@@ -1,13 +1,12 @@
 <?php
 
 /**
- * Self-update mechanism — cron-driven, fully automatic, zero visitor delay.
+ * Update-notification mechanism — manual, no background cron.
  *
- * A daily WP-Cron event at 4 AM Amman time checks version.json on
- * GitHub. If a newer version is found, it fires an async (non-blocking)
- * request to this plugin's own REST endpoint. That endpoint runs the
- * actual download/unzip in a separate PHP process, so the visitor who
- * triggered the cron never waits.
+ * Injects the latest GitHub release into WordPress's native update UI so
+ * the site admin sees "update now" on the Plugins screen. There is no
+ * scheduled check and no automatic install; updates happen only when an
+ * admin clicks "update now" (or enables WordPress auto-updates).
  *
  * @link       https://dukkanjo.com
  * @since      1.0.4
@@ -31,30 +30,6 @@ class Dukkan_Plugin_Updater {
 	 * @var   string
 	 */
 	const PLUGIN_SLUG = 'dukkan-plugin';
-
-	/**
-	 * Cron hook name for the daily version check.
-	 *
-	 * @since 1.0.2
-	 * @var   string
-	 */
-	const CRON_HOOK = 'dukkan_plugin_daily_update_check';
-
-	/**
-	 * REST API namespace.
-	 *
-	 * @since 1.0.4
-	 * @var   string
-	 */
-	const REST_NAMESPACE = 'dukkan/v1';
-
-	/**
-	 * Option key for the background-update auth token.
-	 *
-	 * @since 1.0.4
-	 * @var   string
-	 */
-	const TOKEN_OPTION = 'dukkan_update_token';
 
 	/**
 	 * The plugin basename (dukkan-plugin/dukkan-plugin.php).
@@ -92,14 +67,7 @@ class Dukkan_Plugin_Updater {
 		$this->plugin_file     = $plugin_file;
 		$this->current_version = $version;
 
-		// Schedule the 4 AM daily check.
-		add_action( 'admin_init', array( $this, 'schedule_cron' ) );
-		add_action( self::CRON_HOOK, array( $this, 'on_cron_ping' ) );
-
-		// Register the background-update REST endpoint.
-		add_action( 'rest_api_init', array( $this, 'register_rest_route' ) );
-
-		// Also inject into WP's native update UI (bonus).
+		// Inject into WP's native update UI.
 		add_filter( 'site_transient_update_plugins', array( $this, 'check_for_update' ), 10, 1 );
 
 		// Show the "Enable auto-updates" toggle for Dukkan (GitHub-hosted plugins
@@ -108,195 +76,7 @@ class Dukkan_Plugin_Updater {
 	}
 
 	// -----------------------------------------------------------------
-	// WP-Cron scheduling
-	// -----------------------------------------------------------------
-
-	/**
-	 * Schedule the daily cron at 4 AM Amman time (1 AM UTC).
-	 *
-	 * @since 1.0.2
-	 */
-	public function schedule_cron() {
-		if ( get_transient( 'dukkan_cron_scheduled' ) ) {
-			return;
-		}
-		if ( ! wp_next_scheduled( self::CRON_HOOK ) ) {
-			wp_schedule_event(
-				strtotime( 'tomorrow 01:00:00', current_time( 'timestamp' ) ),
-				'daily',
-				self::CRON_HOOK
-			);
-		}
-		set_transient( 'dukkan_cron_scheduled', true, DAY_IN_SECONDS );
-	}
-
-	// -----------------------------------------------------------------
-	// Fast cron callback — fires an async background job, no blocking.
-	// -----------------------------------------------------------------
-
-	/**
-	 * WP-Cron callback.
-	 *
-	 * Checks version.json (fast). If a newer version exists, sends a
-	 * non-blocking async request to the REST endpoint that performs the
-	 * actual download + install in a separate PHP process. The visitor
-	 * who triggered this cron waits milliseconds — not seconds.
-	 *
-	 * @since 1.0.4
-	 */
-	public function on_cron_ping() {
-		// Clear cached version data so we get a fresh read.
-		delete_transient( 'dukkan_plugin_update_check' );
-
-		$data = $this->fetch_version_data();
-		if ( ! $data ) {
-			return;
-		}
-
-		if ( ! version_compare( $data['version'], $this->current_version, '>' ) ) {
-			return;
-		}
-
-		// Store the package URL so the background handler can fetch it.
-		update_option( 'dukkan_update_package', $data['package'], 'no' );
-		update_option( 'dukkan_update_version', $data['version'], 'no' );
-
-		// Fire async — blocking=false means WordPress doesn't wait.
-		wp_remote_post( rest_url( self::REST_NAMESPACE . '/update' ), array(
-			'timeout'   => 1,
-			'blocking'  => false,
-			'headers'   => array(
-				'X-Dukkan-Token' => $this->get_update_token(),
-			),
-		) );
-	}
-
-	// -----------------------------------------------------------------
-	// REST endpoint — does the heavy work in a separate PHP process.
-	// -----------------------------------------------------------------
-
-	/**
-	 * Register the /dukkan/v1/update REST route.
-	 *
-	 * @since 1.0.4
-	 */
-	public function register_rest_route() {
-		register_rest_route( self::REST_NAMESPACE, '/update', array(
-			'methods'             => 'POST',
-			'callback'            => array( $this, 'handle_background_update' ),
-			'permission_callback' => array( $this, 'verify_update_token' ),
-		) );
-	}
-
-	/**
-	 * Verify the bearer token sent by our own cron callback.
-	 *
-	 * @since  1.0.4
-	 * @param  WP_REST_Request $request  Incoming request.
-	 * @return bool
-	 */
-	public function verify_update_token( $request ) {
-		$sent = $request->get_header( 'x_dukkan_token' );
-		return $sent && hash_equals( $this->get_update_token(), $sent );
-	}
-
-	/**
-	 * Background update handler — download and install.
-	 *
-	 * Runs in a REST request spawned by wp_remote_post, completely
-	 * separate from the visitor's original page load.
-	 *
-	 * @since  1.0.4
-	 * @param  WP_REST_Request $request  Incoming request (unused).
-	 * @return WP_REST_Response|WP_Error
-	 */
-	public function handle_background_update( $request ) {
-		$package = get_option( 'dukkan_update_package', '' );
-		$version = get_option( 'dukkan_update_version', '' );
-
-		if ( ! $package || ! $version ) {
-			return new WP_REST_Response(
-				array( 'status' => 'error', 'message' => 'No update data stored.' ),
-				400
-			);
-		}
-
-		require_once ABSPATH . 'wp-admin/includes/file.php';
-		require_once ABSPATH . 'wp-admin/includes/class-wp-filesystem-base.php';
-		require_once ABSPATH . 'wp-admin/includes/class-wp-filesystem-direct.php';
-
-		$tmp_file = download_url( $package, 300 );
-		if ( is_wp_error( $tmp_file ) ) {
-			return new WP_REST_Response(
-				array( 'status' => 'error', 'message' => $tmp_file->get_error_message() ),
-				500
-			);
-		}
-
-		WP_Filesystem();
-		global $wp_filesystem;
-
-		$plugin_dir = untrailingslashit( plugin_dir_path( $this->plugin_file ) );
-
-		$tmp_dir = $plugin_dir . '-update-tmp';
-		if ( $wp_filesystem->is_dir( $tmp_dir ) ) {
-			$wp_filesystem->delete( $tmp_dir, true );
-		}
-
-		$result = unzip_file( $tmp_file, $tmp_dir );
-		@unlink( $tmp_file );
-
-		if ( is_wp_error( $result ) ) {
-			return new WP_REST_Response(
-				array( 'status' => 'error', 'message' => $result->get_error_message() ),
-				500
-			);
-		}
-
-		// Detect the correct source path inside the unzipped archive.
-		//
-		// Zip archives may be flat (files at root) or wrapped in a single
-		// versioned folder (e.g. dukkan-plugin-v1.0.9/). We handle both.
-		$source = $tmp_dir;
-
-		// Case 1: Flat zip — main plugin file is at the root.
-		if ( $wp_filesystem->exists( $source . '/dukkan-plugin.php' ) ) {
-			// Nothing to adjust — $source is already correct.
-		} else {
-			// Case 2: Look for a subdirectory that contains the plugin file.
-			$subdirs = glob( $source . '/*', GLOB_ONLYDIR );
-
-			if ( ! empty( $subdirs ) ) {
-				// Prefer the single subdirectory case (versioned-folder zip).
-				if ( 1 === count( $subdirs ) ) {
-					$source = reset( $subdirs );
-				} else {
-					// Multiple subdirs — find the one with dukkan-plugin.php.
-					foreach ( $subdirs as $dir ) {
-						if ( $wp_filesystem->exists( $dir . '/dukkan-plugin.php' ) ) {
-							$source = $dir;
-							break;
-						}
-					}
-				}
-			}
-		}
-
-		copy_dir( $source, $plugin_dir );
-		$wp_filesystem->delete( $tmp_dir, true );
-
-		// Clean up stored update data.
-		delete_option( 'dukkan_update_package' );
-		delete_option( 'dukkan_update_version' );
-
-		return new WP_REST_Response(
-			array( 'status' => 'ok', 'version' => $version ),
-			200
-		);
-	}
-
-	// -----------------------------------------------------------------
-	// WP native update UI injection (bonus).
+	// WP native update UI injection.
 	// -----------------------------------------------------------------
 
 	/**
@@ -336,55 +116,28 @@ class Dukkan_Plugin_Updater {
 	// -----------------------------------------------------------------
 
 	/**
-	 * Fetch the latest version.json from GitHub, with 12-hour caching.
+	 * Fetch the latest version.json from GitHub (live, no caching).
 	 *
 	 * @since  1.0.2
 	 * @return array|null  Decoded version data, or null on failure.
 	 */
 	private function fetch_version_data() {
-		$cache_key = 'dukkan_plugin_update_check';
-		$cached    = get_transient( $cache_key );
-
-		if ( false !== $cached ) {
-			return $cached;
-		}
-
 		$response = wp_remote_get( self::VERSION_URL, array( 'timeout' => 10 ) );
 
 		if ( is_wp_error( $response ) ) {
-			set_transient( $cache_key, null, HOUR_IN_SECONDS );
 			return null;
 		}
 
 		if ( 200 !== wp_remote_retrieve_response_code( $response ) ) {
-			set_transient( $cache_key, null, HOUR_IN_SECONDS );
 			return null;
 		}
 
 		$body = json_decode( wp_remote_retrieve_body( $response ), true );
 		if ( ! is_array( $body ) || empty( $body['version'] ) || empty( $body['package'] ) ) {
-			set_transient( $cache_key, null, HOUR_IN_SECONDS );
 			return null;
 		}
 
-		set_transient( $cache_key, $body, 12 * HOUR_IN_SECONDS );
 		return $body;
-	}
-
-	/**
-	 * Get or generate a unique token for authenticating the
-	 * background update REST request.
-	 *
-	 * @since  1.0.4
-	 * @return string
-	 */
-	private function get_update_token() {
-		$token = get_option( self::TOKEN_OPTION, '' );
-		if ( ! $token ) {
-			$token = wp_generate_password( 32, false, false );
-			update_option( self::TOKEN_OPTION, $token, 'no' );
-		}
-		return $token;
 	}
 
 	/**
