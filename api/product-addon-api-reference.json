@@ -4,7 +4,7 @@
   "auth": "WooCommerce REST API (Consumer Key / Consumer Secret) — requires manage_woocommerce capability",
   "prerequisites": [
     "WooCommerce installed and active",
-    "Dukkan plugin v1.0.21 or newer (this is the version that introduces these RESTful routes)"
+    "Dukkan plugin v1.0.22 or newer (this is the version that introduces these RESTful routes)"
   ],
   "note": "This is a BREAKING change from the legacy /get_groups, /create_group, /update_group, /delete_group, /duplicate_group routes, which have been removed.",
 
