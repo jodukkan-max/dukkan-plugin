@@ -1,0 +1,91 @@
+{
+  "service": "Dukkan — Product Badges API",
+  "base_url": "https://{site}/wp-json/wc/v3",
+  "auth": "WooCommerce REST API (Consumer Key / Consumer Secret) — requires manage_woocommerce capability",
+  "prerequisites": [
+    "WooCommerce installed and active",
+    "Dukkan plugin v1.0.24 or newer (this is the version that introduces the Product Badges RESTful routes)"
+  ],
+  "note": "Product Badges are stored in the option `dukkan_product_badges` and are fully managed through these REST routes. Searching for products/categories/tags is NOT part of this API — use the native WooCommerce endpoints /wc/v3/products, /wc/v3/products/categories and /wc/v3/products/tags for that.",
+
+  "endpoints": {
+    "list":      "GET    /product-badges",
+    "get":       "GET    /product-badges/{id}",
+    "create":    "POST   /product-badges",
+    "update":    "PUT    /product-badges/{id}",
+    "delete":    "DELETE /product-badges/{id}",
+    "duplicate": "POST   /product-badges/{id}/duplicate",
+    "toggle":    "POST   /product-badges/{id}/toggle"
+  },
+
+  "badge_shape": {
+    "id": "string — badge id (slug-timestamp)",
+    "text": "string — badge text; may contain <br> for line breaks",
+    "shape": "string — 'rectangular' | 'circle'",
+    "background_color": "string — hex, e.g. #e53935",
+    "text_color": "string — hex, e.g. #ffffff",
+    "position": "string — 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'",
+    "applied_to": "string — 'all' | 'specific_products' | 'specific_categories' | 'specific_tags'",
+    "products": "array of { id, name } objects (resolved on read)",
+    "categories": "array of { id, name } objects (resolved on read)",
+    "tags": "array of { id, name } objects (resolved on read)",
+    "status": "integer — 1 enabled, 0 disabled"
+  },
+
+  "requests": {
+    "create": {
+      "method": "POST /product-badges",
+      "body": {
+        "text": "SALE<br>50% OFF",
+        "shape": "rectangular",
+        "background_color": "#e53935",
+        "text_color": "#ffffff",
+        "position": "top-left",
+        "applied_to": "specific_products",
+        "products": [101, 102],
+        "categories": [],
+        "tags": [],
+        "status": 1
+      },
+      "note": "text is required. All other fields are optional and fall back to sensible defaults."
+    },
+    "update": {
+      "method": "PUT /product-badges/{id}",
+      "body": { "text": "NEW", "status": 0 },
+      "note": "Partial update — only sent keys overwrite. Omitted keys are preserved."
+    },
+    "toggle": {
+      "method": "POST /product-badges/{id}/toggle",
+      "body": { "status": 0 }
+    },
+    "duplicate": {
+      "method": "POST /product-badges/{id}/duplicate",
+      "note": "Creates an independent copy with a new id; text is suffixed with \" (Copy)\"."
+    }
+  },
+
+  "responses": {
+    "list": "JSON array of badge objects",
+    "get": "single badge object",
+    "create": "201 + created badge object",
+    "duplicate": "201 + duplicated badge object",
+    "update": "updated badge object",
+    "toggle": "{ id, status }",
+    "delete": "{ deleted: true, id }"
+  },
+
+  "errors": [
+    { "status": 400, "code": "missing_text", "when": "text missing or empty on create/update" },
+    { "status": 400, "code": "no_badge", "when": "badge id missing" },
+    { "status": 404, "code": "not_found", "when": "badge does not exist" },
+    { "status": 401, "code": "woocommerce_rest_cannot_view", "when": "missing/invalid WooCommerce API auth" },
+    { "status": 403, "code": "woocommerce_rest_cannot_edit", "when": "read-only key used on a write endpoint" }
+  ],
+
+  "examples": {
+    "curl_list": "curl https://{site}/wp-json/wc/v3/product-badges -u consumer_key:consumer_secret",
+    "curl_create": "curl -X POST https://{site}/wp-json/wc/v3/product-badges -u ck:cs -H 'Content-Type: application/json' -d '{\"text\":\"SALE\",\"shape\":\"circle\",\"background_color\":\"#e53935\",\"text_color\":\"#ffffff\",\"position\":\"top-right\",\"applied_to\":\"all\"}'",
+    "curl_toggle": "curl -X POST https://{site}/wp-json/wc/v3/product-badges/{id}/toggle -u ck:cs -H 'Content-Type: application/json' -d '{\"status\":0}'",
+    "curl_update": "curl -X PUT https://{site}/wp-json/wc/v3/product-badges/{id} -u ck:cs -H 'Content-Type: application/json' -d '{\"applied_to\":\"specific_tags\",\"tags\":[7,9]}'"
+  }
+}

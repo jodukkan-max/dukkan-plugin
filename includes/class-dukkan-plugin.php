@@ -83,6 +83,7 @@ class Dukkan_Plugin {
 		$this->define_product_addon_api_hooks();
 		$this->define_order_status_api_hooks();
 		$this->define_dynamic_pricing_api_hooks();
+		$this->define_badge_api_hooks();
 		$this->define_slim_seo_api_hooks();
 		$this->define_gtm4wp_api_hooks();
 		$this->define_admin_hooks();
@@ -151,6 +152,11 @@ class Dukkan_Plugin {
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'api/class-dukkan-plugin-dynamic-pricing-api.php';
 
 		/**
+		 * The class responsible for defining product badge REST API endpoints.
+		 */
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'api/class-dukkan-plugin-badge-api.php';
+
+		/**
 		 * The class responsible for defining Slim SEO REST API endpoints.
 		 */
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'api/class-dukkan-plugin-slim-seo-api.php';
@@ -181,6 +187,11 @@ class Dukkan_Plugin {
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'admin/class-dukkan-plugin-product-addon.php';
 
 		/**
+		 * The class responsible for defining all actions that occur in the product-badge area.
+		 */
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'admin/class-dukkan-plugin-badge.php';
+
+		/**
 		 * The class responsible for defining all actions that occur in the public-facing
 		 * side of the site.
 		 */
@@ -191,6 +202,12 @@ class Dukkan_Plugin {
 		 * side of the site.
 		 */
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'public/class-product-addon.php';
+
+		/**
+		 * The class responsible for defining all actions that occur in the product-badge
+		 * side of the site.
+		 */
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'public/class-dukkan-plugin-badge.php';
 
 		$this->loader = new Dukkan_Plugin_Loader();
 
@@ -339,6 +356,17 @@ class Dukkan_Plugin {
 	}
 
 	/**
+	 * Register all of the hooks related to the product badge API functionality
+	 * of the plugin.
+	 *
+	 * @since    1.0.24
+	 * @access   private
+	 */
+	private function define_badge_api_hooks() {
+		$badge_api = new Dukkan_Plugin_Badge_API( $this->get_plugin_name(), $this->get_version() );
+	}
+
+	/**
 	 * Register all of the hooks related to the admin area functionality
 	 * of the plugin.
 	 *
@@ -360,6 +388,10 @@ class Dukkan_Plugin {
 		$this->loader->add_action( 'admin_enqueue_scripts', $plugin_product_addon, 'enqueue_styles' );
 		$this->loader->add_action( 'admin_enqueue_scripts', $plugin_product_addon, 'enqueue_scripts' );
 
+		$plugin_badge = new Dukkan_Plugin_Badge( $this->get_plugin_name(), $this->get_version() );
+		$this->loader->add_action( 'admin_enqueue_scripts', $plugin_badge, 'enqueue_styles' );
+		$this->loader->add_action( 'admin_enqueue_scripts', $plugin_badge, 'enqueue_scripts' );
+
 	}
 
 	/**
@@ -379,6 +411,10 @@ class Dukkan_Plugin {
 		$product_addon = new Dukkan_Product_Addon( $this->get_plugin_name(), $this->get_version() );
 		$this->loader->add_action( 'wp_enqueue_scripts', $product_addon, 'enqueue_styles' );
 		$this->loader->add_action( 'wp_enqueue_scripts', $product_addon, 'enqueue_scripts' );
+
+		$plugin_badge = new Dukkan_Plugin_Badge_Public( $this->get_plugin_name(), $this->get_version() );
+		$this->loader->add_action( 'wp_enqueue_scripts', $plugin_badge, 'enqueue_styles' );
+		$this->loader->add_action( 'wp_enqueue_scripts', $plugin_badge, 'enqueue_scripts' );
 
 	}
 

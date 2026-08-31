@@ -1,0 +1,91 @@
+/* Product Badges — storefront styles.
+ *
+ * Badges are absolutely positioned over the product image. The .dukkan-badges
+ * wrapper is output inside the WooCommerce loop item and single-product
+ * summary hooks, so it anchors to the nearest relatively-positioned ancestor.
+ */
+
+/* Make the WooCommerce product image containers positionable anchors. */
+.woocommerce ul.products li.product,
+.woocommerce-page ul.products li.product,
+.woocommerce-LoopProduct-link,
+.rey-productThumbnail,
+.woocommerce div.product .images,
+.woocommerce-product-gallery {
+	position: relative;
+}
+
+.dukkan-badges {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	pointer-events: none;
+	z-index: 9;
+}
+
+.dukkan-badge {
+	position: absolute;
+	display: inline-block;
+	padding: 4px 10px;
+	border-radius: 3px;
+	font-size: 12px;
+	font-weight: 700;
+	line-height: 1.4;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+	white-space: nowrap;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.dukkan-badge--circle {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 44px;
+	height: 44px;
+	padding: 0 8px;
+	border-radius: 50%;
+	line-height: 1.1;
+	text-align: center;
+	white-space: normal;
+}
+
+/* Positions */
+.dukkan-badge--top-left {
+	top: 8px;
+	left: 8px;
+}
+
+.dukkan-badge--top-right {
+	top: 8px;
+	right: 8px;
+}
+
+.dukkan-badge--bottom-left {
+	bottom: 8px;
+	left: 8px;
+}
+
+.dukkan-badge--bottom-right {
+	bottom: 8px;
+	right: 8px;
+}
+
+/* Multiple badges stack without overlapping on the same corner. */
+.dukkan-badge--top-left + .dukkan-badge--top-left {
+	top: 40px;
+}
+
+.dukkan-badge--top-right + .dukkan-badge--top-right {
+	top: 40px;
+}
+
+.dukkan-badge--bottom-left + .dukkan-badge--bottom-left {
+	bottom: 40px;
+}
+
+.dukkan-badge--bottom-right + .dukkan-badge--bottom-right {
+	bottom: 40px;
+}
