@@ -136,25 +136,6 @@
 }
 .wpa-color-caption { font-size: 0.72rem; color: var(--wpa-muted); }
 
-/* Price summary bar */
-.wpa-price-summary {
-    /* background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-    border-radius: var(--wpa-radius);
-    padding: 14px 20px;
-    margin-top: 8px;
-    animation: wpaSlideIn 0.3s ease; */
-}
-@keyframes wpaSlideIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
-.wpa-price-summary-inner { 
-    /* display: flex; align-items: center; justify-content: space-between;  */
-}
-.wpa-price-label, .wpa-price-value {
-    font-size: 1.25em;
-    font-weight: 600;
-}
-/* .wpa-price-value { font-size: 1.15rem; font-weight: 700; color: #fff; }
-.wpa-price-value .wpa-symbol { color: #ff7b93; } */
-
 /* Error state */
 .wpa-field.wpa-has-error .wpa-input,
 .wpa-field.wpa-has-error .wpa-textarea,
@@ -255,9 +236,3 @@
     white-space: nowrap;
 }
 .wpa-preview-remove:hover { background: #fef2f2; }
-.wpa-price-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 4px 0;
-}

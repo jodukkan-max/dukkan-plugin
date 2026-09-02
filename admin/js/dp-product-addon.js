@@ -182,6 +182,9 @@
 
 		function comboOpen( $combo ) {
 			var type = $combo.data( 'combo' );
+			if ( type !== 'products' && type !== 'categories' ) {
+				return;
+			}
 			var q    = $combo.find( '.wpldp-combo-input' ).val() || '';
 			if ( type === 'categories' ) {
 				searchCategories( $combo, q );
@@ -450,8 +453,11 @@
 		// Search as the user types.
 		$(document).on('keyup', '.wpldp-combo-input', function(){
 			var $combo = $( this ).closest( '.wpldp-combo' );
-			var q      = $( this ).val() || '';
 			var type   = $combo.data( 'combo' );
+			if ( type !== 'products' && type !== 'categories' ) {
+				return;
+			}
+			var q      = $( this ).val() || '';
 
 			clearTimeout( $combo.data( 'timer' ) );
 
@@ -473,6 +479,10 @@
 		// Pick an option → add as a label under the field.
 		$(document).on('click', '.wpldp-combo-option', function(){
 			var $combo = $( this ).closest( '.wpldp-combo' );
+			var type   = $combo.data( 'combo' );
+			if ( type !== 'products' && type !== 'categories' ) {
+				return;
+			}
 			comboAddTag( $combo, $( this ).data( 'id' ), $( this ).data( 'label' ) );
 			$combo.find( '.wpldp-combo-menu' ).hide();
 			$combo.find( '.wpldp-combo-input' ).val( '' ).focus();
@@ -482,6 +492,9 @@
 		$(document).on('click', '.wpldp-combo-tag-remove', function(){
 			var $tags = $( this ).closest( '.wpldp-combo-tags' );
 			var type  = $tags.data( 'tags-for' );
+			if ( type !== 'products' && type !== 'categories' ) {
+				return;
+			}
 			var $combo = $tags.closest( 'form' ).find( '.wpldp-combo[data-combo="' + type + '"]' );
 			comboRemoveTag( $combo, $( this ).data( 'id' ) );
 		});

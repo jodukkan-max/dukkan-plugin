@@ -1,0 +1,171 @@
+/* Dukkan Loyalty Points — admin styles. */
+
+.dukkan-loyalty-settings {
+    max-width: 960px;
+}
+
+/* Master enable switch at the top of the page. */
+.dukkan-loyalty-master {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin: 0 0 20px;
+    padding: 18px 24px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .04);
+}
+
+.dukkan-loyalty-master__text h2 {
+    margin: 0 0 4px;
+    font-size: 17px;
+    color: #1d2327;
+}
+
+.dukkan-loyalty-master__text p {
+    margin: 0;
+    font-size: 13px;
+    color: #646970;
+}
+
+.dukkan-loyalty-master__control {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+.dukkan-loyalty-master__status {
+    font-size: 13px;
+    font-weight: 600;
+    color: #787c82;
+}
+
+.dukkan-loyalty-master__status.is-active {
+    color: #00a32a;
+}
+
+.dukkan-loyalty-master__switch {
+    position: relative;
+    display: inline-block;
+    width: 52px;
+    height: 28px;
+    cursor: pointer;
+}
+
+.dukkan-loyalty-master__switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.dukkan-loyalty-master__slider {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: #ccc;
+    border-radius: 28px;
+    transition: background .25s ease;
+}
+
+.dukkan-loyalty-master__slider::before {
+    content: "";
+    position: absolute;
+    height: 22px;
+    width: 22px;
+    left: 3px;
+    bottom: 3px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform .25s ease;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .2);
+}
+
+.dukkan-loyalty-master__switch input:checked + .dukkan-loyalty-master__slider {
+    background: #4CAF50;
+}
+
+.dukkan-loyalty-master__switch input:checked + .dukkan-loyalty-master__slider::before {
+    transform: translateX(24px);
+}
+
+.dukkan-loyalty-master__switch input:focus-visible + .dukkan-loyalty-master__slider {
+    outline: 2px solid #2271b1;
+    outline-offset: 2px;
+}
+
+.dukkan-loyalty-card {
+    margin: 0 0 20px;
+    padding: 20px 24px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .04);
+}
+
+.dukkan-loyalty-card__head {
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #f0f0f1;
+}
+
+.dukkan-loyalty-card__head h2 {
+    margin: 0 0 4px;
+    font-size: 16px;
+    color: #1d2327;
+}
+
+.dukkan-loyalty-card__head p {
+    margin: 0;
+    font-size: 13px;
+    color: #646970;
+}
+
+.dukkan-loyalty-settings .form-table th {
+    width: 220px;
+}
+
+/* Inline "Earn X points for every $Y spent" controls. */
+.dukkan-loyalty-inline {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: #1d2327;
+}
+
+.dukkan-loyalty-inline input.small-text {
+    width: 90px;
+    min-height: 34px;
+    margin: 0;
+}
+
+/* Exclusion combo sizing inside form tables. */
+.dukkan-loyalty-settings .wpldp-combo {
+    max-width: 480px;
+}
+
+.dukkan-loyalty-settings .wpldp-combo-tags {
+    max-width: 480px;
+}
+
+/* Balance lookup. */
+.dukkan-loyalty-lookup .dukkan-loyalty-lookup__row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.dukkan-loyalty-lookup .dukkan-loyalty-lookup__row input {
+    min-height: 34px;
+    max-width: 320px;
+}
+
+#dukkan-loyalty-lookup-result .dukkan-loyalty-lookup-error {
+    color: #d63638;
+}

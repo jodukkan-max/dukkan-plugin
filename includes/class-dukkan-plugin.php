@@ -84,6 +84,7 @@ class Dukkan_Plugin {
 		$this->define_order_status_api_hooks();
 		$this->define_dynamic_pricing_api_hooks();
 		$this->define_badge_api_hooks();
+		$this->define_loyalty_hooks();
 		$this->define_slim_seo_api_hooks();
 		$this->define_gtm4wp_api_hooks();
 		$this->define_admin_hooks();
@@ -208,6 +209,26 @@ class Dukkan_Plugin {
 		 * side of the site.
 		 */
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'public/class-dukkan-plugin-badge.php';
+
+		/**
+		 * The class responsible for the loyalty-points core engine.
+		 */
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-dukkan-plugin-loyalty.php';
+
+		/**
+		 * The class responsible for the loyalty-points REST API endpoints.
+		 */
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'api/class-dukkan-plugin-loyalty-api.php';
+
+		/**
+		 * The class responsible for the loyalty-points admin functionality.
+		 */
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'admin/class-dukkan-plugin-loyalty-admin.php';
+
+		/**
+		 * The class responsible for the loyalty-points public functionality.
+		 */
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'public/class-dukkan-plugin-loyalty-public.php';
 
 		$this->loader = new Dukkan_Plugin_Loader();
 
@@ -364,6 +385,30 @@ class Dukkan_Plugin {
 	 */
 	private function define_badge_api_hooks() {
 		$badge_api = new Dukkan_Plugin_Badge_API( $this->get_plugin_name(), $this->get_version() );
+	}
+
+	/**
+	 * Register all of the hooks related to the loyalty-points functionality
+	 * of the plugin.
+	 *
+	 * The engine, admin, public and API classes share a single engine
+	 * instance so the order-status hooks are only registered once.
+	 *
+	 * @since    1.0.25
+	 * @access   private
+	 */
+	private function define_loyalty_hooks() {
+		$loyalty = new Dukkan_Plugin_Loyalty( $this->get_plugin_name(), $this->get_version() );
+
+		$loyalty_api = new Dukkan_Plugin_Loyalty_API( $this->get_plugin_name(), $this->get_version(), $loyalty );
+
+		$loyalty_admin = new Dukkan_Plugin_Loyalty_Admin( $this->get_plugin_name(), $this->get_version(), $loyalty );
+		$this->loader->add_action( 'admin_enqueue_scripts', $loyalty_admin, 'enqueue_styles' );
+		$this->loader->add_action( 'admin_enqueue_scripts', $loyalty_admin, 'enqueue_scripts' );
+
+		$loyalty_public = new Dukkan_Plugin_Loyalty_Public( $this->get_plugin_name(), $this->get_version(), $loyalty );
+		$this->loader->add_action( 'wp_enqueue_scripts', $loyalty_public, 'enqueue_styles' );
+		$this->loader->add_action( 'wp_enqueue_scripts', $loyalty_public, 'enqueue_scripts' );
 	}
 
 	/**

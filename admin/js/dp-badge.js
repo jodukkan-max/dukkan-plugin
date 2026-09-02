@@ -131,6 +131,9 @@
 
 	function comboOpen( $combo ) {
 		var type = $combo.data( 'combo' );
+		if ( type !== 'badge_products' && type !== 'badge_categories' && type !== 'badge_tags' ) {
+			return;
+		}
 		var q    = $combo.find( '.wpldp-combo-input' ).val() || '';
 		if ( type === 'badge_categories' ) {
 			searchCategories( $combo, q );
@@ -410,6 +413,10 @@
 		$( document ).on( 'click', '.wpldp-combo-option', function () {
 			var $option = $( this );
 			var $combo  = $option.closest( '.wpldp-combo' );
+			var type    = $combo.data( 'combo' );
+			if ( type !== 'badge_products' && type !== 'badge_categories' && type !== 'badge_tags' ) {
+				return;
+			}
 			comboAddTag( $combo, $option.data( 'id' ), $option.data( 'label' ) );
 			$combo.find( '.wpldp-combo-input' ).val( '' );
 			$combo.find( '.wpldp-combo-menu' ).hide();
@@ -417,8 +424,12 @@
 		$( document ).on( 'click', '.wpldp-combo-tag-remove', function () {
 			var $remove = $( this );
 			var $tags   = $remove.closest( '.wpldp-combo-tags' );
+			var type    = $tags.data( 'tags-for' );
+			if ( type !== 'badge_products' && type !== 'badge_categories' && type !== 'badge_tags' ) {
+				return;
+			}
 			var $combo  = $tags.length
-				? $( '.wpldp-combo[data-combo="' + $tags.data( 'tags-for' ) + '"]' )
+				? $( '.wpldp-combo[data-combo="' + type + '"]' )
 				: null;
 			if ( $combo && $combo.length ) {
 				comboRemoveTag( $combo, $remove.data( 'id' ) );

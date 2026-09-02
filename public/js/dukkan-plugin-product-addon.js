@@ -96,39 +96,75 @@
         return total;
     }
 
-    // Update the price summary bar
-    // function updateDisplay() {
-    //     var total    = calculateTotal();
-    //     var $summary = $('#wpa-price-summary');
-
-    //     // formatPrice now returns full string e.g. "₹1,500.00"
-    //     $summary.find('.wpa-price-value').text('+' + formatPrice(total));
-
-    //     if (total > 0) {
-    //         $summary.show();
-    //     } else {
-    //         $summary.hide();
-    //     }
-    // }
-
     // Tracks current base price — updated by variation events or set from data attribute
     var currentBasePrice = 0;
 
-    function updateDisplay() {
-        var addonTotal = calculateTotal();
-        var $summary   = $('#wpa-price-summary');
+    function getProductType() {
+        var $wrapper = $('#wpa-addons-wrapper');
+        return $wrapper.length ? String($wrapper.data('product-type')) : '';
+    }
 
-        if (addonTotal <= 0) {
-            $summary.hide();
+    // Within a price container, return the <ins> sale amount when on sale,
+    // otherwise the single (non-struck) amount.
+    function activeAmount($scope) {
+        var $ins = $scope.find('ins .woocommerce-Price-amount').first();
+        if ($ins.length) return $ins; // on sale -> update the sale amount
+
+        return $scope.find('.woocommerce-Price-amount')
+            .filter(function () { return $(this).closest('del').length === 0; })
+            .first(); // not on sale -> single amount
+    }
+
+    // Locate the theme's "active" price amount element so we can rewrite it.
+    function findActivePriceEl() {
+        var type = getProductType();
+
+        if (type === 'variable') {
+            // Only update once a variation (and its price) is actually rendered.
+            var $varPrice = $('.woocommerce-variation-price .price').first();
+            if (!$varPrice.length) return null;
+            return activeAmount($varPrice);
+        }
+
+        var $simple = $('div.product p.price').first();
+        if (!$simple.length) return null;
+        return activeAmount($simple);
+    }
+
+    // Rewrite the product's displayed price to include the add-on total,
+    // restoring the original HTML when no paid add-on is selected.
+    function updateProductPrice(addonTotal) {
+        var type = getProductType();
+
+        // Variable products: never touch the "From X" range before a
+        // variation is selected (currentBasePrice is 0 in that case).
+        if (type === 'variable' && currentBasePrice <= 0) {
             return;
         }
 
-        var grandTotal = currentBasePrice + addonTotal;
+        var $el = findActivePriceEl();
+        if (!$el || !$el.length) return;
 
-        $summary.find('#wpa-addons-total').text('+' + formatPrice(addonTotal));
-        $summary.find('#wpa-grand-total').text(formatPrice(grandTotal));
+        if (typeof $el.data('wpa-original') === 'undefined') {
+            $el.data('wpa-original', $el.html());
+        }
 
-        $summary.show();
+        if (addonTotal > 0) {
+            $el.text(formatPrice(currentBasePrice + addonTotal));
+        } else {
+            $el.html($el.data('wpa-original'));
+        }
+    }
+
+    function updateDisplay() {
+        var addonTotal = calculateTotal();
+
+        if (addonTotal <= 0) {
+            updateProductPrice(0);
+            return;
+        }
+
+        updateProductPrice(addonTotal);
     }
 
     $(document).ready(function () {
@@ -140,8 +176,6 @@
         if (productType === 'simple') {
             currentBasePrice = parseFloat($wrapper.data('base-price')) || 0;
         }
-
-        $('#wpa-price-summary .wpa-symbol').text(WPLDP.currency_symbol);
 
         // Recalculate on any field change
         $wrapper.on('change input', '.wpa-price-trigger', function () {
@@ -158,13 +192,21 @@
         $(document).on('found_variation', 'form.variations_form', function (e, variation) {
             // display_price is the final price WooCommerce shows (respects sale, tax settings)
             currentBasePrice = parseFloat(variation.display_price) || 0;
-            updateDisplay();
+            // Defer so WooCommerce replaces the variation price HTML first, then
+            // re-cache the fresh original before applying the add-on total.
+            setTimeout(function () {
+                var $el = findActivePriceEl();
+                if ($el && $el.length) {
+                    $el.data('wpa-original', $el.html());
+                }
+                updateDisplay();
+            }, 0);
         });
 
         // Reset when variation is unselected
         $(document).on('reset_data', 'form.variations_form', function () {
             currentBasePrice = 0;
-            updateDisplay();
+            setTimeout(updateDisplay, 0);
         });
 
 

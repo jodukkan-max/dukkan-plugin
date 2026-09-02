@@ -24,6 +24,15 @@ class Dukkan_Plugin_Updater {
 	const VERSION_URL = 'https://raw.githubusercontent.com/jodukkan-max/dukkan-plugin/main/version.json';
 
 	/**
+	 * Transient key and expiry for the cached version.json payload.
+	 *
+	 * @since 1.0.25
+	 * @var   string
+	 */
+	const CACHE_KEY    = 'dukkan_plugin_latest_version';
+	const CACHE_EXPIRY = 4 * HOUR_IN_SECONDS;
+
+	/**
 	 * The plugin slug (folder name).
 	 *
 	 * @since 1.0.2
@@ -116,13 +125,27 @@ class Dukkan_Plugin_Updater {
 	// -----------------------------------------------------------------
 
 	/**
-	 * Fetch the latest version.json from GitHub (live, no caching).
+	 * Fetch the latest version.json from GitHub, cached for a few hours.
 	 *
 	 * @since  1.0.2
 	 * @return array|null  Decoded version data, or null on failure.
 	 */
 	private function fetch_version_data() {
-		$response = wp_remote_get( self::VERSION_URL, array( 'timeout' => 10 ) );
+		static $data = null;
+
+		// The update transient filter runs several times per page load; reuse
+		// the result in-memory so we only touch storage/network once.
+		if ( null !== $data ) {
+			return $data;
+		}
+
+		$cached = get_transient( self::CACHE_KEY );
+		if ( false !== $cached ) {
+			$data = $cached;
+			return $data;
+		}
+
+		$response = wp_remote_get( self::VERSION_URL, array( 'timeout' => 5 ) );
 
 		if ( is_wp_error( $response ) ) {
 			return null;
@@ -137,7 +160,10 @@ class Dukkan_Plugin_Updater {
 			return null;
 		}
 
-		return $body;
+		set_transient( self::CACHE_KEY, $body, self::CACHE_EXPIRY );
+		$data = $body;
+
+		return $data;
 	}
 
 	/**

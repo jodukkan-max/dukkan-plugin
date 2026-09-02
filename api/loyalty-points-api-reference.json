@@ -1,0 +1,73 @@
+{
+  "service": "Dukkan — Loyalty Points API",
+  "base_url": "https://{site}/wp-json/wc/v3",
+  "auth": "WooCommerce REST API (Consumer Key / Consumer Secret) — requires manage_woocommerce capability",
+  "prerequisites": [
+    "WooCommerce installed and active",
+    "Dukkan plugin v1.0.25 or newer (this is the version that introduces the Loyalty Points RESTful routes)"
+  ],
+  "note": "Loyalty points settings are stored in the option `dukkan_loyalty_settings`. Per-customer running balances are stored in user meta `_dukkan_loyalty_points`, and every balance change is written to the ledger table `{prefix}dukkan_loyalty_ledger`. Points are awarded when an order reaches 'Completed' and reversed on cancellation/refund.",
+  "endpoints": {
+    "get_settings":    "GET    /loyalty-points/settings",
+    "update_settings": "PUT    /loyalty-points/settings",
+    "get_balance":     "GET    /loyalty-points/balance?customer_id={id} | ?email={email}",
+    "get_ledger":      "GET    /loyalty-points/ledger?customer_id={id} | ?email={email}",
+    "adjust":          "POST   /loyalty-points/adjust"
+  },
+
+  "settings_shape": {
+    "enabled": "integer — 1 enabled, 0 disabled",
+    "points_per_amount": "integer — points earned per amount",
+    "amount": "number — monetary amount that earns points_per_amount",
+    "value_per_point": "number — monetary value of 1 point at redemption",
+    "max_redeem_percent": "integer — max % of cart subtotal points can cover (0-100)",
+    "excluded_product_ids": "array of product IDs excluded from earning",
+    "excluded_category_ids": "array of product category IDs excluded from earning",
+    "redeem_with_coupons": "integer — 1 allows points + coupon stacking"
+  },
+
+  "requests": {
+    "update_settings": {
+      "method": "PUT /loyalty-points/settings",
+      "body": {
+        "enabled": 1,
+        "points_per_amount": 1,
+        "amount": 1,
+        "value_per_point": 0.01,
+        "max_redeem_percent": 50,
+        "excluded_product_ids": [101, 102],
+        "excluded_category_ids": [12],
+        "redeem_with_coupons": 1
+      },
+      "note": "Partial update — only sent keys overwrite. Omitted keys are preserved."
+    },
+    "adjust": {
+      "method": "POST /loyalty-points/adjust",
+      "body": { "customer_id": 7, "points": 100, "note": "Welcome bonus" },
+      "note": "points is a signed integer: positive adds, negative deducts. customer_id is required."
+    }
+  },
+
+  "responses": {
+    "get_settings": "settings object (all keys, merged with defaults)",
+    "update_settings": "updated settings object",
+    "get_balance": "{ customer_id, balance }",
+    "get_ledger": "{ customer_id, balance, entries: [ { id, order_id, points, type, note, created_at } ] }",
+    "adjust": "{ customer_id, balance, adjusted }"
+  },
+
+  "errors": [
+    { "status": 400, "code": "invalid_points", "when": "adjust points is zero or missing" },
+    { "status": 404, "code": "customer_not_found", "when": "customer_id/email does not resolve" },
+    { "status": 401, "code": "woocommerce_rest_cannot_view", "when": "missing/invalid WooCommerce API auth" },
+    { "status": 403, "code": "woocommerce_rest_cannot_edit", "when": "read-only key used on a write endpoint" }
+  ],
+
+  "examples": {
+    "curl_settings": "curl https://{site}/wp-json/wc/v3/loyalty-points/settings -u consumer_key:consumer_secret",
+    "curl_balance": "curl 'https://{site}/wp-json/wc/v3/loyalty-points/balance?customer_id=7' -u consumer_key:consumer_secret",
+    "curl_balance_email": "curl 'https://{site}/wp-json/wc/v3/loyalty-points/balance?email=customer@example.com' -u consumer_key:consumer_secret",
+    "curl_ledger": "curl 'https://{site}/wp-json/wc/v3/loyalty-points/ledger?customer_id=7&per_page=50' -u consumer_key:consumer_secret",
+    "curl_adjust": "curl -X POST https://{site}/wp-json/wc/v3/loyalty-points/adjust -u ck:cs -H 'Content-Type: application/json' -d '{\"customer_id\":7,\"points\":-50,\"note\":\"Refund adjustment\"}'"
+  }
+}

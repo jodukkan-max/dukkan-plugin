@@ -202,27 +202,6 @@ class Dukkan_Product_Addon {
             $this->render_group( $group );
         }
 
-        // echo '<div class="wpa-price-summary" id="wpa-price-summary" style="display:none;">';
-        // echo '<div class="wpa-price-summary-inner">';
-        // echo '<span class="wpa-price-label">Addons Total:</span>';
-        // echo '<span class="wpa-price-value price" id="wpa-addons-total"></span>';
-        // echo '</div></div>';
-
-        echo '<div class="wpa-price-summary" id="wpa-price-summary" style="display:none;">';
-        echo '<div class="wpa-price-summary-inner">';
-
-        echo '<div class="wpa-price-row">';
-        echo '<span class="wpa-price-label">' . esc_html__( 'Addons Total:', 'dukkan-plugin' ) . '</span>';
-        echo '<span class="wpa-price-value price" id="wpa-addons-total"></span>';
-        echo '</div>';
-
-        echo '<div class="wpa-price-row wpa-price-row--total">';
-        echo '<span class="wpa-price-label wpa-price-label--total">' . esc_html__( 'Total:', 'dukkan-plugin' ) . '</span>';
-        echo '<span class="wpa-price-value wpa-price-value--total price" id="wpa-grand-total"></span>';
-        echo '</div>';
-
-        echo '</div></div>';
-
         echo '</div>';
     }
 

@@ -1,10 +1,20 @@
 # Dukkan Plugin — Work Log & Structure
 
-> Last updated: v1.0.5 — July 8, 2026
+> Last updated: v1.0.25 — September 2, 2026
 
 ---
 
 ## Recent Changes
+
+### v1.0.25 — Loyalty Points + add-on price display + update-check cache
+
+- **Loyalty Points** (new feature): earn points per amount spent, redeem at checkout ("pay with points"), My Account balance display, admin-configurable points value & earn rate, earning on net amount, discount applied before tax, product/category exclusions, coupon-stacking rule, and a master enable switch.
+  - Admin: `admin/class-dukkan-plugin-loyalty-admin.php`, `admin/partials/dukkan-loyalty-settings.php`, `admin/css/dp-loyalty.css`, `admin/js/dp-loyalty.js`
+  - Public: `public/class-dukkan-plugin-loyalty-public.php`, `public/js/dukkan-plugin-loyalty.js`, `public/css/dukkan-plugin-loyalty.css`
+  - Core/API: `includes/class-dukkan-plugin-loyalty.php`, `api/class-dukkan-plugin-loyalty-api.php`, `api/loyalty-points-api-reference.json`, `LOYALTY-POINTS-API-CURL.md`
+- **Product Add-Ons — live price display**: removed the "Addons Total / Total" summary bar; the product's own price (regular or sale) now updates live to include the selected add-on value. `public/class-product-addon.php`, `public/js/dukkan-plugin-product-addon.js`, `public/css/dukkan-plugin-product-addon.css`
+- **Update checker caching**: `version.json` is now cached in a transient (4-hour expiry) with an in-request guard, so the update check no longer fires repeated live GitHub requests on every admin page load. `includes/class-dukkan-plugin-updater.php`
+- **Product Add-Ons combo fix**: scoped the products/categories search combo to its own `data-combo` types so the Badge and Loyalty scripts no longer overwrite the category dropdown with product names. `admin/js/dp-product-addon.js`, `admin/js/dp-badge.js`, `admin/js/dp-loyalty.js`
 
 ### v1.0.22 — Manual updates (auto-update removed)
 
