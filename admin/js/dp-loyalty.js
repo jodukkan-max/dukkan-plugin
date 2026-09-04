@@ -114,14 +114,50 @@
 		} );
 	}
 
+	function searchCustomers( $combo, q ) {
+		$.get( dukkan_loyalty_admin.url, {
+			action: 'dukkan_loyalty_search_customers',
+			nonce: dukkan_loyalty_admin.nonce,
+			q: q
+		}, function ( res ) {
+			var $menu = $combo.find( '.wpldp-combo-menu' );
+			var items = ( res && res.success ) ? res.data : [];
+			$menu.empty();
+
+			if ( ! items.length ) {
+				$menu.append( '<div class="wpldp-combo-empty">' + escHtml( 'No customers found' ) + '</div>' );
+			} else {
+				items.forEach( function ( u ) {
+					var $option = $( '<div class="wpldp-combo-option dukkan-loyalty-customer-option"></div>' );
+					$option.attr( 'data-id', escHtml( u.id ) );
+					$option.attr( 'data-label', escHtml( u.display_name ) );
+					$option.append(
+						'<span class="dukkan-loyalty-customer-name">' + escHtml( u.display_name ) + '</span>' +
+						'<span class="dukkan-loyalty-customer-email">' + escHtml( u.email ) + '</span>'
+					);
+					$menu.append( $option );
+				} );
+			}
+			$menu.show();
+		} );
+	}
+
 	function comboOpen( $combo ) {
 		var type = $combo.data( 'combo' );
-		if ( type !== 'loyalty_products' && type !== 'loyalty_categories' ) {
+		if ( type !== 'loyalty_products' && type !== 'loyalty_categories' && type !== 'loyalty_customers' ) {
 			return;
 		}
 		var q    = $combo.find( '.wpldp-combo-input' ).val() || '';
 		if ( type === 'loyalty_categories' ) {
 			searchCategories( $combo, q );
+		} else if ( type === 'loyalty_customers' ) {
+			if ( q.length >= 2 ) {
+				searchCustomers( $combo, q );
+			} else {
+				$combo.find( '.wpldp-combo-menu' )
+					.html( '<div class="wpldp-combo-empty">' + escHtml( 'Type at least 2 characters to search' ) + '</div>' )
+					.show();
+			}
 		} else if ( q.length >= 2 ) {
 			searchProducts( $combo, q );
 		} else {
@@ -131,58 +167,86 @@
 		}
 	}
 
-	function lookupBalance() {
-		var $input  = $( '#dukkan-loyalty-lookup-input' );
+	var selectedCustomerId = null;
+
+	function renderCustomerResult( d ) {
 		var $result = $( '#dukkan-loyalty-lookup-result' );
-		var value   = $.trim( $input.val() );
+		var html = '<table class="widefat striped" style="max-width:560px;margin-top:10px;">';
+		html += '<tbody>';
+		html += '<tr><th style="width:180px;">Customer</th><td>' + escHtml( d.display_name ) + ' (' + escHtml( d.email ) + ')</td></tr>';
+		html += '<tr><th>Balance</th><td><strong>' + escHtml( d.balance ) + '</strong> points</td></tr>';
+		html += '</tbody></table>';
 
-		if ( ! value ) {
-			$result.html( '' );
-			return;
+		if ( d.ledger && d.ledger.length ) {
+			html += '<h3 style="margin:16px 0 8px;">Recent activity</h3>';
+			html += '<table class="widefat striped" style="max-width:560px;">';
+			html += '<thead><tr><th>Type</th><th>Points</th><th>Note</th><th>Date</th></tr></thead><tbody>';
+			d.ledger.forEach( function ( row ) {
+				html += '<tr>';
+				html += '<td>' + escHtml( row.type ) + '</td>';
+				html += '<td>' + escHtml( row.points ) + '</td>';
+				html += '<td>' + escHtml( row.note ) + '</td>';
+				html += '<td>' + escHtml( row.created_at ) + '</td>';
+				html += '</tr>';
+			} );
+			html += '</tbody></table>';
 		}
 
-		var payload = {
+		$result.html( html );
+		$( '#dukkan-loyalty-adjust' ).show();
+	}
+
+	function loadCustomerBalance( userId ) {
+		var $result = $( '#dukkan-loyalty-lookup-result' );
+		$result.html( '<p>' + escHtml( 'Loading…' ) + '</p>' );
+
+		$.post( dukkan_loyalty_admin.url, {
 			action: 'dukkan_loyalty_balance_lookup',
-			nonce: dukkan_loyalty_admin.nonce
-		};
-
-		if ( /^\d+$/.test( value ) ) {
-			payload.user_id = value;
-		} else {
-			payload.email = value;
-		}
-
-		$result.html( '<p>' + escHtml( 'Looking up…' ) + '</p>' );
-
-		$.post( dukkan_loyalty_admin.url, payload, function ( res ) {
+			nonce: dukkan_loyalty_admin.nonce,
+			user_id: userId
+		}, function ( res ) {
 			if ( ! res || ! res.success ) {
 				$result.html( '<p class="dukkan-loyalty-lookup-error">' + escHtml( res && res.data && res.data.message ? res.data.message : 'Customer not found.' ) + '</p>' );
+				selectedCustomerId = null;
+				$( '#dukkan-loyalty-adjust' ).hide();
 				return;
 			}
 
-			var d = res.data;
-			var html = '<table class="widefat striped" style="max-width:560px;margin-top:10px;">';
-			html += '<tbody>';
-			html += '<tr><th style="width:180px;">Customer</th><td>' + escHtml( d.display_name ) + ' (' + escHtml( d.email ) + ')</td></tr>';
-			html += '<tr><th>Balance</th><td><strong>' + escHtml( d.balance ) + '</strong> points</td></tr>';
-			html += '</tbody></table>';
+			selectedCustomerId = res.data.user_id;
+			renderCustomerResult( res.data );
+		} );
+	}
 
-			if ( d.ledger && d.ledger.length ) {
-				html += '<h3 style="margin:16px 0 8px;">Recent activity</h3>';
-				html += '<table class="widefat striped" style="max-width:560px;">';
-				html += '<thead><tr><th>Type</th><th>Points</th><th>Note</th><th>Date</th></tr></thead><tbody>';
-				d.ledger.forEach( function ( row ) {
-					html += '<tr>';
-					html += '<td>' + escHtml( row.type ) + '</td>';
-					html += '<td>' + escHtml( row.points ) + '</td>';
-					html += '<td>' + escHtml( row.note ) + '</td>';
-					html += '<td>' + escHtml( row.created_at ) + '</td>';
-					html += '</tr>';
-				} );
-				html += '</tbody></table>';
+	function adjustPoints( sign ) {
+		var points = parseInt( $( '#dukkan-loyalty-adjust-points' ).val(), 10 );
+		var note   = $.trim( $( '#dukkan-loyalty-adjust-note' ).val() );
+
+		if ( ! selectedCustomerId ) {
+			alert( 'Please select a customer first.' );
+			return;
+		}
+		if ( ! points || points <= 0 ) {
+			alert( 'Please enter a valid points amount.' );
+			return;
+		}
+
+		var delta = sign === 'add' ? points : -points;
+
+		$.post( dukkan_loyalty_admin.url, {
+			action: 'dukkan_loyalty_adjust_points',
+			nonce: dukkan_loyalty_admin.nonce,
+			user_id: selectedCustomerId,
+			points: delta,
+			note: note
+		}, function ( res ) {
+			if ( ! res || ! res.success ) {
+				alert( res && res.data && res.data.message ? res.data.message : 'Adjustment failed.' );
+				return;
 			}
 
-			$result.html( html );
+			$( '#dukkan-loyalty-adjust-points' ).val( '' );
+			$( '#dukkan-loyalty-adjust-note' ).val( '' );
+			loadCustomerBalance( selectedCustomerId );
 		} );
 	}
 
@@ -208,7 +272,13 @@
 			var $option = $( this );
 			var $combo  = $option.closest( '.wpldp-combo' );
 			var type    = $combo.data( 'combo' );
-			if ( type !== 'loyalty_products' && type !== 'loyalty_categories' ) {
+			if ( type !== 'loyalty_products' && type !== 'loyalty_categories' && type !== 'loyalty_customers' ) {
+				return;
+			}
+			if ( type === 'loyalty_customers' ) {
+				$combo.find( '.wpldp-combo-input' ).val( $option.data( 'label' ) );
+				$combo.find( '.wpldp-combo-menu' ).hide();
+				loadCustomerBalance( $option.data( 'id' ) );
 				return;
 			}
 			comboAddTag( $combo, $option.data( 'id' ), $option.data( 'label' ) );
@@ -235,13 +305,13 @@
 			}
 		} );
 
-		// Balance lookup.
-		$( '#dukkan-loyalty-lookup-btn' ).on( 'click', lookupBalance );
-		$( '#dukkan-loyalty-lookup-input' ).on( 'keypress', function ( e ) {
-			if ( e.which === 13 ) {
-				e.preventDefault();
-				lookupBalance();
-			}
+		// Customer selection from the combo already triggers loadCustomerBalance.
+		// Adjust points (add / deduct).
+		$( '#dukkan-loyalty-adjust-add' ).on( 'click', function () {
+			adjustPoints( 'add' );
+		} );
+		$( '#dukkan-loyalty-adjust-deduct' ).on( 'click', function () {
+			adjustPoints( 'deduct' );
 		} );
 	} );
 } )( jQuery );

@@ -64,6 +64,8 @@ class Dukkan_Plugin_Loyalty_Admin {
 		add_action( 'admin_post_dukkan_loyalty_save_settings', array( $this, 'handle_save_settings' ) );
 
 		add_action( 'wp_ajax_dukkan_loyalty_balance_lookup', array( $this, 'ajax_balance_lookup' ) );
+		add_action( 'wp_ajax_dukkan_loyalty_search_customers', array( $this, 'ajax_search_customers' ) );
+		add_action( 'wp_ajax_dukkan_loyalty_adjust_points', array( $this, 'ajax_adjust_points' ) );
 		add_action( 'wp_ajax_dukkan_loyalty_search_products', array( $this, 'ajax_search_products' ) );
 		add_action( 'wp_ajax_dukkan_loyalty_search_categories', array( $this, 'ajax_search_categories' ) );
 	}
@@ -257,6 +259,73 @@ class Dukkan_Plugin_Loyalty_Admin {
 				'email'        => $user->user_email,
 				'balance'      => $this->loyalty->get_balance( $user->ID ),
 				'ledger'       => is_array( $ledger ) ? $ledger : array(),
+			)
+		);
+	}
+
+	/**
+	 * AJAX: search customers by name or email for the autocomplete.
+	 *
+	 * @since 1.0.25
+	 */
+	public function ajax_search_customers() {
+		$this->verify_ajax();
+
+		$search = isset( $_GET['q'] ) ? sanitize_text_field( wp_unslash( $_GET['q'] ) ) : '';
+
+		$users = get_users(
+			array(
+				'search'         => '*' . $search . '*',
+				'search_columns' => array( 'user_login', 'user_email', 'display_name' ),
+				'number'         => 20,
+				'orderby'        => 'display_name',
+				'order'          => 'ASC',
+			)
+		);
+
+		$results = array();
+		foreach ( $users as $user ) {
+			$results[] = array(
+				'id'           => $user->ID,
+				'display_name' => $user->display_name,
+				'email'        => $user->user_email,
+			);
+		}
+
+		wp_send_json_success( $results );
+	}
+
+	/**
+	 * AJAX: manually add or deduct points from a customer.
+	 *
+	 * @since 1.0.25
+	 */
+	public function ajax_adjust_points() {
+		$this->verify_ajax();
+
+		$user_id = isset( $_POST['user_id'] ) ? absint( $_POST['user_id'] ) : 0;
+		$points  = isset( $_POST['points'] ) ? (int) $_POST['points'] : 0;
+		$note    = isset( $_POST['note'] ) ? sanitize_text_field( wp_unslash( $_POST['note'] ) ) : __( 'Manual adjustment', 'dukkan-plugin' );
+
+		$user = $user_id ? get_user_by( 'id', $user_id ) : null;
+		if ( ! $user ) {
+			wp_send_json_error( array( 'message' => __( 'Customer not found.', 'dukkan-plugin' ) ), 404 );
+		}
+
+		if ( 0 === $points ) {
+			wp_send_json_error( array( 'message' => __( 'Points must be a non-zero signed integer.', 'dukkan-plugin' ) ), 400 );
+		}
+
+		if ( $points > 0 ) {
+			$this->loyalty->add_points( $user->ID, $points, 0, 'adjust', $note );
+		} else {
+			$this->loyalty->deduct_points( $user->ID, abs( $points ), 0, 'adjust', $note );
+		}
+
+		wp_send_json_success(
+			array(
+				'user_id' => $user->ID,
+				'balance' => $this->loyalty->get_balance( $user->ID ),
 			)
 		);
 	}

@@ -186,13 +186,30 @@ function dukkan_loyalty_render_tags( $ids, $type ) {
 	<div class="dukkan-loyalty-card dukkan-loyalty-lookup">
 		<div class="dukkan-loyalty-card__head">
 			<h2><?php esc_html_e( 'Customer balance', 'dukkan-plugin' ); ?></h2>
-			<p><?php esc_html_e( 'Look up a customer\'s points balance and recent activity.', 'dukkan-plugin' ); ?></p>
+			<p><?php esc_html_e( 'Search for a customer to view their points balance and adjust points.', 'dukkan-plugin' ); ?></p>
 		</div>
-		<div class="dukkan-loyalty-lookup__row">
-			<input type="text" id="dukkan-loyalty-lookup-input" class="regular-text" placeholder="<?php esc_attr_e( 'Customer email or user ID', 'dukkan-plugin' ); ?>">
-			<button type="button" id="dukkan-loyalty-lookup-btn" class="button"><?php esc_html_e( 'Look up', 'dukkan-plugin' ); ?></button>
+
+		<div class="wpldp-combo dukkan-loyalty-customer-combo" data-combo="loyalty_customers">
+			<div class="wpldp-combo-control">
+				<input type="text" class="wpldp-combo-input" placeholder="<?php esc_attr_e( 'Search customers by name or email…', 'dukkan-plugin' ); ?>" autocomplete="off">
+				<span class="dashicons dashicons-arrow-down-alt2 wpldp-combo-caret"></span>
+			</div>
+			<div class="wpldp-combo-menu"></div>
 		</div>
+
 		<div id="dukkan-loyalty-lookup-result"></div>
+
+		<div class="dukkan-loyalty-adjust" id="dukkan-loyalty-adjust" style="display:none;">
+			<div class="dukkan-loyalty-adjust__head">
+				<h3><?php esc_html_e( 'Adjust points', 'dukkan-plugin' ); ?></h3>
+			</div>
+			<div class="dukkan-loyalty-adjust__row">
+				<input type="number" min="1" step="1" id="dukkan-loyalty-adjust-points" class="small-text" placeholder="<?php esc_attr_e( 'Points', 'dukkan-plugin' ); ?>">
+				<input type="text" id="dukkan-loyalty-adjust-note" class="regular-text" placeholder="<?php esc_attr_e( 'Reason (optional)', 'dukkan-plugin' ); ?>">
+				<button type="button" class="button button-primary" id="dukkan-loyalty-adjust-add"><?php esc_html_e( 'Add points', 'dukkan-plugin' ); ?></button>
+				<button type="button" class="button" id="dukkan-loyalty-adjust-deduct"><?php esc_html_e( 'Deduct points', 'dukkan-plugin' ); ?></button>
+			</div>
+		</div>
 	</div>
 
 </div>

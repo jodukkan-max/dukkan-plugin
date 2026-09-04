@@ -1,10 +1,15 @@
 # Dukkan Plugin — Work Log & Structure
 
-> Last updated: v1.0.25 — September 2, 2026
+> Last updated: v1.0.26 — September 4, 2026
 
 ---
 
 ## Recent Changes
+
+### v1.0.26 — Loyalty Points admin: customer search + adjust points
+
+- **Customer search combo**: replaced the "email or user ID + Look up" flow in the admin "Customer balance" card with a live autocomplete that searches customers by name or email (`ajax_search_customers`). `admin/class-dukkan-plugin-loyalty-admin.php`, `admin/partials/dukkan-loyalty-settings.php`, `admin/js/dp-loyalty.js`, `admin/css/dp-loyalty.css`
+- **Manual adjust points**: added an "Adjust points" form that lets the admin add or deduct points from a customer with an optional reason (`ajax_adjust_points`), routed through the existing `add_points()` / `deduct_points()` engine and written to the ledger as `type=adjust`. Same files as above.
 
 ### v1.0.25 — Loyalty Points + add-on price display + update-check cache
 
