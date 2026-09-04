@@ -85,6 +85,7 @@ class Dukkan_Plugin {
 		$this->define_dynamic_pricing_api_hooks();
 		$this->define_badge_api_hooks();
 		$this->define_loyalty_hooks();
+		$this->define_chatbot_hooks();
 		$this->define_slim_seo_api_hooks();
 		$this->define_gtm4wp_api_hooks();
 		$this->define_admin_hooks();
@@ -229,6 +230,21 @@ class Dukkan_Plugin {
 		 * The class responsible for the loyalty-points public functionality.
 		 */
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'public/class-dukkan-plugin-loyalty-public.php';
+
+		/**
+		 * The class responsible for the AI chatbot core engine.
+		 */
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-dukkan-plugin-chatbot.php';
+
+		/**
+		 * The class responsible for the AI chatbot admin functionality.
+		 */
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'admin/class-dukkan-plugin-chatbot-admin.php';
+
+		/**
+		 * The class responsible for the AI chatbot public functionality.
+		 */
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'public/class-dukkan-plugin-chatbot-public.php';
 
 		$this->loader = new Dukkan_Plugin_Loader();
 
@@ -409,6 +425,30 @@ class Dukkan_Plugin {
 		$loyalty_public = new Dukkan_Plugin_Loyalty_Public( $this->get_plugin_name(), $this->get_version(), $loyalty );
 		$this->loader->add_action( 'wp_enqueue_scripts', $loyalty_public, 'enqueue_styles' );
 		$this->loader->add_action( 'wp_enqueue_scripts', $loyalty_public, 'enqueue_scripts' );
+	}
+
+	/**
+	 * Register all of the hooks related to the AI chatbot functionality
+	 * of the plugin.
+	 *
+	 * The engine, admin and public classes share a single engine instance.
+	 *
+	 * @since    1.0.27
+	 * @access   private
+	 */
+	private function define_chatbot_hooks() {
+		$chatbot = new Dukkan_Plugin_Chatbot( $this->get_plugin_name(), $this->get_version() );
+
+		// Ensure the two-day reindex cron is scheduled.
+		$chatbot->schedule_reindex();
+
+		$chatbot_admin = new Dukkan_Plugin_Chatbot_Admin( $this->get_plugin_name(), $this->get_version(), $chatbot );
+		$this->loader->add_action( 'admin_enqueue_scripts', $chatbot_admin, 'enqueue_styles' );
+		$this->loader->add_action( 'admin_enqueue_scripts', $chatbot_admin, 'enqueue_scripts' );
+
+		$chatbot_public = new Dukkan_Plugin_Chatbot_Public( $this->get_plugin_name(), $this->get_version(), $chatbot );
+		$this->loader->add_action( 'wp_enqueue_scripts', $chatbot_public, 'enqueue_styles' );
+		$this->loader->add_action( 'wp_enqueue_scripts', $chatbot_public, 'enqueue_scripts' );
 	}
 
 	/**

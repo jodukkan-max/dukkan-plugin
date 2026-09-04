@@ -1,10 +1,18 @@
 # Dukkan Plugin — Work Log & Structure
 
-> Last updated: v1.0.26 — September 4, 2026
+> Last updated: v1.0.27 — September 4, 2026
 
 ---
 
 ## Recent Changes
+
+### v1.0.27 — AI Chatbot (DeepSeek)
+
+- **Core engine**: `includes/class-dukkan-plugin-chatbot.php` — settings, DeepSeek chat client (`deepseek-chat` / `deepseek-reasoner`), OpenAI `text-embedding-3-small` embeddings, product vector index (`{prefix}dukkan_chatbot_products`) with cosine-similarity retrieval, function-calling tools (`lookup_orders`, `lookup_points`, `add_to_cart`), human-handoff email, and conversation log (`{prefix}dukkan_chatbot_log`).
+- **Admin**: `admin/class-dukkan-plugin-chatbot-admin.php` + `admin/partials/dukkan-chatbot-settings.php` + `admin/css/dp-chatbot.css` + `admin/js/dp-chatbot.js` — a new "AI Chatbot" settings tab with a master switch, connection keys + "Test connection", personality (language/tone/system prompt/bot name/greeting), appearance (accent color + position), catalog & retrieval (index status + "Rebuild index now" + auto-index toggle), capabilities (lookup / add-to-cart / handoff / rate limit / memory), and a conversation-log viewer.
+- **Public widget**: `public/class-dukkan-plugin-chatbot-public.php` + `public/js/dukkan-plugin-chatbot.js` + `public/css/dukkan-plugin-chatbot.css` — a floating chat launcher/panel with greeting + suggestion chips, product cards with "Add to cart", human-handoff form, and AJAX endpoints (`dukkan_chatbot_send`, `dukkan_chatbot_handoff`) for both logged-in and guest visitors.
+- **Index freshness**: products re-embed on `save_post_product` (debounced) plus a `dukkan_every_two_days` WP-Cron full reindex; both are registered in `includes/class-dukkan-plugin.php` (`define_chatbot_hooks`).
+- **Tables/settings**: seeded on activation (`includes/class-dukkan-plugin-activator.php`); cron cleared on deactivation (`includes/class-dukkan-plugin-deactivator.php`).
 
 ### v1.0.26 — Loyalty Points admin: customer search + adjust points
 

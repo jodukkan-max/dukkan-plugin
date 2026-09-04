@@ -1,0 +1,47 @@
+/* Dukkan AI Chatbot — admin styles. */
+
+.dukkan-chatbot-settings {
+    max-width: 960px;
+}
+
+.dukkan-chatbot-settings .form-table th {
+    width: 220px;
+}
+
+#dukkan-chatbot-test-result,
+#dukkan-chatbot-rebuild-result {
+    margin-left: 10px;
+    font-weight: 600;
+}
+
+#dukkan-chatbot-test-result.is-ok {
+    color: #00a32a;
+}
+
+#dukkan-chatbot-test-result.is-error {
+    color: #d63638;
+}
+
+/* Conversation log table. */
+#dukkan-chatbot-logs table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+#dukkan-chatbot-logs .dukkan-chatbot-log-msg,
+#dukkan-chatbot-logs .dukkan-chatbot-log-reply {
+    max-width: 320px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dukkan-chatbot-log-handoff {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: #fcf0f1;
+    color: #d63638;
+    font-size: 11px;
+    font-weight: 600;
+}
