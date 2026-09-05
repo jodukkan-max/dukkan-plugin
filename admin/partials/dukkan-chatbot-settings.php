@@ -61,13 +61,6 @@ $tone_options = array(
 			<table class="form-table" role="presentation">
 				<tbody>
 					<tr>
-						<th scope="row"><?php esc_html_e( 'DeepSeek API key', 'dukkan-plugin' ); ?></th>
-						<td>
-							<input type="password" name="dukkan_chatbot[deepseek_api_key]" value="<?php echo esc_attr( $settings['deepseek_api_key'] ); ?>" class="regular-text" autocomplete="off">
-							<p class="description"><?php esc_html_e( 'Used for chat generation.', 'dukkan-plugin' ); ?></p>
-						</td>
-					</tr>
-					<tr>
 						<th scope="row"><?php esc_html_e( 'DeepSeek model', 'dukkan-plugin' ); ?></th>
 						<td>
 							<select name="dukkan_chatbot[deepseek_model]">
@@ -80,7 +73,7 @@ $tone_options = array(
 						<th scope="row"><?php esc_html_e( 'OpenAI API key', 'dukkan-plugin' ); ?></th>
 						<td>
 							<input type="password" name="dukkan_chatbot[openai_api_key]" value="<?php echo esc_attr( $settings['openai_api_key'] ); ?>" class="regular-text" autocomplete="off">
-							<p class="description"><?php esc_html_e( 'Used for semantic product search (embeddings).', 'dukkan-plugin' ); ?></p>
+							<p class="description"><?php esc_html_e( 'Optional — powers semantic (meaning-based) product search. If left empty, the assistant falls back to keyword search. DeepSeek does not offer an embeddings API, which is why this uses OpenAI.', 'dukkan-plugin' ); ?></p>
 						</td>
 					</tr>
 					<tr>

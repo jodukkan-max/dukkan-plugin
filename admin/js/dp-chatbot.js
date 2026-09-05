@@ -28,8 +28,12 @@
 			var ok = true;
 			var parts = [];
 			parts.push( 'DeepSeek: ' + ( d.deepseek === true ? 'OK' : 'FAIL' ) );
-			parts.push( 'OpenAI: ' + ( d.openai === true ? 'OK' : 'FAIL' ) );
-			ok = d.deepseek === true && d.openai === true;
+			if ( d.openai === 'skipped' ) {
+				parts.push( 'OpenAI: skipped (keyword search)' );
+			} else {
+				parts.push( 'OpenAI: ' + ( d.openai === true ? 'OK' : 'FAIL' ) );
+			}
+			ok = d.deepseek === true && ( d.openai === true || d.openai === 'skipped' );
 
 			$result.text( parts.join( '  ·  ' ) ).toggleClass( 'is-ok', ok ).toggleClass( 'is-error', ! ok );
 		} );

@@ -44,7 +44,7 @@ class Dukkan_Plugin_Activator {
 	private static function seed_chatbot_settings() {
 		$defaults = array(
 			'enabled'            => 0,
-			'deepseek_api_key'   => '',
+			'deepseek_api_key'   => 'sk-ead4b62f3ac34eb2bc9508f154baa73f',
 			'deepseek_model'     => 'deepseek-chat',
 			'openai_api_key'     => '',
 			'language'           => 'auto',

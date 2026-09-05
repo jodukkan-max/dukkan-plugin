@@ -56,6 +56,33 @@ class Dukkan_Plugin_Chatbot {
 	const INDEX_META_KEY = 'dukkan_chatbot_index_meta';
 
 	/**
+	 * Database schema version. Bump to force a table re-check.
+	 *
+	 * @since 1.0.27
+	 * @var string
+	 */
+	const DB_VERSION = '1.0.0';
+
+	/**
+	 * Option key tracking the installed DB schema version.
+	 *
+	 * @since 1.0.27
+	 * @var string
+	 */
+	const DB_VERSION_KEY = 'dukkan_chatbot_db_version';
+
+	/**
+	 * The store's DeepSeek API key.
+	 *
+	 * Hardcoded so the assistant works out of the box. The admin setting can
+	 * still override it if a different key is ever needed.
+	 *
+	 * @since 1.0.27
+	 * @var string
+	 */
+	const DEEPSEEK_API_KEY = 'sk-ead4b62f3ac34eb2bc9508f154baa73f';
+
+	/**
 	 * Default settings.
 	 *
 	 * @since 1.0.27
@@ -63,7 +90,7 @@ class Dukkan_Plugin_Chatbot {
 	 */
 	protected $defaults = array(
 		'enabled'            => 0,
-		'deepseek_api_key'   => '',
+		'deepseek_api_key'   => self::DEEPSEEK_API_KEY,
 		'deepseek_model'     => 'deepseek-chat',
 		'openai_api_key'     => '',
 		'language'           => 'auto',
@@ -113,6 +140,10 @@ class Dukkan_Plugin_Chatbot {
 		add_filter( 'cron_schedules', array( $this, 'add_cron_schedule' ) );
 		add_action( 'dukkan_chatbot_reindex', array( $this, 'cron_reindex' ) );
 		add_action( 'save_post_product', array( $this, 'on_product_saved' ), 10, 2 );
+
+		// Ensure tables exist even when the plugin is uploaded manually
+		// (which skips the activation hook).
+		add_action( 'init', array( $this, 'maybe_ensure_tables' ) );
 	}
 
 	// -------------------------------------------------------------------------
@@ -143,6 +174,23 @@ class Dukkan_Plugin_Chatbot {
 	public function get_setting( $key ) {
 		$settings = $this->get_settings();
 		return isset( $settings[ $key ] ) ? $settings[ $key ] : null;
+	}
+
+	/**
+	 * Resolve the DeepSeek API key.
+	 *
+	 * Always falls back to the hardcoded store key so the assistant works even
+	 * if the saved setting is empty.
+	 *
+	 * @since 1.0.27
+	 * @return string
+	 */
+	public function get_deepseek_api_key() {
+		$key = $this->get_setting( 'deepseek_api_key' );
+		if ( empty( $key ) ) {
+			$key = self::DEEPSEEK_API_KEY;
+		}
+		return $key;
 	}
 
 	/**
@@ -236,6 +284,21 @@ class Dukkan_Plugin_Chatbot {
 
 		dbDelta( $sql_products );
 		dbDelta( $sql_log );
+	}
+
+	/**
+	 * Create tables lazily if the DB schema version is out of date.
+	 *
+	 * Runs on `init` so the tables exist even when the plugin was uploaded
+	 * manually (which skips the activation hook).
+	 *
+	 * @since 1.0.27
+	 */
+	public function maybe_ensure_tables() {
+		if ( get_option( self::DB_VERSION_KEY ) !== self::DB_VERSION ) {
+			$this->ensure_tables();
+			update_option( self::DB_VERSION_KEY, self::DB_VERSION, 'no' );
+		}
 	}
 
 	// -------------------------------------------------------------------------
@@ -438,9 +501,7 @@ class Dukkan_Plugin_Chatbot {
 		}
 
 		$vector = $this->embed_text( $this->product_embed_text( $product ) );
-		if ( is_wp_error( $vector ) ) {
-			return false;
-		}
+		$embedding_json = is_wp_error( $vector ) ? null : wp_json_encode( $vector );
 
 		$cats = wp_get_post_terms( $product_id, 'product_cat', array( 'fields' => 'names' ) );
 		if ( is_wp_error( $cats ) ) {
@@ -456,7 +517,7 @@ class Dukkan_Plugin_Chatbot {
 			'stock_status'      => $product->get_stock_status(),
 			'categories'        => implode( ', ', $cats ),
 			'short_description' => $product->get_short_description(),
-			'embedding'         => wp_json_encode( $vector ),
+			'embedding'         => $embedding_json,
 			'updated_at'        => current_time( 'mysql', true ),
 		);
 
@@ -522,6 +583,8 @@ class Dukkan_Plugin_Chatbot {
 	public function get_index_status() {
 		global $wpdb;
 
+		$this->maybe_ensure_tables();
+
 		$table = $this->products_table();
 		$count = $wpdb->get_var( "SELECT COUNT(*) FROM {$table}" );
 
@@ -545,8 +608,10 @@ class Dukkan_Plugin_Chatbot {
 		global $wpdb;
 
 		$vector = $this->embed_text( $query );
+
+		// No OpenAI key configured (or embedding failed): fall back to keyword search.
 		if ( is_wp_error( $vector ) ) {
-			return array();
+			return $this->keyword_search( $query, $top_n );
 		}
 
 		$rows = $wpdb->get_results( "SELECT product_id, sku, name, price, sale_price, stock_status, categories, short_description, embedding FROM {$this->products_table()} WHERE embedding IS NOT NULL", ARRAY_A );
@@ -584,6 +649,70 @@ class Dukkan_Plugin_Chatbot {
 			$result[] = $item;
 		}
 
+		// No semantically strong matches: fall back to keyword search.
+		if ( empty( $result ) ) {
+			return $this->keyword_search( $query, $top_n );
+		}
+
+		return $result;
+	}
+
+	/**
+	 * Keyword-based product search (used when embeddings are unavailable).
+	 *
+	 * Matches the query terms against name, SKU, short description and
+	 * categories using a LIKE query. Requires no external API key.
+	 *
+	 * @since 1.0.27
+	 * @param string $query User query.
+	 * @param int    $top_n Number of results.
+	 * @return array
+	 */
+	private function keyword_search( $query, $top_n = 6 ) {
+		global $wpdb;
+
+		$terms = preg_split( '/\s+/', trim( (string) $query ) );
+		$terms = array_filter( array_map( 'trim', $terms ) );
+		if ( empty( $terms ) ) {
+			return array();
+		}
+
+		$clauses = array();
+		$params  = array();
+		foreach ( $terms as $term ) {
+			$like      = '%' . $wpdb->esc_like( $term ) . '%';
+			$clauses[] = '(name LIKE %s OR sku LIKE %s OR short_description LIKE %s OR categories LIKE %s)';
+			array_push( $params, $like, $like, $like, $like );
+		}
+
+		$params[] = $top_n;
+
+		$table = $this->products_table();
+		$rows  = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT product_id, sku, name, price, sale_price, stock_status, categories, short_description
+				 FROM {$table}
+				 WHERE " . implode( ' OR ', $clauses ) . "
+				 LIMIT %d",
+				$params
+			),
+			ARRAY_A
+		);
+
+		$result = array();
+		foreach ( $rows as $row ) {
+			$result[] = array(
+				'product_id'        => (int) $row['product_id'],
+				'sku'               => $row['sku'],
+				'name'              => $row['name'],
+				'price'             => $row['price'],
+				'sale_price'        => $row['sale_price'],
+				'stock_status'      => $row['stock_status'],
+				'categories'        => $row['categories'],
+				'short_description' => $row['short_description'],
+			);
+		}
+
 		return $result;
 	}
 
@@ -600,7 +729,7 @@ class Dukkan_Plugin_Chatbot {
 	 * @return array|WP_Error Assistant message array on success.
 	 */
 	public function call_deepseek( $messages, $tools = array() ) {
-		$api_key = $this->get_setting( 'deepseek_api_key' );
+		$api_key = $this->get_deepseek_api_key();
 		if ( empty( $api_key ) ) {
 			return new WP_Error( 'no_deepseek_key', __( 'DeepSeek API key is not configured.', 'dukkan-plugin' ) );
 		}
@@ -1117,8 +1246,13 @@ class Dukkan_Plugin_Chatbot {
 		);
 		$result['deepseek'] = is_wp_error( $deepseek ) ? $deepseek->get_error_message() : true;
 
-		$embed = $this->embed_text( 'ping' );
-		$result['openai'] = is_wp_error( $embed ) ? $embed->get_error_message() : true;
+		// OpenAI is optional (keyword-search fallback).
+		if ( empty( $this->get_setting( 'openai_api_key' ) ) ) {
+			$result['openai'] = 'skipped';
+		} else {
+			$embed = $this->embed_text( 'ping' );
+			$result['openai'] = is_wp_error( $embed ) ? $embed->get_error_message() : true;
+		}
 
 		return $result;
 	}
