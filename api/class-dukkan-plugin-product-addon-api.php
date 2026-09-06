@@ -219,7 +219,7 @@ class Dukkan_Plugin_Product_Addon_API {
                 'required'          => false,
                 'type'              => 'string',
                 'sanitize_callback' => 'sanitize_text_field',
-                'description'       => __( '"all" or "specific".', 'dukkan-plugin' ),
+                'description'       => __( '"all", "specific", "specific_products" or "specific_categories".', 'dukkan-plugin' ),
             ),
             'status' => array(
                 'required'          => false,

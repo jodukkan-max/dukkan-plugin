@@ -24,7 +24,7 @@
     "id": "string — group id (slug-timestamp)",
     "group_name": "string",
     "description": "string",
-    "applied_to": "string — 'all' | 'specific'",
+    "applied_to": "string — 'all' | 'specific' | 'specific_products' | 'specific_categories' ('specific' matches the given products OR categories)",
     "categories": ["array of category term ids"],
     "products": ["array of { id, name } objects (resolved on read)"],
     "status": "integer — 1 enabled, 0 disabled",

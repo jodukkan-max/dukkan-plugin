@@ -157,16 +157,30 @@ class Dukkan_Product_Addon {
     private function group_applies_to_product( array $group, int $product_id ): bool {
         $applied_to = $group['applied_to'] ?? 'all';
 
-        if ( $applied_to === 'all' ) return true;
+        if ( 'all' === $applied_to ) {
+            return true;
+        }
 
-        if ( $applied_to === 'specific' ) {
-            $allowed = $group['products'] ?? [];
-            if(in_array($product_id, $allowed)){
+        // Normalize IDs once. The admin UI stores "specific", while the REST
+        // API (and the mobile app, following the badges convention) may store
+        // "specific_products" / "specific_categories".
+        $products   = array_map( 'intval', (array) ( $group['products'] ?? array() ) );
+        $categories = array_map( 'intval', (array) ( $group['categories'] ?? array() ) );
+
+        if ( 'specific_products' === $applied_to ) {
+            return in_array( $product_id, $products, true );
+        }
+
+        if ( 'specific_categories' === $applied_to ) {
+            return ! empty( $categories ) && has_term( $categories, 'product_cat', $product_id );
+        }
+
+        // Legacy "specific" (admin UI): match products first, then categories.
+        if ( 'specific' === $applied_to ) {
+            if ( in_array( $product_id, $products, true ) ) {
                 return true;
-            }else if(!empty($group['categories'])){
-                $term_ids = array_map( 'intval', (array) ( $group['categories'] ?? [] ) );
-                return has_term( $term_ids, 'product_cat', $product_id );
             }
+            return ! empty( $categories ) && has_term( $categories, 'product_cat', $product_id );
         }
 
         return false;

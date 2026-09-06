@@ -1,10 +1,15 @@
 # Dukkan Plugin — Work Log & Structure
 
-> Last updated: v1.0.27 — September 4, 2026
+> Last updated: v1.0.28 — September 6, 2026
 
 ---
 
 ## Recent Changes
+
+### v1.0.28 — Product Add-Ons: support `specific_products` / `specific_categories`
+
+- **Storefront matching fix**: `group_applies_to_product()` in `public/class-product-addon.php` now understands `specific_products` and `specific_categories` in addition to the legacy `all` / `specific` values. Groups created via the REST API (or mobile app, following the badges convention) previously never matched on the storefront because the public code only recognized `'specific'`. `public/class-product-addon.php`
+- **Docs**: REST API `applied_to` description + `api/product-addon-api-reference.json` updated to document the accepted values.
 
 ### v1.0.27 — AI Chatbot (DeepSeek)
 
