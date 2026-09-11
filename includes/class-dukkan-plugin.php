@@ -246,6 +246,11 @@ class Dukkan_Plugin {
 		 */
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'public/class-dukkan-plugin-chatbot-public.php';
 
+		/**
+		 * The class responsible for the WhatsApp Business integration.
+		 */
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-dukkan-plugin-whatsapp.php';
+
 		$this->loader = new Dukkan_Plugin_Loader();
 
 	}
@@ -439,7 +444,7 @@ class Dukkan_Plugin {
 	private function define_chatbot_hooks() {
 		$chatbot = new Dukkan_Plugin_Chatbot( $this->get_plugin_name(), $this->get_version() );
 
-		// Ensure the two-day reindex cron is scheduled.
+		// Ensure the daily 4am reindex cron is scheduled.
 		$chatbot->schedule_reindex();
 
 		$chatbot_admin = new Dukkan_Plugin_Chatbot_Admin( $this->get_plugin_name(), $this->get_version(), $chatbot );
@@ -449,6 +454,10 @@ class Dukkan_Plugin {
 		$chatbot_public = new Dukkan_Plugin_Chatbot_Public( $this->get_plugin_name(), $this->get_version(), $chatbot );
 		$this->loader->add_action( 'wp_enqueue_scripts', $chatbot_public, 'enqueue_styles' );
 		$this->loader->add_action( 'wp_enqueue_scripts', $chatbot_public, 'enqueue_scripts' );
+
+		// WhatsApp Business webhook — shares the same chatbot engine instance so
+		// product/order/points tools behave identically on WhatsApp.
+		new Dukkan_Plugin_WhatsApp( $this->get_plugin_name(), $this->get_version(), $chatbot );
 	}
 
 	/**

@@ -23,51 +23,115 @@
 	left: 20px;
 }
 
-/* Launcher */
-.dukkan-chatbot__launcher {
+/* Launcher — a white pill containing the gradient blue circle icon and a
+   "Chat with us" label. Scoped under `.dukkan-chatbot` (two-class specificity)
+   so theme button resets and global svg/fill rules can't override it. */
+.dukkan-chatbot .dukkan-chatbot__launcher {
+	position: relative;
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	height: 60px;
+	margin: 0;
+	padding: 0 22px 0 0;
+	border: none;
+	border-radius: 999px;
+	appearance: none;
+	-webkit-appearance: none;
+	background-color: #fff;
+	color: #1d2327;
+	cursor: pointer;
+	box-shadow: 0 14px 30px rgba( 0, 0, 0, 0.18 ), 0 3px 8px rgba( 0, 0, 0, 0.08 );
+	transition: transform 0.18s cubic-bezier( 0.34, 1.56, 0.64, 1 ), box-shadow 0.18s ease;
+}
+
+.dukkan-chatbot .dukkan-chatbot__launcher:hover {
+	transform: translateY( -3px );
+	box-shadow: 0 20px 40px rgba( 0, 0, 0, 0.22 ), 0 6px 14px rgba( 0, 0, 0, 0.1 );
+}
+
+.dukkan-chatbot .dukkan-chatbot__launcher:active {
+	transform: scale( 0.97 );
+}
+
+/* The gradient blue circle holding the white message glyph. */
+.dukkan-chatbot .dukkan-chatbot__launcher-icon {
 	position: relative;
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	width: 60px;
 	height: 60px;
-	border: none;
+	flex-shrink: 0;
 	border-radius: 50%;
-	background: var( --dukkan-accent );
+	background-color: #2563eb;
+	background-image: linear-gradient( 135deg, #1d4ed8 0%, #2563eb 50%, #7c3aed 100% );
 	color: #fff;
-	cursor: pointer;
-	box-shadow: 0 6px 18px rgba( 0, 0, 0, 0.18 );
-	transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-.dukkan-chatbot__launcher:hover {
-	transform: translateY( -2px );
-	box-shadow: 0 10px 24px rgba( 0, 0, 0, 0.22 );
+.dukkan-chatbot .dukkan-chatbot__launcher-icon svg {
+	display: block;
+	width: 28px;
+	height: 28px;
+	fill: #fff;
+	color: #fff;
 }
 
-.dukkan-chatbot__launcher:focus-visible,
+.dukkan-chatbot .dukkan-chatbot__launcher-label {
+	font-size: 15px;
+	font-weight: 600;
+	line-height: 1;
+	color: #1d2327;
+	white-space: nowrap;
+}
+
+/* Online pulse dot on the circle's top-right corner. */
+.dukkan-chatbot .dukkan-chatbot__launcher-icon::after {
+	content: '';
+	position: absolute;
+	top: 2px;
+	right: 2px;
+	width: 14px;
+	height: 14px;
+	border-radius: 50%;
+	background: #22c55e;
+	border: 2px solid #fff;
+	box-shadow: 0 0 0 0 rgba( 34, 197, 94, 0.55 );
+	animation: dukkan-chat-ping 2.2s infinite;
+}
+
+@keyframes dukkan-chat-ping {
+	0% {
+		box-shadow: 0 0 0 0 rgba( 34, 197, 94, 0.55 );
+	}
+	70% {
+		box-shadow: 0 0 0 8px rgba( 34, 197, 94, 0 );
+	}
+	100% {
+		box-shadow: 0 0 0 0 rgba( 34, 197, 94, 0 );
+	}
+}
+
+.dukkan-chatbot .dukkan-chatbot__launcher:focus-visible,
 .dukkan-chatbot__panel button:focus-visible,
 .dukkan-chatbot__inputbar textarea:focus-visible {
 	outline: 2px solid var( --dukkan-accent );
 	outline-offset: 2px;
 }
 
-.dukkan-chatbot__launcher-icon {
-	font-size: 26px;
-	line-height: 1;
-}
-
-/* Panel */
+/* Panel — fixed (viewport-anchored) so it never depends on the launcher's
+   box and can't overflow the screen edge on small devices. */
 .dukkan-chatbot__panel {
-	position: absolute;
-	bottom: 74px;
-	right: 0;
+	position: fixed;
+	z-index: 99999;
+	right: 20px;
+	bottom: 96px;
 	display: flex;
 	flex-direction: column;
 	width: 380px;
 	max-width: calc( 100vw - 32px );
 	height: 560px;
-	max-height: calc( 100vh - 110px );
+	max-height: calc( 100vh - 116px );
 	background: #fff;
 	border: 1px solid #e6e8eb;
 	border-radius: 18px;
@@ -77,9 +141,16 @@
 	animation: dukkan-chat-open 0.18s ease-out;
 }
 
+/* The panel is toggled with the `hidden` attribute, but the `display: flex`
+   above overrides the browser's default `[hidden] { display: none }`. Reinstate
+   it so the chat stays closed on page load and actually closes on demand. */
+.dukkan-chatbot__panel[hidden] {
+	display: none;
+}
+
 .dukkan-chatbot--left .dukkan-chatbot__panel {
 	right: auto;
-	left: 0;
+	left: 20px;
 	transform-origin: bottom left;
 }
 
@@ -100,56 +171,117 @@
 	transition: opacity 0.15s ease, transform 0.15s ease;
 }
 
-/* Header */
+/* Header — vibrant blue gradient with a curved, wavy bottom edge */
 .dukkan-chatbot__header {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	padding: 14px 16px;
-	border-bottom: 1px solid #f0f1f3;
-	background: #fff;
+	position: relative;
+	background-image: linear-gradient( 135deg, #1d4ed8 0%, #2563eb 45%, #7c3aed 100% );
+	color: #fff;
+	padding: 18px 16px 46px;
+	overflow: hidden;
 }
 
-.dukkan-chatbot__header-info {
+.dukkan-chatbot__header-inner {
+	position: relative;
+	z-index: 1;
 	display: flex;
 	align-items: center;
-	gap: 10px;
+	gap: 12px;
 }
 
 .dukkan-chatbot__avatar {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 36px;
-	height: 36px;
+	flex-shrink: 0;
+	width: 52px;
+	height: 52px;
 	border-radius: 50%;
-	background: var( --dukkan-accent );
-	color: #fff;
-	font-size: 18px;
+	background: #fff;
+	border: 3px solid rgba( 255, 255, 255, 0.9 );
+	box-shadow: 0 3px 10px rgba( 0, 0, 0, 0.18 );
+	overflow: hidden;
+}
+
+.dukkan-chatbot__avatar img,
+.dukkan-chatbot__avatar svg {
+	display: block;
+	width: 100%;
+	height: 100%;
+}
+
+.dukkan-chatbot__avatar img {
+	object-fit: cover;
+}
+
+.dukkan-chatbot__header-text {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
 }
 
 .dukkan-chatbot__name {
-	font-weight: 600;
-	color: #1d2327;
+	font-weight: 700;
+	font-size: 15px;
+	line-height: 1.3;
+	color: #fff;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .dukkan-chatbot__online {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin-top: 2px;
 	font-size: 12px;
-	color: #00a32a;
+	font-weight: 500;
+	color: #e7fbef;
 }
 
-.dukkan-chatbot__close {
+.dukkan-chatbot__online-dot {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: #22c55e;
+	box-shadow: 0 0 0 0 rgba( 34, 197, 94, 0.6 );
+	animation: dukkan-chat-ping 2.2s infinite;
+}
+
+.dukkan-chatbot__header-actions {
+	display: flex;
+	align-items: center;
+	gap: 2px;
+	margin-left: auto;
+}
+
+/* Scoped under `.dukkan-chatbot` so theme button resets can't force the
+   glyph back to black on the dark header background. */
+.dukkan-chatbot .dukkan-chatbot__close {
 	background: none;
 	border: none;
-	font-size: 24px;
+	font-size: 26px;
 	line-height: 1;
-	color: #787c82;
+	color: #fff;
 	cursor: pointer;
-	padding: 4px;
+	padding: 4px 6px;
+	border-radius: 6px;
+	transition: color 0.15s ease, background-color 0.15s ease;
 }
 
-.dukkan-chatbot__close:hover {
-	color: #1d2327;
+.dukkan-chatbot .dukkan-chatbot__close:hover {
+	color: #fff;
+	background-color: rgba( 255, 255, 255, 0.14 );
+}
+
+/* Wavy bottom edge — fills with the messages background so the blue header
+   appears to taper into the chat area with a smooth curve. */
+.dukkan-chatbot__header-wave {
+	position: absolute;
+	left: 0;
+	right: 0;
+	bottom: -1px;
+	width: 100%;
+	height: 28px;
+	display: block;
+	fill: #fafbfc;
 }
 
 /* Messages */
@@ -217,6 +349,39 @@
 	text-decoration: underline;
 }
 
+.dukkan-chatbot__bubble strong {
+	font-weight: 700;
+}
+
+.dukkan-chatbot__bubble em {
+	font-style: italic;
+}
+
+.dukkan-chatbot__bubble code {
+	background: rgba( 0, 0, 0, 0.06 );
+	border-radius: 4px;
+	padding: 1px 5px;
+	font-size: 13px;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+/* Blinking caret while the reply streams in. */
+.dukkan-chatbot__msg--streaming .dukkan-chatbot__bubble::after {
+	content: '';
+	display: inline-block;
+	width: 6px;
+	height: 14px;
+	margin-left: 2px;
+	vertical-align: -2px;
+	background: var( --dukkan-accent );
+	animation: dukkan-chat-caret 0.8s infinite steps( 1 );
+}
+
+@keyframes dukkan-chat-caret {
+	0%, 100% { opacity: 1; }
+	50% { opacity: 0; }
+}
+
 /* Typing indicator */
 .dukkan-chatbot__typing .dukkan-chatbot__bubble {
 	display: flex;
@@ -250,29 +415,6 @@
 		transform: translateY( -4px );
 		opacity: 1;
 	}
-}
-
-/* Suggestion chips */
-.dukkan-chatbot__chips {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 8px;
-}
-
-.dukkan-chatbot__chip {
-	background: #fff;
-	border: 1px solid var( --dukkan-accent );
-	color: var( --dukkan-accent );
-	border-radius: 999px;
-	padding: 7px 13px;
-	font-size: 13px;
-	cursor: pointer;
-	transition: background 0.15s ease, color 0.15s ease;
-}
-
-.dukkan-chatbot__chip:hover {
-	background: var( --dukkan-accent );
-	color: #fff;
 }
 
 /* Product cards */
@@ -325,20 +467,29 @@
 	color: #787c82;
 }
 
-.dukkan-chatbot__product-add {
-	flex-shrink: 0;
-	background: var( --dukkan-accent );
-	color: #fff;
-	border: none;
+.dukkan-chatbot__more {
+	align-self: center;
+	background: none;
+	border: 1px solid var( --dukkan-accent );
+	color: var( --dukkan-accent );
 	border-radius: 999px;
-	padding: 7px 14px;
-	font-size: 12px;
+	padding: 7px 16px;
+	font-size: 13px;
 	font-weight: 600;
 	cursor: pointer;
+	transition: background 0.15s ease, color 0.15s ease;
 }
 
-.dukkan-chatbot__product-add.is-added {
-	background: #00a32a;
+.dukkan-chatbot__more:hover {
+	background: var( --dukkan-accent );
+	color: #fff;
+}
+
+.dukkan-chatbot__more-loading {
+	align-self: center;
+	font-size: 12px;
+	color: #787c82;
+	padding: 6px 0;
 }
 
 /* Handoff card */
@@ -416,17 +567,110 @@
 	opacity: 0.9;
 }
 
-/* Mobile: full-screen bottom sheet */
+/* Icon buttons (attach image + voice) inside the input bar. */
+.dukkan-chatbot .dukkan-chatbot__attach,
+.dukkan-chatbot .dukkan-chatbot__mic {
+	flex-shrink: 0;
+	width: 38px;
+	height: 38px;
+	border: none;
+	border-radius: 50%;
+	appearance: none;
+	-webkit-appearance: none;
+	background: #eef2f7;
+	background-color: #eef2f7;
+	color: #334155;
+	cursor: pointer;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0;
+	box-shadow: none;
+	transition: background 0.15s ease, color 0.15s ease;
+}
+
+.dukkan-chatbot .dukkan-chatbot__attach svg,
+.dukkan-chatbot .dukkan-chatbot__mic svg {
+	display: block;
+	fill: #334155;
+	color: #334155;
+}
+
+.dukkan-chatbot .dukkan-chatbot__attach:hover,
+.dukkan-chatbot .dukkan-chatbot__mic:hover {
+	background: #e0e7f1;
+	background-color: #e0e7f1;
+	color: var( --dukkan-accent );
+}
+
+.dukkan-chatbot .dukkan-chatbot__attach:hover svg,
+.dukkan-chatbot .dukkan-chatbot__mic:hover svg {
+	fill: var( --dukkan-accent );
+	color: var( --dukkan-accent );
+}
+
+.dukkan-chatbot .dukkan-chatbot__mic.is-listening {
+	background: #ffe3e3;
+	background-color: #ffe3e3;
+	color: #e02424;
+}
+
+/* Pending image preview above the input bar. */
+.dukkan-chatbot__preview {
+	position: relative;
+	margin: 6px 14px 0;
+	width: 64px;
+	height: 64px;
+	border-radius: 10px;
+	overflow: hidden;
+	border: 1px solid #e5e9f0;
+}
+
+.dukkan-chatbot__preview img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	display: block;
+}
+
+.dukkan-chatbot__preview button {
+	position: absolute;
+	top: 2px;
+	right: 2px;
+	width: 20px;
+	height: 20px;
+	border: none;
+	border-radius: 50%;
+	background: rgba( 0, 0, 0, 0.6 );
+	color: #fff;
+	font-size: 13px;
+	line-height: 1;
+	cursor: pointer;
+	padding: 0;
+}
+
+/* Mobile: full-screen bottom sheet anchored to the viewport, using the
+   dynamic viewport height (100dvh) so it never overflows past the screen
+   edge or hides the input bar behind the browser UI. */
 @media ( max-width: 480px ) {
-	.dukkan-chatbot__panel {
+	.dukkan-chatbot__panel,
+	.dukkan-chatbot--left .dukkan-chatbot__panel {
+		right: 0;
+		left: 0;
+		bottom: 0;
 		width: 100vw;
 		max-width: 100vw;
 		height: 100vh;
+		height: 100dvh;
 		max-height: 100vh;
-		bottom: 0;
-		right: 0;
-		left: 0;
+		max-height: 100dvh;
 		border-radius: 16px 16px 0 0;
+		border-bottom: none;
+		transform-origin: bottom center;
+	}
+
+	.dukkan-chatbot__inputbar {
+		padding-bottom: calc( 12px + env( safe-area-inset-bottom ) );
 	}
 }
 

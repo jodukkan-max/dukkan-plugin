@@ -172,7 +172,7 @@ class Dukkan_Product_Addon {
         }
 
         if ( 'specific_categories' === $applied_to ) {
-            return ! empty( $categories ) && has_term( $categories, 'product_cat', $product_id );
+            return $this->product_in_categories( $product_id, $categories );
         }
 
         // Legacy "specific" (admin UI): match products first, then categories.
@@ -180,7 +180,54 @@ class Dukkan_Product_Addon {
             if ( in_array( $product_id, $products, true ) ) {
                 return true;
             }
-            return ! empty( $categories ) && has_term( $categories, 'product_cat', $product_id );
+            return $this->product_in_categories( $product_id, $categories );
+        }
+
+        // Unknown/legacy value: fall back to whatever targeting data exists.
+        if ( in_array( $product_id, $products, true ) ) {
+            return true;
+        }
+        if ( $this->product_in_categories( $product_id, $categories ) ) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Whether a product belongs to any of the given product categories.
+     *
+     * Unlike a bare has_term() call, this also matches products that are only
+     * assigned to a *child* category of a selected (parent) category — a very
+     * common setup on fashion stores ("Men" > "Shirts") that otherwise caused
+     * "Specific Categories" add-on groups to never appear on the storefront.
+     *
+     * @param int   $product_id   Product ID.
+     * @param array $category_ids Category term IDs.
+     * @return bool
+     */
+    private function product_in_categories( int $product_id, array $category_ids ): bool {
+        if ( empty( $category_ids ) ) {
+            return false;
+        }
+
+        // Fast path: direct assignment.
+        if ( has_term( $category_ids, 'product_cat', $product_id ) ) {
+            return true;
+        }
+
+        // Slow path: also accept products sitting in a descendant category.
+        $product_terms = wp_get_post_terms( $product_id, 'product_cat', array( 'fields' => 'ids' ) );
+        if ( empty( $product_terms ) || is_wp_error( $product_terms ) ) {
+            return false;
+        }
+
+        foreach ( $category_ids as $cat_id ) {
+            foreach ( $product_terms as $term_id ) {
+                if ( (int) $cat_id === (int) $term_id || term_is_ancestor_of( $cat_id, $term_id, 'product_cat' ) ) {
+                    return true;
+                }
+            }
         }
 
         return false;
@@ -194,14 +241,44 @@ class Dukkan_Product_Addon {
         return null;
     }
 
-    public function wpldp_render_addons_new(){
+    /**
+     * Resolve the current product reliably, even when the global isn't a
+     * WC_Product (some Elementor/Rey rendering paths leave it null or a post).
+     *
+     * @return WC_Product|null
+     */
+    private function get_current_product() {
         global $product;
+
+        if ( $product instanceof WC_Product ) {
+            return $product;
+        }
+
+        if ( function_exists( 'wc_get_product' ) ) {
+            $resolved = wc_get_product();
+            if ( $resolved instanceof WC_Product ) {
+                return $resolved;
+            }
+        }
+
+        return null;
+    }
+
+    public function wpldp_render_addons_new(){
+        $product = $this->get_current_product();
         if ( ! $product ) return;
 
-        $groups = $this->get_groups_for_product( $product->get_id() );
+        $product_id = $product->get_id();
+        $groups = $this->get_groups_for_product( $product_id );
+
+        $this->maybe_log_addon_debug( $product_id, $groups );
+
         if ( empty( $groups ) ) return;
 
         $groups_json = wp_json_encode( $groups );
+        if ( false === $groups_json ) {
+            $groups_json = '[]';
+        }
         echo "<script>var WPLDP_GROUPS = {$groups_json};</script>";
 
         // Base price — use sale price if on sale, regular price otherwise
@@ -217,6 +294,53 @@ class Dukkan_Product_Addon {
         }
 
         echo '</div>';
+    }
+
+    /**
+     * Log a concise diagnostic to the PHP error log (and an HTML comment when
+     * ?wpldp_addon_debug=1 is present) so a "not showing" report can be
+     * diagnosed without touching the database.
+     *
+     * @param int   $product_id Product ID.
+     * @param array $groups     Matched groups (post-filter).
+     */
+    private function maybe_log_addon_debug( int $product_id, array $groups ) {
+        $debug = isset( $_GET['wpldp_addon_debug'] ) || ( defined( 'WP_DEBUG' ) && WP_DEBUG );
+
+        if ( ! $debug ) {
+            return;
+        }
+
+        $all = $this->get_all_groups();
+        $lines = array();
+        $lines[] = sprintf( 'product=%d groups_total=%d groups_matched=%d', $product_id, count( $all ), count( $groups ) );
+
+        foreach ( $all as $group ) {
+            $matched = $this->group_applies_to_product( $group, $product_id );
+            $lines[] = sprintf(
+                'group=%s applied_to=%s status=%s categories=%s products=%s fields=%d matched=%s',
+                isset( $group['id'] ) ? $group['id'] : '?',
+                isset( $group['applied_to'] ) ? $group['applied_to'] : '?',
+                empty( $group['status'] ) ? '0' : '1',
+                wp_json_encode( array_map( 'intval', (array) ( isset( $group['categories'] ) ? $group['categories'] : array() ) ) ),
+                wp_json_encode( array_map( 'intval', (array) ( isset( $group['products'] ) ? $group['products'] : array() ) ) ),
+                ( isset( $group['fields'] ) && is_array( $group['fields'] ) ) ? count( $group['fields'] ) : 0,
+                $matched ? 'YES' : 'no'
+            );
+        }
+
+        $message = 'Dukkan product add-ons debug: ' . implode( ' | ', $lines );
+        error_log( $message );
+
+        // Visible notice for admins (view-source is too awkward to ask for).
+        if ( isset( $_GET['wpldp_addon_debug'] ) && current_user_can( 'manage_options' ) ) {
+            echo '<div style="background:#1d2327;color:#7ee787;font:12px/1.6 monospace;padding:12px;margin:12px 0;white-space:pre-wrap;word-break:break-all;">';
+            echo esc_html( "Dukkan product add-ons debug\n" );
+            foreach ( $lines as $line ) {
+                echo esc_html( $line ) . "\n";
+            }
+            echo '</div>';
+        }
     }
 
     private function render_group( array $group ) {

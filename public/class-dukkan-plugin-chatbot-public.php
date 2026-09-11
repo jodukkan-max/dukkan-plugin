@@ -62,8 +62,14 @@ class Dukkan_Plugin_Chatbot_Public {
 		add_action( 'wp_ajax_dukkan_chatbot_send', array( $this, 'ajax_send' ) );
 		add_action( 'wp_ajax_nopriv_dukkan_chatbot_send', array( $this, 'ajax_send' ) );
 
+		add_action( 'wp_ajax_dukkan_chatbot_send_stream', array( $this, 'ajax_send_stream' ) );
+		add_action( 'wp_ajax_nopriv_dukkan_chatbot_send_stream', array( $this, 'ajax_send_stream' ) );
+
 		add_action( 'wp_ajax_dukkan_chatbot_handoff', array( $this, 'ajax_handoff' ) );
 		add_action( 'wp_ajax_nopriv_dukkan_chatbot_handoff', array( $this, 'ajax_handoff' ) );
+
+		add_action( 'wp_ajax_dukkan_chatbot_more_products', array( $this, 'ajax_more_products' ) );
+		add_action( 'wp_ajax_nopriv_dukkan_chatbot_more_products', array( $this, 'ajax_more_products' ) );
 	}
 
 	/**
@@ -112,11 +118,10 @@ class Dukkan_Plugin_Chatbot_Public {
 				'accent_color'  => $settings['accent_color'],
 				'position'      => $settings['position'],
 				'logged_in'     => is_user_logged_in() ? 1 : 0,
-				'suggestions'   => array(
-					__( "What's on sale?", 'dukkan-plugin' ),
-					__( 'Recommend a gift', 'dukkan-plugin' ),
-					__( 'Track my order', 'dukkan-plugin' ),
-				),
+				'more_label'    => __( 'View more', 'dukkan-plugin' ),
+				'lang_mode'     => isset( $settings['language'] ) ? $settings['language'] : 'auto',
+				'fixed_lang'    => isset( $settings['fixed_language'] ) ? $settings['fixed_language'] : 'en',
+				'site_locale'   => get_locale(),
 			)
 		);
 	}
@@ -136,24 +141,70 @@ class Dukkan_Plugin_Chatbot_Public {
 		?>
 		<div id="dukkan-chatbot" class="dukkan-chatbot <?php echo esc_attr( $position ); ?>" aria-live="polite">
 			<button type="button" class="dukkan-chatbot__launcher" id="dukkan-chatbot-launcher" aria-label="<?php esc_attr_e( 'Open chat', 'dukkan-plugin' ); ?>">
-				<span class="dukkan-chatbot__launcher-icon">&#128172;</span>
+				<span class="dukkan-chatbot__launcher-icon">
+					<svg viewBox="0 0 24 24" width="28" height="28" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+						<path d="M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-5 4v-4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z" fill="#ffffff"/>
+					</svg>
+				</span>
+				<span class="dukkan-chatbot__launcher-label"><?php esc_html_e( 'Chat with us', 'dukkan-plugin' ); ?></span>
 			</button>
 
 			<div class="dukkan-chatbot__panel" id="dukkan-chatbot-panel" hidden>
 				<div class="dukkan-chatbot__header">
-					<div class="dukkan-chatbot__header-info">
-						<span class="dukkan-chatbot__avatar">&#129302;</span>
-						<span class="dukkan-chatbot__name"><?php echo esc_html( $settings['bot_name'] ); ?></span>
-						<span class="dukkan-chatbot__online"><?php esc_html_e( 'Online', 'dukkan-plugin' ); ?></span>
+					<div class="dukkan-chatbot__header-inner">
+						<div class="dukkan-chatbot__avatar">
+							<?php if ( ! empty( $settings['bot_avatar'] ) ) : ?>
+								<img src="<?php echo esc_url( $settings['bot_avatar'] ); ?>" alt="<?php echo esc_attr( $settings['bot_name'] ); ?>">
+							<?php else : ?>
+								<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="<?php echo esc_attr( $settings['bot_name'] ); ?>">
+									<rect width="64" height="64" fill="#eef4ff"/>
+									<path d="M10 64c1-11 9-16 22-16s21 5 22 16H10z" fill="#2563eb"/>
+									<path d="M28 42h8v5a4 4 0 0 1-8 0z" fill="#f3b98c"/>
+									<path d="M16 33c0-11 7-17 16-17s16 6 16 17l-2 8c-3-8-9-10-14-10s-11 2-14 10l-2-8z" fill="#3f2a1c"/>
+									<ellipse cx="32" cy="32" rx="11.5" ry="12.5" fill="#f8c9a0"/>
+									<circle cx="28" cy="31" r="1.4" fill="#2f2219"/>
+									<circle cx="36" cy="31" r="1.4" fill="#2f2219"/>
+									<path d="M29 36c2 1.6 4 1.6 6 0" stroke="#cf6f57" stroke-width="1.4" stroke-linecap="round" fill="none"/>
+									<circle cx="25.5" cy="35" r="1.7" fill="#f2a98f" opacity=".55"/>
+									<circle cx="38.5" cy="35" r="1.7" fill="#f2a98f" opacity=".55"/>
+									<ellipse cx="32" cy="21.5" rx="19" ry="5" fill="#d9a05f"/>
+									<path d="M24 21c0-6.5 3.6-10 8-10s8 3.5 8 10v1.5c-2.3 1.4-5 2-8 2s-5.7-.6-8-2V21z" fill="#e6b571"/>
+									<rect x="23.6" y="21" width="16.8" height="2.8" rx="1.4" fill="#2563eb"/>
+								</svg>
+							<?php endif; ?>
+						</div>
+						<div class="dukkan-chatbot__header-text">
+							<span class="dukkan-chatbot__name"><?php echo esc_html( sprintf( /* translators: %s: bot name */ __( 'Chat with %s', 'dukkan-plugin' ), $settings['bot_name'] ) ); ?></span>
+							<span class="dukkan-chatbot__online">
+								<span class="dukkan-chatbot__online-dot" aria-hidden="true"></span>
+								<?php esc_html_e( 'We are online!', 'dukkan-plugin' ); ?>
+							</span>
+						</div>
+						<div class="dukkan-chatbot__header-actions">
+							<button type="button" class="dukkan-chatbot__close" id="dukkan-chatbot-close" aria-label="<?php esc_attr_e( 'Close chat', 'dukkan-plugin' ); ?>">&times;</button>
+						</div>
 					</div>
-					<button type="button" class="dukkan-chatbot__close" id="dukkan-chatbot-close" aria-label="<?php esc_attr_e( 'Close chat', 'dukkan-plugin' ); ?>">&times;</button>
+					<svg class="dukkan-chatbot__header-wave" viewBox="0 0 400 40" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+						<path d="M0 20 C50 0 100 40 150 20 C200 0 250 40 300 20 C350 0 400 20 400 20 L400 40 L0 40 Z"/>
+					</svg>
 				</div>
 
 				<div class="dukkan-chatbot__messages" id="dukkan-chatbot-messages"></div>
 
 				<div class="dukkan-chatbot__inputbar">
+					<button type="button" class="dukkan-chatbot__attach" id="dukkan-chatbot-attach" aria-label="<?php esc_attr_e( 'Attach image', 'dukkan-plugin' ); ?>" title="<?php esc_attr_e( 'Search by photo', 'dukkan-plugin' ); ?>">
+						<svg viewBox="0 0 24 24" width="20" height="20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path d="M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Zm1.5 9 3-3 2 2 3-3 4 4H5.5Z" fill="#334155"/><circle cx="9" cy="9" r="1.5" fill="#334155"/></svg>
+					</button>
+					<input type="file" id="dukkan-chatbot-file" accept="image/jpeg,image/png,image/webp,image/gif" hidden>
 					<textarea id="dukkan-chatbot-input" rows="1" placeholder="<?php esc_attr_e( 'Ask about products, orders, or anything…', 'dukkan-plugin' ); ?>"></textarea>
+					<button type="button" class="dukkan-chatbot__mic" id="dukkan-chatbot-mic" aria-label="<?php esc_attr_e( 'Voice search', 'dukkan-plugin' ); ?>" title="<?php esc_attr_e( 'Speak your question', 'dukkan-plugin' ); ?>">
+						<svg viewBox="0 0 24 24" width="20" height="20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3Z" fill="#334155"/><path d="M19 11a1 1 0 0 1 1 1 8 8 0 0 1-7 7.94V22h3a1 1 0 0 1 0 2H8a1 1 0 0 1 0-2h3v-2.06A8 8 0 0 1 4 12a1 1 0 0 1 2 0 6 6 0 0 0 12 0 1 1 0 0 1 1-1Z" fill="#334155"/></svg>
+					</button>
 					<button type="button" class="dukkan-chatbot__send" id="dukkan-chatbot-send" aria-label="<?php esc_attr_e( 'Send', 'dukkan-plugin' ); ?>">&#10148;</button>
+				</div>
+				<div class="dukkan-chatbot__preview" id="dukkan-chatbot-preview" hidden>
+					<img id="dukkan-chatbot-preview-img" alt="">
+					<button type="button" id="dukkan-chatbot-preview-remove" aria-label="<?php esc_attr_e( 'Remove image', 'dukkan-plugin' ); ?>">&times;</button>
 				</div>
 			</div>
 		</div>
@@ -211,16 +262,31 @@ class Dukkan_Plugin_Chatbot_Public {
 		}
 
 		$message = isset( $_POST['message'] ) ? sanitize_text_field( wp_unslash( $_POST['message'] ) ) : '';
+		$image   = isset( $_POST['image'] ) ? sanitize_text_field( wp_unslash( $_POST['image'] ) ) : '';
+
+		// An image search may come with an empty caption; default the text.
+		if ( '' === $message && '' !== $image ) {
+			$message = __( 'Find products similar to this image.', 'dukkan-plugin' );
+		}
+
 		if ( '' === $message ) {
 			wp_send_json_error( array( 'message' => __( 'Message is empty.', 'dukkan-plugin' ) ) );
 		}
 
-		$history = isset( $_POST['history'] ) ? (array) $_POST['history'] : array();
-		$history = $this->sanitize_history( $history );
+		$history = $this->request_history();
 
 		$user = $this->resolve_user();
 
-		$result = $this->chatbot->process_message( $history, $message, $user['user_id'] );
+		// Persistent mode: server-side memory is the authoritative history, so
+		// logged-in customers are remembered across visits and devices.
+		if ( $user['user_id'] && 'persistent' === $this->chatbot->get_setting( 'memory_mode' ) ) {
+			$memory = get_transient( $user['key'] );
+			if ( is_array( $memory ) ) {
+				$history = $memory;
+			}
+		}
+
+		$result = $this->chatbot->process_message( $history, $message, $user['user_id'], $image );
 
 		// Persist memory for persistent mode.
 		if ( $user['user_id'] && 'persistent' === $this->chatbot->get_setting( 'memory_mode' ) ) {
@@ -233,9 +299,96 @@ class Dukkan_Plugin_Chatbot_Public {
 			array(
 				'reply'    => $result['reply'],
 				'products' => $result['products'],
+				'has_more' => ! empty( $result['has_more'] ),
 				'handoff'  => $result['handoff'],
 			)
 		);
+	}
+
+	/**
+	 * AJAX: stream a chat reply as Server-Sent Events (token-by-token).
+	 *
+	 * Emits `data: {"t":"..."}` events for each text delta, followed by a
+	 * final `data: {"d":{reply,products,has_more,handoff}}` event.
+	 *
+	 * @since 1.0.29
+	 */
+	public function ajax_send_stream() {
+		$this->verify_nonce();
+
+		if ( ! $this->chatbot->is_enabled() ) {
+			wp_send_json_error( array( 'message' => __( 'Chat is unavailable.', 'dukkan-plugin' ) ) );
+		}
+
+		if ( ! $this->chatbot->rate_limit_ok() ) {
+			wp_send_json_error( array( 'message' => __( 'You are sending messages too quickly. Please wait a moment.', 'dukkan-plugin' ) ) );
+		}
+
+		$message = isset( $_POST['message'] ) ? sanitize_text_field( wp_unslash( $_POST['message'] ) ) : '';
+		$image   = isset( $_POST['image'] ) ? sanitize_text_field( wp_unslash( $_POST['image'] ) ) : '';
+
+		// An image search may come with an empty caption; default the text.
+		if ( '' === $message && '' !== $image ) {
+			$message = __( 'Find products similar to this image.', 'dukkan-plugin' );
+		}
+
+		if ( '' === $message ) {
+			wp_send_json_error( array( 'message' => __( 'Message is empty.', 'dukkan-plugin' ) ) );
+		}
+
+		$history = $this->request_history();
+
+		$user = $this->resolve_user();
+
+		// Persistent mode: server-side memory is the authoritative history.
+		if ( $user['user_id'] && 'persistent' === $this->chatbot->get_setting( 'memory_mode' ) ) {
+			$memory = get_transient( $user['key'] );
+			if ( is_array( $memory ) ) {
+				$history = $memory;
+			}
+		}
+
+		// Prepare a clean streaming channel: disable compression/buffering and
+		// drop any output buffers so tokens reach the browser immediately.
+		@ini_set( 'zlib.output_compression', 'Off' );
+		@ini_set( 'output_buffering', 'Off' );
+		while ( ob_get_level() > 0 ) {
+			ob_end_clean();
+		}
+		header( 'Content-Type: text/event-stream; charset=utf-8' );
+		header( 'Cache-Control: no-cache, no-store, must-revalidate' );
+		header( 'X-Accel-Buffering: no' );
+
+		$flush = function () {
+			@ob_flush();
+			flush();
+		};
+
+		$on_token = function ( $delta ) use ( $flush ) {
+			echo 'data: ' . wp_json_encode( array( 't' => $delta ) ) . "\n\n";
+			$flush();
+		};
+
+		$result = $this->chatbot->process_message_stream( $history, $message, $user['user_id'], $on_token, $image );
+
+		// Persist memory + conversation log using the full reply.
+		if ( $user['user_id'] && 'persistent' === $this->chatbot->get_setting( 'memory_mode' ) ) {
+			$this->append_memory( $user['key'], $message, $result['reply'] );
+		}
+		$this->chatbot->log_conversation( $user['user_id'], $this->chatbot->visitor_key(), $message, $result['reply'], $result['handoff'] );
+
+		echo 'data: ' . wp_json_encode(
+			array(
+				'd' => array(
+					'reply'    => $result['reply'],
+					'products' => $result['products'],
+					'has_more' => ! empty( $result['has_more'] ),
+					'handoff'  => ! empty( $result['handoff'] ),
+				),
+			)
+		) . "\n\n";
+		$flush();
+		exit;
 	}
 
 	/**
@@ -257,6 +410,42 @@ class Dukkan_Plugin_Chatbot_Public {
 		} else {
 			wp_send_json_error( array( 'message' => __( 'Could not send the request. Please contact us by email.', 'dukkan-plugin' ) ) );
 		}
+	}
+
+	/**
+	 * AJAX: return the deferred "View more" product cards for this visitor.
+	 *
+	 * @since 1.0.27
+	 */
+	public function ajax_more_products() {
+		$this->verify_nonce();
+		wp_send_json_success( array( 'products' => $this->chatbot->get_more_products() ) );
+	}
+
+	/**
+	 * Read and sanitize the conversation history from the current request.
+	 *
+	 * The non-streaming fallback posts `history` as a jQuery-serialized nested
+	 * array (`history[0][role]=...&history[0][content]=...`), while the
+	 * streaming path posts it as a single JSON string. Accept both so the
+	 * assistant always receives the prior turns.
+	 *
+	 * @since 1.0.29
+	 * @return array
+	 */
+	private function request_history() {
+		$raw = isset( $_POST['history'] ) ? wp_unslash( $_POST['history'] ) : array();
+
+		if ( is_string( $raw ) ) {
+			$decoded = json_decode( $raw, true );
+			$raw     = is_array( $decoded ) ? $decoded : array();
+		}
+
+		if ( ! is_array( $raw ) ) {
+			$raw = array();
+		}
+
+		return $this->sanitize_history( $raw );
 	}
 
 	/**
@@ -300,7 +489,7 @@ class Dukkan_Plugin_Chatbot_Public {
 		$memory[] = array( 'role' => 'assistant', 'content' => $reply );
 
 		$memory = array_slice( $memory, -10 );
-		set_transient( $key, $memory, 30 * DAY_IN_SECONDS );
+		set_transient( $key, $memory, 30 * MINUTE_IN_SECONDS );
 
 		return $memory;
 	}

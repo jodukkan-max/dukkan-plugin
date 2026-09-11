@@ -63,8 +63,11 @@ class Dukkan_Plugin_Chatbot_Admin {
 		add_action( 'admin_post_dukkan_chatbot_save_settings', array( $this, 'handle_save_settings' ) );
 
 		add_action( 'wp_ajax_dukkan_chatbot_rebuild_index', array( $this, 'ajax_rebuild_index' ) );
+		add_action( 'wp_ajax_dukkan_chatbot_rebuild_categories_index', array( $this, 'ajax_rebuild_categories_index' ) );
+		add_action( 'wp_ajax_dukkan_chatbot_rebuild_pages_index', array( $this, 'ajax_rebuild_pages_index' ) );
+		add_action( 'wp_ajax_dukkan_chatbot_rebuild_orders_index', array( $this, 'ajax_rebuild_orders_index' ) );
+		add_action( 'wp_ajax_dukkan_chatbot_reset_usage', array( $this, 'ajax_reset_usage' ) );
 		add_action( 'wp_ajax_dukkan_chatbot_test_connection', array( $this, 'ajax_test_connection' ) );
-		add_action( 'wp_ajax_dukkan_chatbot_logs', array( $this, 'ajax_logs' ) );
 	}
 
 	/**
@@ -129,8 +132,16 @@ class Dukkan_Plugin_Chatbot_Admin {
 	 * @since 1.0.27
 	 */
 	public function render_tab_content() {
-		$settings = $this->chatbot->get_settings();
-		$index    = $this->chatbot->get_index_status();
+		$settings     = $this->chatbot->get_settings();
+		$index        = $this->chatbot->get_index_status();
+		$cat_index    = $this->chatbot->get_category_index_status();
+		$page_index   = $this->chatbot->get_page_index_status();
+		$order_index  = $this->chatbot->get_order_index_status();
+
+		$whatsapp              = new Dukkan_Plugin_WhatsApp( $this->plugin_name, $this->version, $this->chatbot );
+		$whatsapp_webhook_url  = $whatsapp->webhook_url();
+		$whatsapp_verify_token = $whatsapp->get_verify_token();
+
 		require plugin_dir_path( __FILE__ ) . 'partials/dukkan-chatbot-settings.php';
 	}
 
@@ -150,16 +161,15 @@ class Dukkan_Plugin_Chatbot_Admin {
 
 		$clean['enabled'] = empty( $input['enabled'] ) ? 0 : 1;
 
-		$clean['deepseek_api_key'] = isset( $input['deepseek_api_key'] ) ? sanitize_text_field( $input['deepseek_api_key'] ) : '';
-		$clean['deepseek_model']   = isset( $input['deepseek_model'] ) ? sanitize_text_field( $input['deepseek_model'] ) : 'deepseek-chat';
-		$clean['openai_api_key']   = isset( $input['openai_api_key'] ) ? sanitize_text_field( $input['openai_api_key'] ) : '';
+		$clean['google_api_key'] = isset( $input['google_api_key'] ) ? sanitize_text_field( $input['google_api_key'] ) : '';
 
 		$clean['language']       = isset( $input['language'] ) && in_array( $input['language'], array( 'auto', 'fixed', 'site' ), true ) ? $input['language'] : 'auto';
 		$clean['fixed_language'] = isset( $input['fixed_language'] ) ? sanitize_text_field( $input['fixed_language'] ) : 'en';
 		$clean['tone']           = isset( $input['tone'] ) && in_array( $input['tone'], array( 'official', 'friendly', 'casual', 'fun' ), true ) ? $input['tone'] : 'friendly';
 
 		$clean['system_prompt'] = isset( $input['system_prompt'] ) ? sanitize_textarea_field( $input['system_prompt'] ) : '';
-		$clean['bot_name']      = isset( $input['bot_name'] ) ? sanitize_text_field( $input['bot_name'] ) : 'Dukkan Assistant';
+		$clean['bot_name']      = isset( $input['bot_name'] ) ? sanitize_text_field( $input['bot_name'] ) : 'Jessica Smith';
+		$clean['bot_avatar']    = isset( $input['bot_avatar'] ) ? esc_url_raw( $input['bot_avatar'] ) : '';
 		$clean['greeting']      = isset( $input['greeting'] ) ? sanitize_textarea_field( $input['greeting'] ) : '';
 
 		$clean['accent_color'] = isset( $input['accent_color'] ) ? sanitize_hex_color( $input['accent_color'] ) : '#1d4f5f';
@@ -170,12 +180,24 @@ class Dukkan_Plugin_Chatbot_Admin {
 
 		$clean['auto_index']         = empty( $input['auto_index'] ) ? 0 : 1;
 		$clean['enable_lookup']      = empty( $input['enable_lookup'] ) ? 0 : 1;
-		$clean['enable_add_to_cart'] = empty( $input['enable_add_to_cart'] ) ? 0 : 1;
 		$clean['enable_handoff']     = empty( $input['enable_handoff'] ) ? 0 : 1;
 
 		$clean['support_email'] = isset( $input['support_email'] ) ? sanitize_email( $input['support_email'] ) : '';
 		$clean['rate_limit']    = isset( $input['rate_limit'] ) ? max( 0, absint( $input['rate_limit'] ) ) : 10;
 		$clean['memory_mode']   = isset( $input['memory_mode'] ) && 'persistent' === $input['memory_mode'] ? 'persistent' : 'session';
+
+		// WhatsApp Business (Meta Cloud API).
+		$clean['whatsapp_enabled']         = empty( $input['whatsapp_enabled'] ) ? 0 : 1;
+		$clean['whatsapp_phone_number_id'] = isset( $input['whatsapp_phone_number_id'] ) ? sanitize_text_field( $input['whatsapp_phone_number_id'] ) : '';
+		$clean['whatsapp_access_token']    = isset( $input['whatsapp_access_token'] ) ? sanitize_text_field( $input['whatsapp_access_token'] ) : '';
+		// Keep the auto-generated verify token when the hidden field is missing,
+		// so a save never wipes the value Meta verifies against.
+		$clean['whatsapp_verify_token']    = ! empty( $input['whatsapp_verify_token'] )
+			? sanitize_text_field( $input['whatsapp_verify_token'] )
+			: $this->chatbot->get_setting( 'whatsapp_verify_token' );
+		$clean['whatsapp_app_secret']      = isset( $input['whatsapp_app_secret'] ) ? sanitize_text_field( $input['whatsapp_app_secret'] ) : '';
+		$clean['whatsapp_session_ttl']     = isset( $input['whatsapp_session_ttl'] ) ? max( 5, absint( $input['whatsapp_session_ttl'] ) ) : 60;
+		$clean['whatsapp_handoff_number']  = isset( $input['whatsapp_handoff_number'] ) ? sanitize_text_field( $input['whatsapp_handoff_number'] ) : '';
 
 		return $clean;
 	}
@@ -225,13 +247,77 @@ class Dukkan_Plugin_Chatbot_Admin {
 		$this->verify_ajax();
 
 		$this->chatbot->ensure_tables();
-		$result = $this->chatbot->build_full_index();
+		$batch  = isset( $_POST['batch'] ) ? (int) $_POST['batch'] : 50;
+		$result = $this->chatbot->build_full_index_batch( $batch );
 
 		wp_send_json_success( $result );
 	}
 
 	/**
-	 * AJAX: test DeepSeek + OpenAI connectivity.
+	 * AJAX: rebuild the category index (batched).
+	 *
+	 * @since 1.0.29
+	 */
+	public function ajax_rebuild_categories_index() {
+		$this->verify_ajax();
+
+		$this->chatbot->ensure_tables();
+		$batch  = isset( $_POST['batch'] ) ? (int) $_POST['batch'] : 50;
+		$result = $this->chatbot->build_category_index_batch( $batch );
+
+		wp_send_json_success( $result );
+	}
+
+	/**
+	 * AJAX: rebuild the page index (batched).
+	 *
+	 * @since 1.0.30
+	 */
+	public function ajax_rebuild_pages_index() {
+		$this->verify_ajax();
+
+		$this->chatbot->ensure_tables();
+		$batch  = isset( $_POST['batch'] ) ? (int) $_POST['batch'] : 50;
+		$result = $this->chatbot->build_page_index_batch( $batch );
+
+		wp_send_json_success( $result );
+	}
+
+	/**
+	 * AJAX: rebuild the order index (batched).
+	 *
+	 * @since 1.0.31
+	 */
+	public function ajax_rebuild_orders_index() {
+		$this->verify_ajax();
+
+		$this->chatbot->ensure_tables();
+		$batch  = isset( $_POST['batch'] ) ? (int) $_POST['batch'] : 50;
+		$result = $this->chatbot->build_order_index_batch( $batch );
+
+		wp_send_json_success( $result );
+	}
+
+	/**
+	 * AJAX: reset the usage/cost meter.
+	 *
+	 * @since 1.0.31
+	 */
+	public function ajax_reset_usage() {
+		$this->verify_ajax();
+
+		$this->chatbot->reset_usage();
+
+		wp_send_json_success(
+			array(
+				'cost'  => $this->chatbot->get_estimated_cost(),
+				'usage' => $this->chatbot->get_usage(),
+			)
+		);
+	}
+
+	/**
+	 * AJAX: test Gemini chat + embeddings connectivity.
 	 *
 	 * @since 1.0.27
 	 */
@@ -239,16 +325,5 @@ class Dukkan_Plugin_Chatbot_Admin {
 		$this->verify_ajax();
 
 		wp_send_json_success( $this->chatbot->test_connection() );
-	}
-
-	/**
-	 * AJAX: fetch recent conversation logs.
-	 *
-	 * @since 1.0.27
-	 */
-	public function ajax_logs() {
-		$this->verify_ajax();
-
-		wp_send_json_success( $this->chatbot->get_recent_logs( 50 ) );
 	}
 }

@@ -4,8 +4,13 @@
  *
  * @since 1.0.27
  *
- * @var array $settings Chatbot settings merged with defaults.
- * @var array $index    Index status (count, last_build).
+ * @var array $settings    Chatbot settings merged with defaults.
+ * @var array $index       Products index status (count, last_build).
+ * @var array $cat_index   Categories index status (count, last_build).
+ * @var array $page_index  Pages index status (count, last_build).
+ * @var array $order_index Orders index status (count, last_build).
+ * @var string $whatsapp_webhook_url  The WhatsApp webhook URL.
+ * @var string $whatsapp_verify_token The auto-generated verify token.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -40,7 +45,7 @@ $tone_options = array(
 		<div class="dukkan-loyalty-master">
 			<div class="dukkan-loyalty-master__text">
 				<h2><?php esc_html_e( 'AI Chatbot', 'dukkan-plugin' ); ?></h2>
-				<p><?php esc_html_e( 'A DeepSeek-powered store assistant that helps customers find products, track orders, and check their loyalty points.', 'dukkan-plugin' ); ?></p>
+				<p><?php esc_html_e( 'A Google Gemma store assistant that helps customers find products, track orders, and check their loyalty points.', 'dukkan-plugin' ); ?></p>
 			</div>
 			<div class="dukkan-loyalty-master__control">
 				<span class="dukkan-loyalty-master__status<?php echo ! empty( $settings['enabled'] ) ? ' is-active' : ''; ?>" data-status-text>
@@ -51,40 +56,6 @@ $tone_options = array(
 					<span class="dukkan-loyalty-master__slider"></span>
 				</label>
 			</div>
-		</div>
-
-		<div class="dukkan-loyalty-card">
-			<div class="dukkan-loyalty-card__head">
-				<h2><?php esc_html_e( 'Connection', 'dukkan-plugin' ); ?></h2>
-				<p><?php esc_html_e( 'API keys are stored on your server and never exposed to visitors.', 'dukkan-plugin' ); ?></p>
-			</div>
-			<table class="form-table" role="presentation">
-				<tbody>
-					<tr>
-						<th scope="row"><?php esc_html_e( 'DeepSeek model', 'dukkan-plugin' ); ?></th>
-						<td>
-							<select name="dukkan_chatbot[deepseek_model]">
-								<option value="deepseek-chat" <?php selected( $settings['deepseek_model'], 'deepseek-chat' ); ?>><?php esc_html_e( 'deepseek-chat (fast)', 'dukkan-plugin' ); ?></option>
-								<option value="deepseek-reasoner" <?php selected( $settings['deepseek_model'], 'deepseek-reasoner' ); ?>><?php esc_html_e( 'deepseek-reasoner (deeper reasoning)', 'dukkan-plugin' ); ?></option>
-							</select>
-						</td>
-					</tr>
-					<tr>
-						<th scope="row"><?php esc_html_e( 'OpenAI API key', 'dukkan-plugin' ); ?></th>
-						<td>
-							<input type="password" name="dukkan_chatbot[openai_api_key]" value="<?php echo esc_attr( $settings['openai_api_key'] ); ?>" class="regular-text" autocomplete="off">
-							<p class="description"><?php esc_html_e( 'Optional — powers semantic (meaning-based) product search. If left empty, the assistant falls back to keyword search. DeepSeek does not offer an embeddings API, which is why this uses OpenAI.', 'dukkan-plugin' ); ?></p>
-						</td>
-					</tr>
-					<tr>
-						<th scope="row"><?php esc_html_e( 'Test connection', 'dukkan-plugin' ); ?></th>
-						<td>
-							<button type="button" class="button" id="dukkan-chatbot-test"><?php esc_html_e( 'Test connection', 'dukkan-plugin' ); ?></button>
-							<span id="dukkan-chatbot-test-result"></span>
-						</td>
-					</tr>
-				</tbody>
-			</table>
 		</div>
 
 		<div class="dukkan-loyalty-card">
@@ -129,6 +100,13 @@ $tone_options = array(
 						</td>
 					</tr>
 					<tr>
+						<th scope="row"><?php esc_html_e( 'Bot avatar', 'dukkan-plugin' ); ?></th>
+						<td>
+							<input type="url" name="dukkan_chatbot[bot_avatar]" value="<?php echo esc_attr( $settings['bot_avatar'] ); ?>" class="regular-text" placeholder="<?php esc_attr_e( 'https://…', 'dukkan-plugin' ); ?>">
+							<p class="description"><?php esc_html_e( 'Optional image URL shown in the chat header. Leave empty to use the default illustrated avatar.', 'dukkan-plugin' ); ?></p>
+						</td>
+					</tr>
+					<tr>
 						<th scope="row"><?php esc_html_e( 'Greeting message', 'dukkan-plugin' ); ?></th>
 						<td>
 							<textarea name="dukkan_chatbot[greeting]" rows="2" class="large-text" placeholder="<?php esc_attr_e( 'Hi! Ask me about products, orders, or anything else.', 'dukkan-plugin' ); ?>"><?php echo esc_textarea( $settings['greeting'] ); ?></textarea>
@@ -166,12 +144,12 @@ $tone_options = array(
 		<div class="dukkan-loyalty-card">
 			<div class="dukkan-loyalty-card__head">
 				<h2><?php esc_html_e( 'Catalog & retrieval', 'dukkan-plugin' ); ?></h2>
-				<p><?php esc_html_e( 'The assistant searches your products using semantic (meaning-based) search.', 'dukkan-plugin' ); ?></p>
+				<p><?php esc_html_e( 'The assistant searches your catalog using semantic (meaning-based) search. Rebuild each index after importing products or categories.', 'dukkan-plugin' ); ?></p>
 			</div>
 			<table class="form-table" role="presentation">
 				<tbody>
 					<tr>
-						<th scope="row"><?php esc_html_e( 'Index status', 'dukkan-plugin' ); ?></th>
+						<th scope="row"><?php esc_html_e( 'Products index', 'dukkan-plugin' ); ?></th>
 						<td>
 							<p>
 								<strong id="dukkan-chatbot-index-count"><?php echo esc_html( $index['count'] ); ?></strong>
@@ -180,8 +158,50 @@ $tone_options = array(
 									— <?php esc_html_e( 'last build', 'dukkan-plugin' ); ?> <?php echo esc_html( $index['last_build'] ); ?>
 								<?php endif; ?>
 							</p>
-							<button type="button" class="button" id="dukkan-chatbot-rebuild"><?php esc_html_e( 'Rebuild index now', 'dukkan-plugin' ); ?></button>
+							<button type="button" class="button" id="dukkan-chatbot-rebuild"><?php esc_html_e( 'Rebuild products index', 'dukkan-plugin' ); ?></button>
 							<span id="dukkan-chatbot-rebuild-result"></span>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Categories index', 'dukkan-plugin' ); ?></th>
+						<td>
+							<p>
+								<strong id="dukkan-chatbot-cat-count"><?php echo esc_html( $cat_index['count'] ); ?></strong>
+								<?php esc_html_e( 'categories indexed', 'dukkan-plugin' ); ?>
+								<?php if ( $cat_index['last_build'] ) : ?>
+									— <?php esc_html_e( 'last build', 'dukkan-plugin' ); ?> <?php echo esc_html( $cat_index['last_build'] ); ?>
+								<?php endif; ?>
+							</p>
+							<button type="button" class="button" id="dukkan-chatbot-rebuild-categories"><?php esc_html_e( 'Rebuild categories index', 'dukkan-plugin' ); ?></button>
+							<span id="dukkan-chatbot-rebuild-categories-result"></span>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Pages index', 'dukkan-plugin' ); ?></th>
+						<td>
+							<p>
+								<strong id="dukkan-chatbot-page-count"><?php echo esc_html( $page_index['count'] ); ?></strong>
+								<?php esc_html_e( 'pages indexed', 'dukkan-plugin' ); ?>
+								<?php if ( $page_index['last_build'] ) : ?>
+									— <?php esc_html_e( 'last build', 'dukkan-plugin' ); ?> <?php echo esc_html( $page_index['last_build'] ); ?>
+								<?php endif; ?>
+							</p>
+							<button type="button" class="button" id="dukkan-chatbot-rebuild-pages"><?php esc_html_e( 'Rebuild pages index', 'dukkan-plugin' ); ?></button>
+							<span id="dukkan-chatbot-rebuild-pages-result"></span>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Orders index', 'dukkan-plugin' ); ?></th>
+						<td>
+							<p>
+								<strong id="dukkan-chatbot-order-count"><?php echo esc_html( $order_index['count'] ); ?></strong>
+								<?php esc_html_e( 'orders indexed', 'dukkan-plugin' ); ?>
+								<?php if ( $order_index['last_build'] ) : ?>
+									— <?php esc_html_e( 'last build', 'dukkan-plugin' ); ?> <?php echo esc_html( $order_index['last_build'] ); ?>
+								<?php endif; ?>
+							</p>
+							<button type="button" class="button" id="dukkan-chatbot-rebuild-orders"><?php esc_html_e( 'Rebuild orders index', 'dukkan-plugin' ); ?></button>
+							<span id="dukkan-chatbot-rebuild-orders-result"></span>
 						</td>
 					</tr>
 					<tr>
@@ -213,15 +233,6 @@ $tone_options = array(
 						</td>
 					</tr>
 					<tr>
-						<th scope="row"><?php esc_html_e( 'Add to cart', 'dukkan-plugin' ); ?></th>
-						<td>
-							<label>
-								<input type="checkbox" name="dukkan_chatbot[enable_add_to_cart]" value="1" <?php checked( ! empty( $settings['enable_add_to_cart'] ), 1 ); ?>>
-								<?php esc_html_e( 'Allow the assistant to add products to the cart', 'dukkan-plugin' ); ?>
-							</label>
-						</td>
-					</tr>
-					<tr>
 						<th scope="row"><?php esc_html_e( 'Human handoff', 'dukkan-plugin' ); ?></th>
 						<td>
 							<label>
@@ -237,22 +248,105 @@ $tone_options = array(
 							<p class="description"><?php esc_html_e( 'Defaults to the admin email if left empty.', 'dukkan-plugin' ); ?></p>
 						</td>
 					</tr>
+				</tbody>
+			</table>
+		</div>
+
+		<div class="dukkan-loyalty-card">
+			<div class="dukkan-loyalty-card__head">
+				<h2><?php esc_html_e( 'WhatsApp Business', 'dukkan-plugin' ); ?></h2>
+				<p><?php esc_html_e( 'Answer customers on WhatsApp with the same AI assistant. Only two values to paste — we handle the rest.', 'dukkan-plugin' ); ?></p>
+			</div>
+
+			<div class="dukkan-whatsapp-steps">
+				<div class="dukkan-whatsapp-steps__item">
+					<span class="dukkan-whatsapp-steps__num">1</span>
+					<div>
+						<strong><?php esc_html_e( 'Get your two Meta values', 'dukkan-plugin' ); ?></strong>
+						<p><?php esc_html_e( 'Open your Meta app (or create one) and your system-user token — the buttons below take you straight there.', 'dukkan-plugin' ); ?></p>
+						<p>
+							<a class="button" target="_blank" rel="noopener" href="https://developers.facebook.com/apps"><?php esc_html_e( 'Create Meta App + Phone Number', 'dukkan-plugin' ); ?></a>
+							<a class="button" target="_blank" rel="noopener" href="https://business.facebook.com/settings/system-users"><?php esc_html_e( 'Get Access Token', 'dukkan-plugin' ); ?></a>
+						</p>
+					</div>
+				</div>
+				<div class="dukkan-whatsapp-steps__item">
+					<span class="dukkan-whatsapp-steps__num">2</span>
+					<div>
+						<strong><?php esc_html_e( 'Paste the two values below and save', 'dukkan-plugin' ); ?></strong>
+						<p><?php esc_html_e( 'Phone Number ID and Access token. Your verify token is generated for you.', 'dukkan-plugin' ); ?></p>
+					</div>
+				</div>
+				<div class="dukkan-whatsapp-steps__item">
+					<span class="dukkan-whatsapp-steps__num">3</span>
+					<div>
+						<strong><?php esc_html_e( 'Subscribe the webhook in Meta', 'dukkan-plugin' ); ?></strong>
+						<p><?php esc_html_e( 'In Meta → WhatsApp → Configuration → Webhook, paste the Callback URL and Verify token below, then click Verify and save.', 'dukkan-plugin' ); ?></p>
+					</div>
+				</div>
+			</div>
+
+			<table class="form-table" role="presentation">
+				<tbody>
 					<tr>
-						<th scope="row"><?php esc_html_e( 'Rate limit', 'dukkan-plugin' ); ?></th>
+						<th scope="row"><?php esc_html_e( 'Enable WhatsApp', 'dukkan-plugin' ); ?></th>
+						<td>
+							<label>
+								<input type="checkbox" name="dukkan_chatbot[whatsapp_enabled]" value="1" <?php checked( ! empty( $settings['whatsapp_enabled'] ), 1 ); ?>>
+								<?php esc_html_e( 'Reply to WhatsApp messages with the AI assistant', 'dukkan-plugin' ); ?>
+							</label>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Phone Number ID', 'dukkan-plugin' ); ?></th>
+						<td>
+							<input type="text" name="dukkan_chatbot[whatsapp_phone_number_id]" value="<?php echo esc_attr( $settings['whatsapp_phone_number_id'] ); ?>" class="regular-text" placeholder="<?php esc_attr_e( 'e.g. 1353064267882401', 'dukkan-plugin' ); ?>">
+							<p class="description"><?php esc_html_e( 'Meta App → WhatsApp → API Setup → under "From".', 'dukkan-plugin' ); ?></p>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Access token', 'dukkan-plugin' ); ?></th>
+						<td>
+							<input type="password" name="dukkan_chatbot[whatsapp_access_token]" value="<?php echo esc_attr( $settings['whatsapp_access_token'] ); ?>" class="large-text" autocomplete="off">
+							<p class="description"><?php esc_html_e( 'System-user token (expiry = Never) with whatsapp_business_messaging + whatsapp_business_management permissions.', 'dukkan-plugin' ); ?></p>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Webhook URL', 'dukkan-plugin' ); ?></th>
+						<td>
+							<input type="text" readonly value="<?php echo esc_url( $whatsapp_webhook_url ); ?>" class="large-text dukkan-whatsapp-copy" onclick="this.select()">
+							<p class="description"><?php esc_html_e( 'Paste into Meta → WhatsApp → Configuration → Webhook → Callback URL.', 'dukkan-plugin' ); ?></p>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Verify token', 'dukkan-plugin' ); ?></th>
+						<td>
+							<input type="text" readonly value="<?php echo esc_attr( $whatsapp_verify_token ); ?>" class="regular-text dukkan-whatsapp-copy" onclick="this.select()">
+							<input type="hidden" name="dukkan_chatbot[whatsapp_verify_token]" value="<?php echo esc_attr( $whatsapp_verify_token ); ?>">
+							<p class="description"><?php esc_html_e( 'Auto-generated for you — paste the same value into Meta\'s "Verify token" field.', 'dukkan-plugin' ); ?></p>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'App secret', 'dukkan-plugin' ); ?></th>
+						<td>
+							<input type="password" name="dukkan_chatbot[whatsapp_app_secret]" value="<?php echo esc_attr( $settings['whatsapp_app_secret'] ); ?>" class="large-text" autocomplete="off" placeholder="<?php esc_attr_e( 'Optional', 'dukkan-plugin' ); ?>">
+							<p class="description"><?php esc_html_e( 'Optional — only needed to verify webhook signatures. Meta App → App Settings → Basic → App secret.', 'dukkan-plugin' ); ?></p>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Session memory', 'dukkan-plugin' ); ?></th>
 						<td>
 							<div class="dukkan-loyalty-inline">
-								<input type="number" min="0" step="1" name="dukkan_chatbot[rate_limit]" value="<?php echo esc_attr( $settings['rate_limit'] ); ?>" class="small-text">
-								<span><?php esc_html_e( 'messages per minute per visitor (0 = unlimited)', 'dukkan-plugin' ); ?></span>
+								<input type="number" min="5" step="1" name="dukkan_chatbot[whatsapp_session_ttl]" value="<?php echo esc_attr( $settings['whatsapp_session_ttl'] ); ?>" class="small-text">
+								<span><?php esc_html_e( 'minutes to remember each phone number\'s conversation', 'dukkan-plugin' ); ?></span>
 							</div>
 						</td>
 					</tr>
 					<tr>
-						<th scope="row"><?php esc_html_e( 'Memory', 'dukkan-plugin' ); ?></th>
+						<th scope="row"><?php esc_html_e( 'Handoff number', 'dukkan-plugin' ); ?></th>
 						<td>
-							<select name="dukkan_chatbot[memory_mode]">
-								<option value="session" <?php selected( $settings['memory_mode'], 'session' ); ?>><?php esc_html_e( 'Session only (in-browser)', 'dukkan-plugin' ); ?></option>
-								<option value="persistent" <?php selected( $settings['memory_mode'], 'persistent' ); ?>><?php esc_html_e( 'Persistent (remember logged-in customers across visits)', 'dukkan-plugin' ); ?></option>
-							</select>
+							<input type="text" name="dukkan_chatbot[whatsapp_handoff_number]" value="<?php echo esc_attr( $settings['whatsapp_handoff_number'] ); ?>" class="regular-text" placeholder="<?php esc_attr_e( '+962 7X XXX XXXX', 'dukkan-plugin' ); ?>">
+							<p class="description"><?php esc_html_e( 'Shown to customers when they ask for a human.', 'dukkan-plugin' ); ?></p>
 						</td>
 					</tr>
 				</tbody>
@@ -263,13 +357,5 @@ $tone_options = array(
 			<button type="submit" class="button button-primary"><?php esc_html_e( 'Save Settings', 'dukkan-plugin' ); ?></button>
 		</p>
 	</form>
-
-	<div class="dukkan-loyalty-card">
-		<div class="dukkan-loyalty-card__head">
-			<h2><?php esc_html_e( 'Conversation log', 'dukkan-plugin' ); ?></h2>
-			<p><?php esc_html_e( 'Recent conversations handled by the assistant.', 'dukkan-plugin' ); ?></p>
-		</div>
-		<div id="dukkan-chatbot-logs"></div>
-	</div>
 
 </div>

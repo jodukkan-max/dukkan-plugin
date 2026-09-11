@@ -2,15 +2,6 @@
 (function ( $ ) {
 	'use strict';
 
-	function escHtml( s ) {
-		return String( s == null ? '' : s )
-			.replace( /&/g, '&amp;' )
-			.replace( /</g, '&lt;' )
-			.replace( />/g, '&gt;' )
-			.replace( /"/g, '&quot;' )
-			.replace( /'/g, '&#039;' );
-	}
-
 	function testConnection() {
 		var $result = $( '#dukkan-chatbot-test-result' );
 		$result.text( 'Testing…' ).removeClass( 'is-ok is-error' );
@@ -25,64 +16,101 @@
 			}
 
 			var d = res.data;
-			var ok = true;
-			var parts = [];
-			parts.push( 'DeepSeek: ' + ( d.deepseek === true ? 'OK' : 'FAIL' ) );
-			if ( d.openai === 'skipped' ) {
-				parts.push( 'OpenAI: skipped (keyword search)' );
-			} else {
-				parts.push( 'OpenAI: ' + ( d.openai === true ? 'OK' : 'FAIL' ) );
+
+			function label( v ) {
+				if ( v === true ) return 'OK';
+				if ( typeof v === 'string' && v ) return 'FAIL — ' + v;
+				return 'FAIL';
 			}
-			ok = d.deepseek === true && ( d.openai === true || d.openai === 'skipped' );
+
+			var parts = [];
+			parts.push( 'Gemini: ' + label( d.chat ) );
+			parts.push( 'Embeddings: ' + label( d.embed ) );
+			var ok = d.chat === true && d.embed === true;
 
 			$result.text( parts.join( '  ·  ' ) ).toggleClass( 'is-ok', ok ).toggleClass( 'is-error', ! ok );
 		} );
 	}
 
-	function rebuildIndex() {
-		var $result = $( '#dukkan-chatbot-rebuild-result' );
-		$result.text( 'Rebuilding…' );
+	// Generic batched index rebuild. Loops batches until the server reports
+	// `done`, so a single request never hangs on large catalogs.
+	function runIndexRebuild( action, $button, $result, countId ) {
+		$result.removeClass( 'is-error' );
+		$button.prop( 'disabled', true );
 
-		$.post( dukkan_chatbot_admin.url, {
-			action: 'dukkan_chatbot_rebuild_index',
-			nonce: dukkan_chatbot_admin.nonce
-		}, function ( res ) {
-			if ( ! res || ! res.success ) {
+		function runBatch() {
+			$result.text( 'Rebuilding…' );
+
+			$.post( dukkan_chatbot_admin.url, {
+				action: action,
+				nonce: dukkan_chatbot_admin.nonce,
+				batch: 50
+			}, function ( res ) {
+				if ( ! res || ! res.success ) {
+					$result.text( 'Failed' ).addClass( 'is-error' );
+					$button.prop( 'disabled', false );
+					return;
+				}
+
+				var d = res.data;
+				if ( d.done ) {
+					$result.text( 'Done — ' + d.indexed + ' indexed, ' + d.failed + ' failed' );
+					if ( countId ) {
+						$( countId ).text( d.indexed );
+					}
+					$button.prop( 'disabled', false );
+					return;
+				}
+
+				$result.text( 'Indexing… ' + d.indexed + ' / ' + d.total );
+				runBatch();
+			} ).fail( function () {
 				$result.text( 'Failed' ).addClass( 'is-error' );
-				return;
-			}
-			$result.text( 'Done — ' + res.data.indexed + ' indexed, ' + res.data.failed + ' failed' );
-			$( '#dukkan-chatbot-index-count' ).text( res.data.indexed );
-		} );
+				$button.prop( 'disabled', false );
+			} );
+		}
+
+		runBatch();
 	}
 
-	function loadLogs() {
-		var $logs = $( '#dukkan-chatbot-logs' );
-		$.get( dukkan_chatbot_admin.url, {
-			action: 'dukkan_chatbot_logs',
-			nonce: dukkan_chatbot_admin.nonce
-		}, function ( res ) {
-			if ( ! res || ! res.success || ! res.data.length ) {
-				$logs.html( '<p>No conversations yet.</p>' );
-				return;
-			}
+	function rebuildIndex() {
+		runIndexRebuild(
+			'dukkan_chatbot_rebuild_index',
+			$( '#dukkan-chatbot-rebuild' ),
+			$( '#dukkan-chatbot-rebuild-result' ),
+			'#dukkan-chatbot-index-count'
+		);
+	}
 
-			var html = '<table class="widefat striped">';
-			html += '<thead><tr><th>Date</th><th>User</th><th>Message</th><th>Reply</th><th></th></tr></thead><tbody>';
-			res.data.forEach( function ( row ) {
-				var who = row.user_id ? '#' + row.user_id : 'guest';
-				html += '<tr>';
-				html += '<td>' + escHtml( row.created_at ) + '</td>';
-				html += '<td>' + escHtml( who ) + '</td>';
-				html += '<td class="dukkan-chatbot-log-msg">' + escHtml( row.message ) + '</td>';
-				html += '<td class="dukkan-chatbot-log-reply">' + escHtml( row.reply ) + '</td>';
-				html += '<td>' + ( row.handoff == 1 ? '<span class="dukkan-chatbot-log-handoff">handoff</span>' : '' ) + '</td>';
-				html += '</tr>';
-			} );
-			html += '</tbody></table>';
+	function rebuildCategoriesIndex() {
+		runIndexRebuild(
+			'dukkan_chatbot_rebuild_categories_index',
+			$( '#dukkan-chatbot-rebuild-categories' ),
+			$( '#dukkan-chatbot-rebuild-categories-result' ),
+			'#dukkan-chatbot-cat-count'
+		);
+	}
 
-			$logs.html( html );
-		} );
+	function rebuildPagesIndex() {
+		runIndexRebuild(
+			'dukkan_chatbot_rebuild_pages_index',
+			$( '#dukkan-chatbot-rebuild-pages' ),
+			$( '#dukkan-chatbot-rebuild-pages-result' ),
+			'#dukkan-chatbot-page-count'
+		);
+	}
+
+	function rebuildOrdersIndex() {
+		runIndexRebuild(
+			'dukkan_chatbot_rebuild_orders_index',
+			$( '#dukkan-chatbot-rebuild-orders' ),
+			$( '#dukkan-chatbot-rebuild-orders-result' ),
+			'#dukkan-chatbot-order-count'
+		);
+	}
+
+	function formatNumber( n ) {
+		return String( n ).replace( /\B(?=(\d{3})+(?!\d))/g, ',' );
 	}
 
 	$( document ).ready( function () {
@@ -108,10 +136,8 @@
 
 		$( '#dukkan-chatbot-test' ).on( 'click', testConnection );
 		$( '#dukkan-chatbot-rebuild' ).on( 'click', rebuildIndex );
-
-		// Load logs when the chatbot tab is active.
-		if ( $( '.dukkan-chatbot-settings' ).length ) {
-			loadLogs();
-		}
+		$( '#dukkan-chatbot-rebuild-categories' ).on( 'click', rebuildCategoriesIndex );
+		$( '#dukkan-chatbot-rebuild-pages' ).on( 'click', rebuildPagesIndex );
+		$( '#dukkan-chatbot-rebuild-orders' ).on( 'click', rebuildOrdersIndex );
 	} );
 } )( jQuery );

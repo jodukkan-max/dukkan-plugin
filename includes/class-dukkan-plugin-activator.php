@@ -44,9 +44,7 @@ class Dukkan_Plugin_Activator {
 	private static function seed_chatbot_settings() {
 		$defaults = array(
 			'enabled'            => 0,
-			'deepseek_api_key'   => 'sk-ead4b62f3ac34eb2bc9508f154baa73f',
-			'deepseek_model'     => 'deepseek-chat',
-			'openai_api_key'     => '',
+			'google_api_key'     => '',
 			'language'           => 'auto',
 			'fixed_language'     => 'en',
 			'tone'               => 'friendly',
@@ -57,7 +55,6 @@ class Dukkan_Plugin_Activator {
 			'position'           => 'bottom-right',
 			'auto_index'         => 1,
 			'enable_lookup'      => 1,
-			'enable_add_to_cart' => 1,
 			'enable_handoff'     => 1,
 			'support_email'      => '',
 			'rate_limit'         => 10,
@@ -79,7 +76,49 @@ class Dukkan_Plugin_Activator {
 
 		$charset_collate = $wpdb->get_charset_collate();
 		$products        = $wpdb->prefix . 'dukkan_chatbot_products';
+		$categories      = $wpdb->prefix . 'dukkan_chatbot_categories';
+		$pages           = $wpdb->prefix . 'dukkan_chatbot_pages';
+		$orders          = $wpdb->prefix . 'dukkan_chatbot_orders';
 		$log             = $wpdb->prefix . 'dukkan_chatbot_log';
+
+		$sql_orders = "CREATE TABLE {$orders} (
+			id bigint(20) NOT NULL AUTO_INCREMENT,
+			order_id bigint(20) NOT NULL,
+			user_id bigint(20) NOT NULL DEFAULT 0,
+			status varchar(40) NULL,
+			date_created varchar(40) NULL,
+			total varchar(40) NULL,
+			summary text NULL,
+			embedding longtext NULL,
+			updated_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY order_id (order_id),
+			KEY user_id (user_id)
+		) {$charset_collate};";
+
+		$sql_pages = "CREATE TABLE {$pages} (
+			id bigint(20) NOT NULL AUTO_INCREMENT,
+			page_id bigint(20) NOT NULL,
+			title text NULL,
+			content text NULL,
+			permalink text NULL,
+			embedding longtext NULL,
+			updated_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY page_id (page_id)
+		) {$charset_collate};";
+
+		$sql_categories = "CREATE TABLE {$categories} (
+			id bigint(20) NOT NULL AUTO_INCREMENT,
+			term_id bigint(20) NOT NULL,
+			name text NULL,
+			description text NULL,
+			count bigint(20) NULL,
+			embedding longtext NULL,
+			updated_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY term_id (term_id)
+		) {$charset_collate};";
 
 		$sql_products = "CREATE TABLE {$products} (
 			id bigint(20) NOT NULL AUTO_INCREMENT,
@@ -91,6 +130,7 @@ class Dukkan_Plugin_Activator {
 			stock_status varchar(20) NULL,
 			categories text NULL,
 			short_description text NULL,
+			attributes text NULL,
 			embedding longtext NULL,
 			updated_at datetime NOT NULL,
 			PRIMARY KEY  (id),
@@ -110,7 +150,10 @@ class Dukkan_Plugin_Activator {
 			KEY created_at (created_at)
 		) {$charset_collate};";
 
+		dbDelta( $sql_categories );
 		dbDelta( $sql_products );
+		dbDelta( $sql_pages );
+		dbDelta( $sql_orders );
 		dbDelta( $sql_log );
 	}
 

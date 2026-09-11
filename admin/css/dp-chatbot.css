@@ -22,26 +22,104 @@
     color: #d63638;
 }
 
-/* Conversation log table. */
-#dukkan-chatbot-logs table {
-    width: 100%;
-    border-collapse: collapse;
+/* Usage & cost meter */
+.dukkan-chatbot-usage {
+    padding: 0 12px 16px;
 }
 
-#dukkan-chatbot-logs .dukkan-chatbot-log-msg,
-#dukkan-chatbot-logs .dukkan-chatbot-log-reply {
-    max-width: 320px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+.dukkan-chatbot-usage__total {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    padding: 16px 0 12px;
+    border-bottom: 1px solid #e6e6e6;
 }
 
-.dukkan-chatbot-log-handoff {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 10px;
-    background: #fcf0f1;
-    color: #d63638;
-    font-size: 11px;
+.dukkan-chatbot-usage__total .dukkan-chatbot-usage__label {
+    font-size: 13px;
+    color: #646970;
+}
+
+.dukkan-chatbot-usage__total strong {
+    font-size: 28px;
+    line-height: 1;
+    color: #1d2327;
+}
+
+.dukkan-chatbot-usage__stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    padding: 16px 0;
+}
+
+.dukkan-chatbot-usage__stats > div {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.dukkan-chatbot-usage__stats strong {
+    font-size: 18px;
+    color: #1d2327;
+}
+
+.dukkan-chatbot-usage__stats span {
+    font-size: 12px;
+    color: #646970;
+}
+
+.dukkan-chatbot-usage__actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-top: 12px;
+}
+
+.dukkan-whatsapp-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 16px 0;
+    margin-bottom: 8px;
+}
+
+.dukkan-whatsapp-steps__item {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+.dukkan-whatsapp-steps__num {
+    flex: 0 0 auto;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #1d4f5f;
+    color: #fff;
     font-weight: 600;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 1px;
+}
+
+.dukkan-whatsapp-steps__item p {
+    margin: 4px 0 8px;
+    color: #646970;
+}
+
+.dukkan-whatsapp-steps__item .button {
+    margin-right: 8px;
+}
+
+.dukkan-whatsapp-copy {
+    cursor: pointer;
+}
+
+.dukkan-whatsapp-copy:focus {
+    border-color: #1d4f5f;
+    box-shadow: 0 0 0 1px #1d4f5f;
 }
