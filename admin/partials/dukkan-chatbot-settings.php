@@ -22,13 +22,6 @@ $language_options = array(
 	'fixed' => __( 'Fixed language', 'dukkan-plugin' ),
 	'site'  => __( 'Site default', 'dukkan-plugin' ),
 );
-
-$tone_options = array(
-	'friendly' => __( 'Friendly', 'dukkan-plugin' ),
-	'official' => __( 'Official', 'dukkan-plugin' ),
-	'casual'   => __( 'Casual', 'dukkan-plugin' ),
-	'fun'      => __( 'Fun', 'dukkan-plugin' ),
-);
 ?>
 <div class="wrap dukkan-chatbot-settings">
 
@@ -78,16 +71,6 @@ $tone_options = array(
 						</td>
 					</tr>
 					<tr>
-						<th scope="row"><?php esc_html_e( 'Tone', 'dukkan-plugin' ); ?></th>
-						<td>
-							<select name="dukkan_chatbot[tone]">
-								<?php foreach ( $tone_options as $value => $label ) : ?>
-									<option value="<?php echo esc_attr( $value ); ?>" <?php selected( $settings['tone'], $value ); ?>><?php echo esc_html( $label ); ?></option>
-								<?php endforeach; ?>
-							</select>
-						</td>
-					</tr>
-					<tr>
 						<th scope="row"><?php esc_html_e( 'System prompt', 'dukkan-plugin' ); ?></th>
 						<td>
 							<textarea name="dukkan_chatbot[system_prompt]" rows="4" class="large-text" placeholder="<?php esc_attr_e( 'Store identity, policies and extra rules…', 'dukkan-plugin' ); ?>"><?php echo esc_textarea( $settings['system_prompt'] ); ?></textarea>
@@ -97,13 +80,6 @@ $tone_options = array(
 						<th scope="row"><?php esc_html_e( 'Bot name', 'dukkan-plugin' ); ?></th>
 						<td>
 							<input type="text" name="dukkan_chatbot[bot_name]" value="<?php echo esc_attr( $settings['bot_name'] ); ?>" class="regular-text">
-						</td>
-					</tr>
-					<tr>
-						<th scope="row"><?php esc_html_e( 'Bot avatar', 'dukkan-plugin' ); ?></th>
-						<td>
-							<input type="url" name="dukkan_chatbot[bot_avatar]" value="<?php echo esc_attr( $settings['bot_avatar'] ); ?>" class="regular-text" placeholder="<?php esc_attr_e( 'https://…', 'dukkan-plugin' ); ?>">
-							<p class="description"><?php esc_html_e( 'Optional image URL shown in the chat header. Leave empty to use the default illustrated avatar.', 'dukkan-plugin' ); ?></p>
 						</td>
 					</tr>
 					<tr>

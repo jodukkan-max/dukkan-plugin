@@ -1,10 +1,29 @@
 # Dukkan Plugin — Work Log & Structure
 
-> Last updated: v1.0.34 — September 12, 2026
+> Last updated: v1.0.35 — September 14, 2026
 
 ---
 
 ## Recent Changes
+
+### v1.0.35 — TranslatePress punctuation canonicalization + REST auth fix
+
+- **TranslatePress canonicalization (fix)**: strings containing apostrophes/quotes/dashes silently failed to display after being saved, because TranslatePress stores `original` keys in HTML-entity form (`it&#8217;s` from `wptexturize`) while the mobile app sends raw text (`it's` / `it’s`). Added `dukkan_plugin_canonicalize_original()` — decode entities → `wptexturize()` → re-encode curly punctuation to numeric entities — and applied it to the regular-string read (`dukkan_plugin_get_translations`) and write (`dukkan_plugin_save_translation`) paths. Gettext endpoints are intentionally untouched (raw code strings must not be texturized). Verified live across straight/curly/entity apostrophe, double-quote, and em-dash forms. `api/class-dukkan-plugin-translatepress.php`
+- **WooCommerce REST auth for `dukkan-*` namespaces (fix)**: all Dukkan REST routes returned 401 even with valid WooCommerce API keys, because WooCommerce only processes API-key auth under `wc/` / `wc-` prefixes. Added a `woocommerce_rest_is_request_to_rest_api` filter (`dukkan_rest_is_request_to_rest_api`) in `includes/class-dukkan-plugin.php` to claim `dukkan-*` namespaces so the key is processed, while leaving `wc/`/`wc-` untouched. `includes/class-dukkan-plugin.php`
+
+### v1.0.35 — Central API gateway (Cloudflare Worker)
+
+- **Goal**: keep a single Google key for all client sites without the key ever living in the plugin (a public repo). The key moves to a Cloudflare Worker the developer owns; every site calls the gateway, which injects the key and forwards to Google.
+- **Plugin**: added a `gemini_target()` helper that routes the 4 Gemini-family call sites (`embed_text`, `embed_texts_batch`, `call_gemini`, `stream_generate`) through the gateway when `gateway_url` is set, and falls back to direct Google (per-site `google_api_key`) otherwise. Added `gateway_url()` / `gateway_token()` accessors (both overridable via `dukkan_chatbot_gateway_url` / `dukkan_chatbot_gateway_token` filters), a `DUKKAN_GATEWAY_URL` constant (empty by default — a URL is not a secret), `gateway_url` / `gateway_token` settings + defaults + sanitizer + activator seed. Streaming (`stream_generate`) still uses raw cURL and now builds its header list from `gemini_target()`. `includes/class-dukkan-plugin-chatbot.php`, `admin/class-dukkan-plugin-chatbot-admin.php`, `admin/partials/dukkan-chatbot-settings.php`, `includes/class-dukkan-plugin-activator.php`
+- **Admin UI**: the **Connection** card now has **Gateway URL**, **Gateway token**, and the direct **Google API key (fallback)** fields, with descriptions explaining when each applies. `admin/partials/dukkan-chatbot-settings.php`
+- **Gateway**: new `gateway/` folder (NOT shipped in the plugin zip) with `worker.js` (Cloudflare Worker proxying `/chat`, `/chat-stream`, `/embed`, `/embed-batch`), `wrangler.toml`, and `GATEWAY-DEPLOY.md` (setup, verification cURLs, cost, key rotation).
+- **Deployed**: the gateway is live at `https://dukkan-gateway.dukkanjo.workers.dev` (Cloudflare account `jodukkan@gmail.com`), with `GOOGLE_API_KEY` stored as a Cloudflare secret. The plugin's `DUKKAN_GATEWAY_URL` constant now points at this URL, so every site is zero-config out of the box. Chat + embed endpoints verified working. No `GATEWAY_TOKEN` is set, so the gateway currently accepts anonymous traffic — set one and add the matching token per site if you want to reject strangers.
+
+### v1.0.35 — Google API key moved to admin setting (leak fix)
+
+- **Why**: the hardcoded `GOOGLE_API_KEY` was committed to the public repo; Google's secret scanner flagged it and auto-revoked the key, so every chat + embedding call returned **HTTP 403 "Your API key was reported as leaked"**. A live key can never live in a public repo.
+- **Fix**: the hardcoded constant is now empty (documented as a placeholder) and `get_google_api_key()` reads the key purely from the `google_api_key` setting. Added a **Connection → Google API key** field to the AI Chatbot settings form so each store pastes its own key (stored in the options table, never in code). `includes/class-dukkan-plugin-chatbot.php`, `admin/partials/dukkan-chatbot-settings.php`
+- **Action required**: generate a new key at [Google AI Studio](https://aistudio.google.com/app/apikey) and paste it into Dukkan → AI Chatbot → Connection (or deploy the gateway above and use that instead).
 
 ### v1.0.34 — Chatbot: Gemma-only (drop the Gemini model)
 - **Single model**: the chat engine is now hardcoded to **`gemma-4-26b-a4b-it` (Gemma 4)**. Removed the admin Model selector, the `chat_model` setting/default/sanitizer, the `GEMINI_MODEL` and `PRICE_CHAT_INPUT`/`PRICE_CHAT_OUTPUT` constants, and the `is_gemma()` helper. `model_name()` always returns `GEMMA_MODEL`; `thinking_config()` always sends no `thinkingConfig` (Gemma rejects it); `sampling_config()` is fixed at Gemma's recommended `temperature=1.0 / topP=0.95 / topK=64`; the cost meter is pinned to `$0` (`PRICE_GEMMA_*`). `includes/class-dukkan-plugin-chatbot.php`, `admin/class-dukkan-plugin-chatbot-admin.php`, `admin/partials/dukkan-chatbot-settings.php`

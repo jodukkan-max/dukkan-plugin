@@ -8,6 +8,7 @@
 	var opened = false;
 	var started = false;
 	var pendingImage = '';
+	var prevBodyOverflow = '';
 
 	var STORAGE_KEY = 'dukkan_chatbot_history';
 	var MAX_STORED_TURNS = 60;
@@ -496,6 +497,13 @@
 		opened = true;
 		$panel.prop( 'hidden', false ).addClass( 'is-open' );
 		$launcher.attr( 'aria-expanded', 'true' );
+
+		// Lock the page scroll so swiping inside the full-screen chat doesn't
+		// rubber-band the site behind it (mobile). Store the previous overflow
+		// so it can be restored exactly on close.
+		prevBodyOverflow = $( 'body' ).css( 'overflow' );
+		$( 'body' ).css( 'overflow', 'hidden' );
+
 		showGreeting();
 		setTimeout( function () { $input.trigger( 'focus' ); }, 150 );
 	}
@@ -507,6 +515,9 @@
 			$panel.prop( 'hidden', true ).removeClass( 'is-open is-closing' );
 		}, 150 );
 		$launcher.attr( 'aria-expanded', 'false' );
+
+		// Restore the page scroll.
+		$( 'body' ).css( 'overflow', prevBodyOverflow || '' );
 	}
 
 	$( document ).ready( function () {

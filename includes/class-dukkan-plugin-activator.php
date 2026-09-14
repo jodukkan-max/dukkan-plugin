@@ -45,6 +45,8 @@ class Dukkan_Plugin_Activator {
 		$defaults = array(
 			'enabled'            => 0,
 			'google_api_key'     => '',
+			'gateway_url'        => '',
+			'gateway_token'      => '',
 			'language'           => 'auto',
 			'fixed_language'     => 'en',
 			'tone'               => 'friendly',

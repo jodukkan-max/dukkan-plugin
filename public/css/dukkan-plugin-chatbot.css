@@ -139,6 +139,9 @@
 	overflow: hidden;
 	transform-origin: bottom right;
 	animation: dukkan-chat-open 0.18s ease-out;
+	/* Prevent the page behind the chat from rubber-banding when a user
+	   scrolls to the end of the messages list on mobile. */
+	overscroll-behavior: contain;
 }
 
 /* The panel is toggled with the `hidden` attribute, but the `display: flex`
@@ -651,8 +654,11 @@
 
 /* Mobile: full-screen bottom sheet anchored to the viewport, using the
    dynamic viewport height (100dvh) so it never overflows past the screen
-   edge or hides the input bar behind the browser UI. */
-@media ( max-width: 480px ) {
+   edge or hides the input bar behind the browser UI.
+
+   The breakpoint is 768px (not 480px) so phones in landscape and small
+   tablets also get the full-screen treatment + safe-area insets. */
+@media ( max-width: 768px ) {
 	.dukkan-chatbot__panel,
 	.dukkan-chatbot--left .dukkan-chatbot__panel {
 		right: 0;
@@ -671,6 +677,41 @@
 
 	.dukkan-chatbot__inputbar {
 		padding-bottom: calc( 12px + env( safe-area-inset-bottom ) );
+	}
+}
+
+/* Small phones (≤360px): compact the input controls and collapse the launcher
+   to an icon-only pill so it never crowds the content. */
+@media ( max-width: 360px ) {
+	.dukkan-chatbot .dukkan-chatbot__launcher {
+		padding: 0;
+		gap: 0;
+		height: 56px;
+	}
+
+	.dukkan-chatbot .dukkan-chatbot__launcher-icon {
+		width: 56px;
+		height: 56px;
+	}
+
+	.dukkan-chatbot .dukkan-chatbot__launcher-label {
+		display: none;
+	}
+
+	.dukkan-chatbot .dukkan-chatbot__attach,
+	.dukkan-chatbot .dukkan-chatbot__mic {
+		width: 32px;
+		height: 32px;
+	}
+
+	.dukkan-chatbot__send {
+		width: 36px;
+		height: 36px;
+	}
+
+	.dukkan-chatbot__inputbar {
+		gap: 5px;
+		padding: 10px;
 	}
 }
 

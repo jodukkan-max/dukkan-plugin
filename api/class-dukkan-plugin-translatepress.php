@@ -13,8 +13,12 @@
 /**
  * The translatepress-api functionality of the plugin.
  *
- * Defines the plugin name, version, and two examples hooks for how to
- * enqueue the translatepress-api stylesheet and JavaScript.
+ * Defines the plugin name, version, and REST routes for reading and writing
+ * TranslatePress translations (regular + gettext) from the Dukkan mobile app.
+ *
+ * All routes require WooCommerce manager permissions (same convention as the
+ * product-addon, badge and loyalty APIs): read routes use `check_permissions()`
+ * and write routes use `check_edit_permissions()`.
  *
  * @package    Dukkan_Plugin
  * @subpackage Dukkan_Plugin/public
@@ -51,64 +55,102 @@ class Dukkan_Plugin_Translatepress {
 
 		$this->plugin_name = $plugin_name;
 		$this->version = $version;
-		add_action('rest_api_init', array($this, 'dukkan_plugin_translatepress_api'));
+		add_action( 'rest_api_init', array( $this, 'dukkan_plugin_translatepress_api' ) );
 
 	}
 
-    public function dukkan_plugin_translatepress_api(){
+	/**
+	 * Permission callback for reads — requires WooCommerce REST read access.
+	 *
+	 * @since 1.0.35
+	 * @param WP_REST_Request $request Request.
+	 * @return bool|WP_Error
+	 */
+	public function check_permissions( WP_REST_Request $request ) {
+		if ( ! wc_rest_check_manager_permissions( 'settings', 'read' ) ) {
+			return new WP_Error(
+				'woocommerce_rest_cannot_view',
+				__( 'Sorry, you cannot view this resource.', 'dukkan-plugin' ),
+				array( 'status' => rest_authorization_required_code() )
+			);
+		}
+
+		return true;
+	}
+
+	/**
+	 * Permission callback for mutations — requires WooCommerce REST edit access.
+	 *
+	 * @since 1.0.35
+	 * @param WP_REST_Request $request Request.
+	 * @return bool|WP_Error
+	 */
+	public function check_edit_permissions( WP_REST_Request $request ) {
+		if ( ! wc_rest_check_manager_permissions( 'settings', 'edit' ) ) {
+			return new WP_Error(
+				'woocommerce_rest_cannot_edit',
+				__( 'Sorry, you cannot edit this resource.', 'dukkan-plugin' ),
+				array( 'status' => rest_authorization_required_code() )
+			);
+		}
+
+		return true;
+	}
+
+	public function dukkan_plugin_translatepress_api(){
 		register_rest_route('dukkan-translation-translatepress/v1', '/languages-list', array(
-            'methods' => 'GET',
-            'callback' => array($this, 'dukkan_plugin_get_translatepress_languages_list'),
-            'permission_callback' => '__return_true'
-        ));
+			'methods' => 'GET',
+			'callback' => array($this, 'dukkan_plugin_get_translatepress_languages_list'),
+			'permission_callback' => array( $this, 'check_permissions' ),
+		));
 
 		register_rest_route('dukkan-translation-translatepress/v1', '/translate', array(
 			'methods' => 'POST',
 			'callback' => array($this, 'dukkan_plugin_save_translation'),
-			'permission_callback' => '__return_true'
+			'permission_callback' => array( $this, 'check_edit_permissions' ),
 		));
 		register_rest_route('dukkan-translation-translatepress/v1', '/get-translations', array(
 			'methods' => 'GET',
 			'callback' => array($this, 'dukkan_plugin_get_translations'),
-			'permission_callback' => '__return_true'
+			'permission_callback' => array( $this, 'check_permissions' ),
 		));
 
-        register_rest_route('dukkan-translation-translatepress/v1', '/translatepress-settings', array(
-            'methods' => 'GET',
-            'callback' => array($this, 'dukkan_plugin_get_translatepress_settings'),
-            'permission_callback' => '__return_true'
-        ));
+		register_rest_route('dukkan-translation-translatepress/v1', '/translatepress-settings', array(
+			'methods' => 'GET',
+			'callback' => array($this, 'dukkan_plugin_get_translatepress_settings'),
+			'permission_callback' => array( $this, 'check_permissions' ),
+		));
 
 		register_rest_route('dukkan-translation-translatepress/v1', '/translatepress-save-settings', array(
-            'methods' => 'POST',
-            'callback' => array($this, 'dukkan_plugin_get_translatepress_save_settings'),
-            'permission_callback' => '__return_true'
-        ));
+			'methods' => 'POST',
+			'callback' => array($this, 'dukkan_plugin_save_translatepress_settings'),
+			'permission_callback' => array( $this, 'check_edit_permissions' ),
+		));
 
 		// gettext string translation
 		register_rest_route('dukkan-translation-translatepress/v1', '/translatepress-get-text-domains', array(
-            'methods' => 'GET',
-            'callback' => array($this, 'dukkan_plugin_get_translatepress_text_domains'),
-            'permission_callback' => '__return_true'
-        ));
+			'methods' => 'GET',
+			'callback' => array($this, 'dukkan_plugin_get_translatepress_text_domains'),
+			'permission_callback' => array( $this, 'check_permissions' ),
+		));
 
 		register_rest_route('dukkan-translation-translatepress/v1', '/translatepress-gettext-translations', array(
-            'methods' => 'GET',
-            'callback' => array($this, 'dukkan_plugin_get_translatepress_gettext_translations'),
-            'permission_callback' => '__return_true'
-        ));
+			'methods' => 'GET',
+			'callback' => array($this, 'dukkan_plugin_get_translatepress_gettext_translations'),
+			'permission_callback' => array( $this, 'check_permissions' ),
+		));
 
 		register_rest_route('dukkan-translation-translatepress/v1', '/translatepress-gettext-translate', array(
-            'methods' => 'POST',
-            'callback' => array($this, 'dukkan_plugin_save_translatepress_gettext_translations'),
-            'permission_callback' => '__return_true'
-        ));
+			'methods' => 'POST',
+			'callback' => array($this, 'dukkan_plugin_save_translatepress_gettext_translations'),
+			'permission_callback' => array( $this, 'check_edit_permissions' ),
+		));
 
 		register_rest_route('dukkan-translation-translatepress/v1', '/translatepress-gettext-original-strings', array(
-            'methods' => 'GET',
-            'callback' => array($this, 'dukkan_plugin_get_translatepress_gettext_original_strings'),
-            'permission_callback' => '__return_true'
-        ));
+			'methods' => 'GET',
+			'callback' => array($this, 'dukkan_plugin_get_translatepress_gettext_original_strings'),
+			'permission_callback' => array( $this, 'check_permissions' ),
+		));
 	}
 
 	public function dukkan_plugin_trp_format_string($string){
@@ -143,13 +185,63 @@ class Dukkan_Plugin_Translatepress {
 		return $string;
 	}
 
+	/**
+	 * Normalize an "original" string to the exact form TranslatePress stores in
+	 * its dictionary tables, so lookups and writes match regardless of the
+	 * punctuation encoding the caller (mobile app) sent.
+	 *
+	 * TranslatePress extracts strings from the rendered page where WordPress's
+	 * `wptexturize()` has already converted straight quotes/dashes into HTML
+	 * entities (e.g. `it&#8217;s`). The app, however, typically sends the raw
+	 * text (`it's` or `it’s`), which then never matches the stored key.
+	 *
+	 * We canonicalize by: (1) decoding any entities to raw Unicode, (2) running
+	 * `wptexturize()` to convert straight quotes/dashes into the curly form, and
+	 * (3) re-encoding curly punctuation back to the numeric-entity form that
+	 * TranslatePress actually stores.
+	 *
+	 * @since 1.0.35
+	 * @param string $string Raw original string.
+	 * @return string Canonicalized original string.
+	 */
+	public function dukkan_plugin_canonicalize_original( $string ) {
+		if ( ! is_string( $string ) ) {
+			return $string;
+		}
+
+		// Decode numeric + named entities to raw UTF-8.
+		$string = html_entity_decode( $string, ENT_QUOTES, 'UTF-8' );
+
+		// Straight quotes/dashes -> curly (may already produce numeric entities).
+		if ( function_exists( 'wptexturize' ) ) {
+			$string = wptexturize( $string );
+		}
+
+		// Encode any remaining raw curly punctuation to the numeric-entity form
+		// used by WordPress/TranslatePress dictionaries.
+		$replace = array(
+			'’' => '&#8217;',
+			'‘' => '&#8216;',
+			'“' => '&#8220;',
+			'”' => '&#8221;',
+			'–' => '&#8211;',
+			'—' => '&#8212;',
+		);
+
+		return str_replace( array_keys( $replace ), array_values( $replace ), $string );
+	}
+
 	public function dukkan_plugin_get_translatepress_text_domains(){
+		if ( ! class_exists( 'TRP_Translate_Press' ) ) {
+			return new WP_Error( 'tp_missing', 'TranslatePress not active', array( 'status' => 400 ) );
+		}
+
 		global $wpdb;
 
 		$table = $wpdb->prefix . 'trp_gettext_original_strings';
 
 		// Check table exists
-		if($wpdb->get_var("SHOW TABLES LIKE '$table'") != $table){
+		if($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $table)) != $table){
 			return new WP_Error('table_missing','Gettext table not found',['status'=>404]);
 		}
 
@@ -168,18 +260,21 @@ class Dukkan_Plugin_Translatepress {
 	}
 
 	public function dukkan_plugin_get_translatepress_gettext_original_strings( $request ){
-		
+		if ( ! class_exists( 'TRP_Translate_Press' ) ) {
+			return new WP_Error( 'tp_missing', 'TranslatePress not active', array( 'status' => 400 ) );
+		}
+
 		global $wpdb;
 
-    	$domain      = $request->get_param('domain'); // optional
+		$domain   = $request->get_param('domain'); // optional
 		$page     = max(1, (int)$request->get_param('page'));
-		$per_page = max(10, (int)$request->get_param('per_page'));
+		$per_page = min( 100, max( 10, (int) $request->get_param( 'per_page' ) ) ); // cap to prevent abuse
 		$offset   = ($page - 1) * $per_page;
 
 		$table = $wpdb->prefix . 'trp_gettext_original_strings';
 
 		// Check table exists
-		if($wpdb->get_var("SHOW TABLES LIKE '$table'") != $table){
+		if($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $table)) != $table){
 			return new WP_Error('table_missing','Gettext table not found',['status'=>404]);
 		}
 
@@ -189,20 +284,70 @@ class Dukkan_Plugin_Translatepress {
 				"SELECT id, original, domain 
 				FROM $table 
 				WHERE domain = %s 
-				ORDER BY id DESC LIMIT $per_page OFFSET $offset",
-				$domain
+				ORDER BY id DESC LIMIT %d OFFSET %d",
+				$domain,
+				$per_page,
+				$offset
 			);
 		} else {
-			$query = "SELECT id, original, domain 
-					FROM $table 
-					ORDER BY id DESC LIMIT $per_page OFFSET $offset";
+			$query = $wpdb->prepare(
+				"SELECT id, original, domain 
+				FROM $table 
+				ORDER BY id DESC LIMIT %d OFFSET %d",
+				$per_page,
+				$offset
+			);
 		}
 
 		$rows = $wpdb->get_results($query);
 
-    	$results = [];
+		$results = [];
 
-		foreach($rows as $row){
+		if ( empty( $rows ) ) {
+			return [
+				'status' => 'success',
+				'count'  => 0,
+				'data'   => $results,
+			];
+		}
+
+		$ids = wp_list_pluck( $rows, 'id' );
+
+		// Collect the language tables once.
+		$tables = $wpdb->get_col("SHOW TABLES LIKE '{$wpdb->prefix}trp_gettext_%'");
+
+		$lang_tables = [];
+		foreach ( $tables as $t ) {
+			if ( strpos( $t, 'original_strings' ) !== false || strpos( $t, 'original_meta' ) !== false ) {
+				continue;
+			}
+			$lang_tables[ str_replace( "{$wpdb->prefix}trp_gettext_", '', $t ) ] = $t;
+		}
+
+		// Batch-load translations for all requested original ids per language,
+		// avoiding an N+1 query storm.
+		$translations_by_id = [];
+		foreach ( $rows as $row ) {
+			$translations_by_id[ $row->id ] = [];
+		}
+
+		$placeholders = implode( ',', array_fill( 0, count( $ids ), '%d' ) );
+
+		foreach ( $lang_tables as $lang => $t ) {
+			$id_lookup = $wpdb->get_results(
+				$wpdb->prepare(
+					"SELECT original_id, translated FROM {$t} WHERE original_id IN ( {$placeholders} )",
+					$ids
+				),
+				ARRAY_A
+			);
+
+			foreach ( $id_lookup as $tr ) {
+				$translations_by_id[ (int) $tr['original_id'] ][ $lang ] = $tr['translated'];
+			}
+		}
+
+		foreach ( $rows as $row ) {
 
 			$item = [
 				'id'       => $row->id,
@@ -212,30 +357,18 @@ class Dukkan_Plugin_Translatepress {
 
 			$translations = [];
 
-			$tables = $wpdb->get_col("SHOW TABLES LIKE '{$wpdb->prefix}trp_gettext_%'");
-
-			foreach($tables as $t){
-
-				if(strpos($t, 'original_strings') !== false){
-					continue;
+			foreach ( $lang_tables as $lang => $t ) {
+				if ( isset( $translations_by_id[ $row->id ][ $lang ] ) ) {
+					$translations[ $lang ] = [
+						'translated' => $this->dukkan_plugin_trp_unformat_string( $translations_by_id[ $row->id ][ $lang ] ),
+						'status'     => 'translated'
+					];
+				} else {
+					$translations[ $lang ] = [
+						'translated' => '',
+						'status'     => 'missing'
+					];
 				}
-				else if(strpos($t, 'original_meta') !== false){
-					continue;
-				}
-
-				$lang = str_replace("{$wpdb->prefix}trp_gettext_", '', $t);
-
-				$row_tr = $wpdb->get_row(
-					$wpdb->prepare(
-						"SELECT translated FROM $t WHERE original_id = %d LIMIT 1",
-						$row->id
-					)
-				);
-
-				$translations[$lang] = [
-					'translated' => $row_tr ? $this->dukkan_plugin_trp_unformat_string($row_tr->translated) : '',
-					'status'     => $row_tr ? 'translated' : 'missing'
-				];
 			}
 
 			$item['translations'] = $translations;
@@ -251,11 +384,19 @@ class Dukkan_Plugin_Translatepress {
 	}
 
 	public function dukkan_plugin_get_translatepress_gettext_translations( $request ){
-		
+		if ( ! class_exists( 'TRP_Translate_Press' ) ) {
+			return new WP_Error( 'tp_missing', 'TranslatePress not active', array( 'status' => 400 ) );
+		}
+
 		global $wpdb;
 
-    	$original = $request['original']; //$this->dukkan_plugin_trp_format_string($request['original']);
-		$domain   = $request['domain'] ?? '';
+		$original = $request->get_param( 'original' );
+		$domain   = $request->get_param( 'domain' );
+		$domain   = is_string( $domain ) ? $domain : '';
+
+		if ( empty( $original ) ) {
+			return new WP_Error( 'invalid_data', 'Missing original parameter', array( 'status' => 400 ) );
+		}
 
 		$original_table = $wpdb->prefix . 'trp_gettext_original_strings';
 
@@ -327,10 +468,14 @@ class Dukkan_Plugin_Translatepress {
 
 		$params = $request->get_json_params();
 
-		$original     = trim($params['original']);
-		$domain       = $params['domain'] ?? '';
-		$context      = $params['context'] ?? '';
-		$translations = $params['translations'];
+		if ( ! is_array( $params ) ) {
+			return new WP_Error( 'invalid_data', 'Invalid or missing JSON body', array( 'status' => 400 ) );
+		}
+
+		$original     = isset( $params['original'] ) ? trim( (string) $params['original'] ) : '';
+		$domain       = isset( $params['domain'] ) ? sanitize_text_field( (string) $params['domain'] ) : '';
+		$context      = isset( $params['context'] ) ? sanitize_text_field( (string) $params['context'] ) : '';
+		$translations = isset( $params['translations'] ) && is_array( $params['translations'] ) ? $params['translations'] : [];
 
 		if(empty($original) || empty($translations)){
 			return new WP_Error('invalid_data','Missing data',['status'=>400]);
@@ -365,13 +510,22 @@ class Dukkan_Plugin_Translatepress {
 
 		$results = [];
 
-		foreach($translations as $lang => $translated){
+		foreach($translations as $lang_raw => $translated){
 
-			$translated = trim($translated);
+			$lang = sanitize_key( (string) $lang_raw );
+			if ( '' === $lang ) {
+				$results[] = [
+					'language' => $lang_raw,
+					'status'   => 'invalid_language'
+				];
+				continue;
+			}
+
+			$translated = trim( (string) $translated );
 
 			$table = $wpdb->prefix . "trp_gettext_{$lang}";
 
-			if($wpdb->get_var("SHOW TABLES LIKE '$table'") != $table){
+			if($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $table)) != $table){
 				$results[] = [
 					'language' => $lang,
 					'status'   => 'table_not_found'
@@ -379,7 +533,7 @@ class Dukkan_Plugin_Translatepress {
 				continue;
 			}
 
-			// 🔍 Check if exists
+			// Check if exists
 			$existing = $wpdb->get_row(
 				$wpdb->prepare(
 					"SELECT id FROM $table WHERE original_id = %d LIMIT 1",
@@ -446,108 +600,6 @@ class Dukkan_Plugin_Translatepress {
 		];
 	}
 
-	public function dukkan_plugin_save_translatepress_gettext_translations__stop( $request ){
-		
-		global $wpdb;
-
-		$params = $request->get_json_params();
-
-		$original = $this->dukkan_plugin_trp_format_string($params['original']);
-		$domain   = $params['domain'] ?? '';
-		//$context  = $params['context'] ?? '';
-		$translations = $params['translations'];
-
-		if(empty($original) || empty($translations)){
-			return new WP_Error('invalid_data','Missing data',['status'=>400]);
-		}
-
-		 $original_table = $wpdb->prefix . 'trp_gettext_original_strings';
-
-		// Check if original string exists
-		$original_row = $wpdb->get_row(
-			$wpdb->prepare(
-				"SELECT id FROM $original_table WHERE original = %s AND domain = %s LIMIT 1",
-				$original,
-				$domain
-			)
-		);
-
-		if($original_row){
-			$original_id = $original_row->id;
-		} else {
-
-			// Insert original string
-			$wpdb->insert($original_table, [
-				'original' => $original,
-				'domain'   => $domain
-			]);
-
-			$original_id = $wpdb->insert_id;
-		}
-
-		$results = [];
-
-		// Loop languages
-		foreach($translations as $lang => $translated){
-
-			$translated = $this->dukkan_plugin_trp_format_string($translated);
-
-			$table = $wpdb->prefix . "trp_gettext_{$lang}";
-
-			if($wpdb->get_var("SHOW TABLES LIKE '$table'") != $table){
-				$results[] = [
-					'language' => $lang,
-					'status' => 'table_not_found'
-				];
-				continue;
-			}
-
-			// Check if translation exists
-			$row = $wpdb->get_row(
-				$wpdb->prepare(
-					"SELECT id FROM $table WHERE original_id = %d LIMIT 1",
-					$original_id
-				)
-			);
-
-			if($row){
-
-				$wpdb->update($table, [
-					'translated' => $translated,
-					'status' => 2
-				], [
-					'id' => $row->id
-				]);
-
-				$results[] = [
-					'language' => $lang,
-					'status' => 'updated'
-				];
-
-			} else {
-
-				$wpdb->insert($table, [
-					'original'    => $original,
-					'translated'  => $translated,
-					'domain'      => $domain,
-					'status'      => 2,
-					'original_id' => $original_id
-				]);
-
-				$results[] = [
-					'language' => $lang,
-					'status' => 'inserted'
-				];
-			}
-		}
-
-		return [
-			'status' => 'success',
-			'original_id' => $original_id,
-			'results' => $results
-		];
-	}
-
 	public function dukkan_plugin_get_translatepress_languages_list(){
 		if( !class_exists('TRP_Translate_Press') ){
 			return new WP_Error('tp_missing','TranslatePress not active',['status'=>400]);
@@ -556,21 +608,21 @@ class Dukkan_Plugin_Translatepress {
 		$trp_languages = $trp->get_component('languages');
 		$wp_languages = $trp_languages->get_wp_languages();
 
-        if (empty($wp_languages)) {
-            return new WP_Error(
-                'tp_languages_not_found',
-                'TranslatePress Languages not found',
-                ['status' => 404]
-            );
-        }
+		if (empty($wp_languages)) {
+			return new WP_Error(
+				'tp_languages_not_found',
+				'TranslatePress Languages not found',
+				['status' => 404]
+			);
+		}
 
-        return [
-            'status' => 'success',
-            'available_languages' => $wp_languages
-        ];
+		return [
+			'status' => 'success',
+			'available_languages' => $wp_languages
+		];
 	}
 
-	public function dukkan_plugin_get_translatepress_save_settings($request){
+	public function dukkan_plugin_save_translatepress_settings($request){
 		if( !class_exists('TRP_Translate_Press') ){
 			return new WP_Error('tp_missing','TranslatePress not active',['status'=>400]);
 		}
@@ -592,99 +644,112 @@ class Dukkan_Plugin_Translatepress {
 			return new WP_Error('tp_settings_missing','Settings not found',['status'=>404]);
 		}
 
-		/**
-		 * IMPORTANT PART
-		 * Sanitize settings using TranslatePress internal method
-		 */
-		if(method_exists($settings_obj, 'sanitize_settings')){
-			$settings_new = $settings_obj->sanitize_settings($params);
+		// Sanitize settings using TranslatePress internal method.
+		if( ! method_exists( $settings_obj, 'sanitize_settings' ) ){
+			return new WP_Error( 'tp_sanitize_missing', 'TranslatePress sanitize_settings() unavailable', array( 'status' => 500 ) );
+		}
+
+		$settings_new = $settings_obj->sanitize_settings( $params );
+
+		if ( ! is_array( $settings_new ) ) {
+			return new WP_Error( 'tp_sanitize_failed', 'Failed to sanitize settings', array( 'status' => 500 ) );
 		}
 
 		// Save settings
-    	update_option('trp_settings', $settings_new);
+		update_option('trp_settings', $settings_new);
 
 		return [
-            'status' => 'success',
-            'settings' => $settings_new
-        ];
+			'status' => 'success',
+			'settings' => $settings_new
+		];
 	}
 
-    public function dukkan_plugin_get_translatepress_settings() {
+	public function dukkan_plugin_get_translatepress_settings() {
 
-        $settings = get_option('trp_settings');
-		// $settings_obj = new TRP_Settings();
-		// $settings     = $settings_obj->get_settings();
+		if ( ! class_exists( 'TRP_Translate_Press' ) ) {
+			return new WP_Error( 'tp_missing', 'TranslatePress not active', array( 'status' => 400 ) );
+		}
 
-        if (empty($settings)) {
-            return new WP_Error(
-                'tp_settings_not_found',
-                'TranslatePress settings not found',
-                ['status' => 404]
-            );
-        }
+		$settings = get_option('trp_settings');
 
-        return [
-            'status' => 'success',
-            'settings' => $settings
-        ];
-    }
+		if (empty($settings)) {
+			return new WP_Error(
+				'tp_settings_not_found',
+				'TranslatePress settings not found',
+				['status' => 404]
+			);
+		}
 
-    public function dukkan_plugin_get_translations($request){
+		return [
+			'status' => 'success',
+			'settings' => $settings
+		];
+	}
 
-        global $wpdb;
+	public function dukkan_plugin_get_translations($request){
 
-        $original = $request['original']; //$this->dukkan_plugin_trp_format_string($request['original']);
-        $source_lang = strtolower($request['source_lang']);
+		if ( ! class_exists( 'TRP_Translate_Press' ) ) {
+			return new WP_Error( 'tp_missing', 'TranslatePress not active', array( 'status' => 400 ) );
+		}
 
-        if(empty($original) || empty($source_lang)){
-            return new WP_Error('invalid_data','Missing parameters',['status'=>400]);
-        }
+		global $wpdb;
 
-        $translations = [];
+		$original = $request->get_param( 'original' );
+		$source_lang = sanitize_key( (string) $request->get_param( 'source_lang' ) );
 
-        // Get all dictionary tables
-        $tables = $wpdb->get_col("SHOW TABLES LIKE '{$wpdb->prefix}trp_dictionary_{$source_lang}_%'");
+		if(empty($original) || empty($source_lang)){
+			return new WP_Error('invalid_data','Missing parameters',['status'=>400]);
+		}
 
-        if(!$tables){
-            return [
-                'status' => 'no_languages_found'
-            ];
-        }
+		// Canonicalize so punctuation (apostrophes, quotes, dashes) matches the
+		// entity-encoded form TranslatePress stores in the dictionary.
+		$original = $this->dukkan_plugin_canonicalize_original( $original );
 
-        foreach($tables as $table){
+		$translations = [];
 
-            // extract target language from table name
-            $target_lang = str_replace("{$wpdb->prefix}trp_dictionary_{$source_lang}_", '', $table);
+		// Get all dictionary tables
+		$tables = $wpdb->get_col("SHOW TABLES LIKE '{$wpdb->prefix}trp_dictionary_{$source_lang}_%'");
 
-            $row = $wpdb->get_row(
-                $wpdb->prepare(
-                    "SELECT translated FROM $table WHERE original = %s LIMIT 1",
-                    $original
-                )
-            );
+		if(!$tables){
+			return [
+				'status' => 'no_languages_found'
+			];
+		}
 
-            if($row && $row->translated != ''){
+		foreach($tables as $table){
 
-                $translations[$target_lang] = [
-                    'translated' => $this->dukkan_plugin_trp_unformat_string($row->translated),
-                    'status' => 'translated'
-                ];
+			// extract target language from table name
+			$target_lang = str_replace("{$wpdb->prefix}trp_dictionary_{$source_lang}_", '', $table);
 
-            }else{
+			$row = $wpdb->get_row(
+				$wpdb->prepare(
+					"SELECT translated FROM $table WHERE original = %s LIMIT 1",
+					$original
+				)
+			);
 
-                $translations[$target_lang] = [
-                    'translated' => '',
-                    'status' => 'missing'
-                ];
-            }
-        }
+			if($row && $row->translated != ''){
 
-        return [
-            'status' => 'success',
-            'original' => $this->dukkan_plugin_trp_unformat_string($original),
-            'translations' => $translations
-        ];
-    }
+				$translations[$target_lang] = [
+					'translated' => $this->dukkan_plugin_trp_unformat_string($row->translated),
+					'status' => 'translated'
+				];
+
+			}else{
+
+				$translations[$target_lang] = [
+					'translated' => '',
+					'status' => 'missing'
+				];
+			}
+		}
+
+		return [
+			'status' => 'success',
+			'original' => $this->dukkan_plugin_trp_unformat_string($original),
+			'translations' => $translations
+		];
+	}
 
 	public function dukkan_plugin_save_translation($request){
 
@@ -696,40 +761,40 @@ class Dukkan_Plugin_Translatepress {
 
 		$params = $request->get_json_params();
 
-		$original     = $params['original'];
-		$source_lang  = $params['source_lang']; // en_US
-		$translations = $params['translations'];
+		if ( ! is_array( $params ) ) {
+			return new WP_Error( 'invalid_data', 'Invalid or missing JSON body', array( 'status' => 400 ) );
+		}
 
-		if(empty($original) || empty($translations)){
+		$original     = isset( $params['original'] ) ? (string) $params['original'] : '';
+		$source_lang  = isset( $params['source_lang'] ) ? sanitize_key( (string) $params['source_lang'] ) : '';
+		$translations = isset( $params['translations'] ) && is_array( $params['translations'] ) ? $params['translations'] : [];
+
+		if(empty($original) || empty($translations) || empty($source_lang)){
 			return new WP_Error('invalid_data','Missing data',['status'=>400]);
 		}
+
+		// Canonicalize so punctuation (apostrophes, quotes, dashes) matches the
+		// entity-encoded form TranslatePress stores in the dictionary.
+		$original = $this->dukkan_plugin_canonicalize_original( $original );
 
 		$trp = TRP_Translate_Press::get_trp_instance();
 		$trp_query = $trp->get_component('query');
 
-		// STEP 1: Insert original string (only once)
-		$trp_query->insert_strings([$original], $source_lang);
-
-		// STEP 2: Get original_id (only once)
-		$original_id = $wpdb->get_var(
-			$wpdb->prepare(
-				"SELECT id FROM {$wpdb->prefix}trp_original_strings WHERE original = %s LIMIT 1",
-				$original
-			)
-		);
-
-		if(!$original_id){
-			return new WP_Error('original_not_found','Original string not found',['status'=>400]);
-		}
-
 		$results = [];
+		foreach($translations as $target_lang_raw => $translated){
 
-		// STEP 3: Loop translations
-		foreach($translations as $target_lang => $translated){
+			$target_lang = sanitize_key( (string) $target_lang_raw );
+			if ( '' === $target_lang ) {
+				$results[] = [
+					'language' => $target_lang_raw,
+					'status' => 'invalid_language'
+				];
+				continue;
+			}
 
-			$table = $wpdb->prefix . "trp_dictionary_{$source_lang}_{$target_lang}";
+			$table = $trp_query->get_table_name( $target_lang );
 
-			if($wpdb->get_var("SHOW TABLES LIKE '$table'") != $table){
+			if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) != $table ) {
 				$results[] = [
 					'language' => $target_lang,
 					'status' => 'table_not_found'
@@ -737,183 +802,58 @@ class Dukkan_Plugin_Translatepress {
 				continue;
 			}
 
-			// Check if translation exists
-			$row = $wpdb->get_row(
-				$wpdb->prepare(
-					"SELECT id FROM $table WHERE original_id = %d LIMIT 1",
-					$original_id
-				)
-			);
+			$translated = trim( (string) $translated );
 
-			if($row){
+			// Find an existing dictionary row using TranslatePress's own query method.
+			$existing_rows = $trp_query->get_string_ids( array( $original ), $target_lang );
+			$row_id        = isset( $existing_rows[ $original ] ) ? (int) $existing_rows[ $original ]->id : 0;
 
-				$wpdb->update(
-					$table,
-					[
-						'translated' => $translated,
-						'status' => 2
-					],
-					['id' => $row->id]
-				);
+			if ( ! $row_id ) {
+				// Brand-new string: create the dictionary row (this also syncs the
+				// original into the originals table with the correct original_id).
+				$trp_query->insert_strings( array( $original ), $target_lang );
+				$existing_rows = $trp_query->get_string_ids( array( $original ), $target_lang );
+				$row_id        = isset( $existing_rows[ $original ] ) ? (int) $existing_rows[ $original ]->id : 0;
+			}
 
+			if ( ! $row_id ) {
 				$results[] = [
 					'language' => $target_lang,
-					'status' => 'updated'
+					'status' => 'error'
 				];
+				continue;
+			}
 
-			} else {
-
-				$wpdb->insert(
-					$table,
-					[
+			// Upsert the translation through TranslatePress's own query method.
+			$trp_query->update_strings(
+				array(
+					array(
+						'id'         => $row_id,
 						'original'   => $original,
 						'translated' => $translated,
-						'status'     => 2,
-						'original_id'=> $original_id
-					]
-				);
+						'status'     => TRP_Query::HUMAN_REVIEWED,
+						'block_type' => TRP_Query::BLOCK_TYPE_REGULAR_STRING,
+					)
+				),
+				$target_lang,
+				array( 'id', 'original', 'translated', 'status', 'block_type' )
+			);
 
-				$results[] = [
-					'language' => $target_lang,
-					'status' => 'inserted'
-				];
-			}
+			$results[] = [
+				'language' => $target_lang,
+				'status' => 'saved'
+			];
 		}
+
+		// Flush the object cache so any cached translation data (e.g. the
+		// TranslatePress "trp" group) is refreshed. Regular translations are read
+		// live from the DB, but this keeps derived caches consistent after a save.
+		wp_cache_flush();
 
 		return [
 			'status' => 'success',
 			'results' => $results
 		];
-	}
-
-	// not in use
-
-	public function dukkan_plugin_save_translation___old($request) {
-
-		global $wpdb;
-
-		$original_text = $this->dukkan_plugin_trp_format_string($request['original']);
-		// $trp = get_option('trp_settings');
-		// $source_lang = strtolower($trp['default-language']);
-		$source_lang   = strtolower($request['source_lang']);
-		$translations  = $request['translations'];
-
-        $results = [];
-		if(empty($original_text) || empty($translations) || empty($source_lang)){
-			return new WP_Error('invalid_data','Missing data', ['status'=>400]);
-		}
-
-		// original strings
-		$original_strings_table = $wpdb->prefix . "trp_original_strings";
-		// Check if original strings table exists
-		if($wpdb->get_var("SHOW TABLES LIKE '$original_strings_table'") != $original_strings_table){
-			return new WP_Error('table_not_found','Original strings table not found', ['status'=>400]);
-		}
-
-		// Check if original string exists
-		$original_string_row = $wpdb->get_row(
-			$wpdb->prepare(
-				"SELECT id FROM $original_strings_table WHERE original = %s LIMIT 1",
-				$original_text
-			)
-		);
-		if($original_string_row){
-			$original_string_id = $original_string_row->id;
-		} else {
-			// Insert original string
-			$wpdb->insert(
-				$original_strings_table,
-				[
-					'original' => $original_text
-				],
-				['%s']
-			);
-			$original_string_id = $wpdb->insert_id;
-		}
-
-		foreach($translations as $target_lang => $translated_text){
-
-			$target_lang = strtolower($target_lang);
-			$translated_text = $this->dukkan_plugin_trp_format_string($translated_text);
-
-			// Build TranslatePress table name
-			$table = $wpdb->prefix . "trp_dictionary_{$source_lang}_{$target_lang}";
-
-			// Check if table exists
-			if($wpdb->get_var("SHOW TABLES LIKE '$table'") != $table){
-                $results[] = [
-                    'language' => $target_lang,
-                    'status'   => 'table_not_found'
-                ];
-				continue;
-			}
-
-			// Check if original string exists
-			$row = $wpdb->get_row(
-				$wpdb->prepare(
-					"SELECT id FROM $table WHERE original = %s LIMIT 1",
-					$original_text
-				)
-			);
-
-			if ($row) {
-
-				// Update translation
-				$wpdb->update(
-					$table,
-					[
-						'translated' => $translated_text,
-						'status'     => 2
-					],
-					[
-						'id' => $row->id
-					],
-					['%s','%d'],
-					['%d']
-				);
-
-                $results[] = [
-                    'language' => $target_lang,
-                    'status'   => 'updated'
-                ];
-
-			} else {
-
-				// Insert new translation
-				$wpdb->insert(
-					$table,
-					[
-						'original'   => $original_text,
-						'translated' => $translated_text,
-						'status'     => 2,
-						'original_id' => $original_string_id
-					],
-					['%s','%s','%d','%d']
-				);
-
-				$insert_id = $wpdb->insert_id;
-
-				if ($insert_id) {
-
-                    $results[] = [
-                        'language' => $target_lang,
-                        'status'   => 'inserted'
-                    ];
-				}
-                else {
-
-                    $results[] = [
-                        'language' => $target_lang,
-                        'status'   => 'failed'
-                    ];
-                }
-			}
-		}
-
-		return [
-            'status' => 'success',
-            'results' => $results
-        ];
 	}
 
 }

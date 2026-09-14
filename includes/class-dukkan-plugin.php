@@ -76,6 +76,7 @@ class Dukkan_Plugin {
 
 		$this->load_dependencies();
 		$this->set_locale();
+		$this->define_rest_authentication_hooks();
 		$this->define_woo_webhook_hooks();
 		$this->define_woo_extended_hooks();
 		$this->define_general_api_hooks();
@@ -270,6 +271,48 @@ class Dukkan_Plugin {
 
 		$this->loader->add_action( 'plugins_loaded', $plugin_i18n, 'load_plugin_textdomain' );
 
+	}
+
+	/**
+	 * Allow WooCommerce to authenticate API-key requests to Dukkan's own REST
+	 * namespaces.
+	 *
+	 * WooCommerce only runs its REST API-key authentication for requests whose
+	 * URI is under the `wc/` or `wc-` prefixes. Dukkan routes live under
+	 * `dukkan-*` namespaces, so without this filter their permission callbacks
+	 * (which use `wc_rest_check_manager_permissions()`) always fail because no
+	 * user is ever authenticated. This filter treats every `dukkan-*` REST
+	 * request as a WooCommerce REST API request so the key is processed.
+	 *
+	 * @since 1.0.35
+	 * @access private
+	 */
+	private function define_rest_authentication_hooks() {
+		$this->loader->add_filter( 'woocommerce_rest_is_request_to_rest_api', $this, 'dukkan_rest_is_request_to_rest_api', 10, 1 );
+	}
+
+	/**
+	 * Tell WooCommerce that requests to Dukkan REST namespaces should use its
+	 * REST API-key authentication.
+	 *
+	 * @since 1.0.35
+	 * @param bool $is_request_to_rest_api Whether WooCommerce already considers this a REST API request.
+	 * @return bool
+	 */
+	public function dukkan_rest_is_request_to_rest_api( $is_request_to_rest_api ) {
+		if ( $is_request_to_rest_api ) {
+			return true;
+		}
+
+		if ( empty( $_SERVER['REQUEST_URI'] ) ) {
+			return false;
+		}
+
+		$rest_prefix = trailingslashit( rest_get_url_prefix() );
+		$request_uri = esc_url_raw( wp_unslash( $_SERVER['REQUEST_URI'] ) );
+
+		// Only claim `dukkan-*` namespaces; leave `wc/` and `wc-` handling untouched.
+		return ( false !== strpos( $request_uri, $rest_prefix . 'dukkan-' ) );
 	}
 
 	/**

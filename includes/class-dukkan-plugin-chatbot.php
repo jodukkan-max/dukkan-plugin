@@ -139,15 +139,31 @@ class Dukkan_Plugin_Chatbot {
 	const EMBEDDING_VERSION_KEY = 'dukkan_chatbot_embedding_version';
 
 	/**
-	 * The store's Google AI Studio API key.
+	 * Placeholder for the store's Google AI Studio API key.
 	 *
-	 * Hardcoded so the assistant works out of the box. The admin setting can
-	 * still override it if a different key is ever needed.
+	 * The real key is configured per-site in the admin settings (stored in the
+	 * WordPress options table). We never hardcode a live key here: the plugin
+	 * is distributed through a public repository and Google auto-revokes any
+	 * key it finds leaked in a public repo.
 	 *
 	 * @since 1.0.27
 	 * @var string
 	 */
-	const GOOGLE_API_KEY = 'AIzaSyAAJ7uID5lBY95GeudszYBth6xRnWinRYc';
+	const GOOGLE_API_KEY = '';
+
+	/**
+	 * Central API gateway URL (optional).
+	 *
+	 * When set, all Gemini/Gemma chat and embedding calls are proxied through
+	 * this URL instead of calling Google directly. The gateway holds the real
+	 * Google key server-side, so the key never ships in this public plugin.
+	 * A URL is not a secret, so it is safe to hardcode here or leave empty
+	 * and configure per-site via the `gateway_url` setting.
+	 *
+	 * @since 1.0.35
+	 * @var string
+	 */
+	const DUKKAN_GATEWAY_URL = 'https://dukkan-gateway.dukkanjo.workers.dev';
 
 	/**
 	 * The Gemma open model used for chat.
@@ -203,6 +219,8 @@ class Dukkan_Plugin_Chatbot {
 	protected $defaults = array(
 		'enabled'            => 0,
 		'google_api_key'     => '',
+		'gateway_url'        => '',
+		'gateway_token'      => '',
 		'language'           => 'auto',
 		'fixed_language'     => 'en',
 		'tone'               => 'friendly',
@@ -331,8 +349,9 @@ class Dukkan_Plugin_Chatbot {
 	/**
 	 * Resolve the Google API key.
 	 *
-	 * Always falls back to the hardcoded store key so the assistant works even
-	 * if the saved setting is empty.
+	 * Reads the per-site key from the admin settings. There is no hardcoded
+	 * fallback — a live key in a public repo is auto-revoked by Google — so
+	 * the store owner must paste their own key in the AI Chatbot settings.
 	 *
 	 * @since 1.0.27
 	 * @return string
@@ -343,6 +362,109 @@ class Dukkan_Plugin_Chatbot {
 			$key = self::GOOGLE_API_KEY;
 		}
 		return $key;
+	}
+
+	/**
+	 * Resolve the central API gateway URL.
+	 *
+	 * Read from the `gateway_url` setting, falling back to the hardcoded
+	 * `DUKKAN_GATEWAY_URL` constant. A URL is not a secret, so it is safe to
+	 * ship in the plugin.
+	 *
+	 * @since 1.0.35
+	 * @return string
+	 */
+	public function gateway_url() {
+		$url = $this->get_setting( 'gateway_url' );
+		if ( empty( $url ) ) {
+			$url = self::DUKKAN_GATEWAY_URL;
+		}
+		return (string) apply_filters( 'dukkan_chatbot_gateway_url', $url );
+	}
+
+	/**
+	 * Resolve the shared gateway token used to authenticate to the gateway.
+	 *
+	 * The token is secret, so it is only ever read from the per-site setting
+	 * (or overridden by the `dukkan_chatbot_gateway_token` filter) — never
+	 * hardcoded, otherwise it would leak via the public repo exactly like the
+	 * API key did.
+	 *
+	 * @since 1.0.35
+	 * @return string
+	 */
+	public function gateway_token() {
+		$token = $this->get_setting( 'gateway_token' );
+		return (string) apply_filters( 'dukkan_chatbot_gateway_token', $token );
+	}
+
+	/**
+	 * Build the outbound URL + headers for a Gemini-family request.
+	 *
+	 * When a gateway URL is configured, every request is proxied through the
+	 * gateway (which injects the real Google key) using the shared gateway
+	 * token. Otherwise we call Google directly with the per-site API key,
+	 * preserving backward compatibility for sites that already configured one.
+	 *
+	 * @since 1.0.35
+	 * @param string $kind  One of: chat, chat_stream, embed, embed_batch.
+	 * @param string $model Chat model ID (ignored for embeddings).
+	 * @return array{url:string, headers:array} Target URL and request headers.
+	 *         `url` is empty when no key/gateway is configured.
+	 */
+	private function gemini_target( $kind, $model = '' ) {
+		$gateway = $this->gateway_url();
+
+		if ( '' !== trim( $gateway ) ) {
+			$map = array(
+				'chat'        => '/chat',
+				'chat_stream' => '/chat-stream',
+				'embed'       => '/embed',
+				'embed_batch' => '/embed-batch',
+			);
+			$url = rtrim( $gateway, '/' ) . $map[ $kind ];
+
+			$headers = array(
+				'x-dukkan-gateway' => $this->gateway_token(),
+				'x-dukkan-model'   => $model,
+				'Content-Type'     => 'application/json',
+			);
+			if ( 'chat_stream' === $kind ) {
+				$headers['Accept'] = 'text/event-stream';
+			}
+
+			return array( 'url' => $url, 'headers' => $headers );
+		}
+
+		// Direct Google fallback (per-site key in the admin settings).
+		$api_key = $this->get_google_api_key();
+		if ( empty( $api_key ) ) {
+			return array( 'url' => '', 'headers' => array() );
+		}
+
+		switch ( $kind ) {
+			case 'chat':
+				$url = 'https://generativelanguage.googleapis.com/v1beta/models/' . $model . ':generateContent';
+				break;
+			case 'chat_stream':
+				$url = 'https://generativelanguage.googleapis.com/v1beta/models/' . $model . ':streamGenerateContent?alt=sse';
+				break;
+			case 'embed':
+				$url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent';
+				break;
+			default:
+				$url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:batchEmbedContents';
+		}
+
+		$headers = array(
+			'x-goog-api-key' => $api_key,
+			'Content-Type'   => 'application/json',
+		);
+		if ( 'chat_stream' === $kind ) {
+			$headers['Accept'] = 'text/event-stream';
+		}
+
+		return array( 'url' => $url, 'headers' => $headers );
 	}
 
 	/**
@@ -880,19 +1002,16 @@ class Dukkan_Plugin_Chatbot {
 	 * @return array|WP_Error Vector array on success.
 	 */
 	public function embed_text( $text, $task_type = 'RETRIEVAL_QUERY' ) {
-		$api_key = $this->get_google_api_key();
-		if ( empty( $api_key ) ) {
+		$target = $this->gemini_target( 'embed' );
+		if ( '' === $target['url'] ) {
 			return new WP_Error( 'no_google_key', __( 'Google API key is not configured.', 'dukkan-plugin' ) );
 		}
 
 		$response = wp_remote_post(
-			'https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent',
+			$target['url'],
 			array(
 				'timeout' => 15,
-				'headers' => array(
-					'x-goog-api-key' => $api_key,
-					'Content-Type'   => 'application/json',
-				),
+				'headers' => $target['headers'],
 				'body'    => $this->json_encode(
 					array(
 						'content'  => array(
@@ -943,8 +1062,8 @@ class Dukkan_Plugin_Chatbot {
 	 * @return array|WP_Error Array of vectors aligned with $texts, or WP_Error.
 	 */
 	public function embed_texts_batch( $texts, $task_type = 'RETRIEVAL_DOCUMENT' ) {
-		$api_key = $this->get_google_api_key();
-		if ( empty( $api_key ) ) {
+		$target = $this->gemini_target( 'embed_batch' );
+		if ( '' === $target['url'] ) {
 			return new WP_Error( 'no_google_key', __( 'Google API key is not configured.', 'dukkan-plugin' ) );
 		}
 
@@ -965,13 +1084,10 @@ class Dukkan_Plugin_Chatbot {
 		}
 
 		$response = wp_remote_post(
-			'https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:batchEmbedContents',
+			$target['url'],
 			array(
 				'timeout' => 60,
-				'headers' => array(
-					'x-goog-api-key' => $api_key,
-					'Content-Type'   => 'application/json',
-				),
+				'headers' => $target['headers'],
 				'body'    => $this->json_encode( array( 'requests' => $requests ) ),
 			)
 		);
@@ -2553,8 +2669,8 @@ class Dukkan_Plugin_Chatbot {
 	 * @return array|WP_Error Candidate content array on success.
 	 */
 	public function call_gemini( $contents, $system = '', $tools = array(), $thinking_budget = 0 ) {
-		$api_key = $this->get_google_api_key();
-		if ( empty( $api_key ) ) {
+		$target = $this->gemini_target( 'chat', $this->model_name() );
+		if ( '' === $target['url'] ) {
 			return new WP_Error( 'no_google_key', __( 'Google API key is not configured.', 'dukkan-plugin' ) );
 		}
 
@@ -2579,13 +2695,10 @@ class Dukkan_Plugin_Chatbot {
 		}
 
 		$response = wp_remote_post(
-			'https://generativelanguage.googleapis.com/v1beta/models/' . $this->model_name() . ':generateContent',
+			$target['url'],
 			array(
 				'timeout' => 60,
-				'headers' => array(
-					'x-goog-api-key' => $api_key,
-					'Content-Type'   => 'application/json',
-				),
+				'headers' => $target['headers'],
 				'body'    => $this->json_encode( $payload ),
 			)
 		);
@@ -2667,8 +2780,8 @@ class Dukkan_Plugin_Chatbot {
 	 * @return array|WP_Error Array with `text` and `calls` keys on success.
 	 */
 	private function stream_generate( $contents, $system = '', $tools = array(), $on_token = null, $thinking_budget = 0 ) {
-		$api_key = $this->get_google_api_key();
-		if ( empty( $api_key ) ) {
+		$target = $this->gemini_target( 'chat_stream', $this->model_name() );
+		if ( '' === $target['url'] ) {
 			return new WP_Error( 'no_google_key', __( 'Google API key is not configured.', 'dukkan-plugin' ) );
 		}
 
@@ -2743,17 +2856,19 @@ class Dukkan_Plugin_Chatbot {
 			}
 		};
 
+		// Convert the target headers array into the cURL string format.
+		$headers = array();
+		foreach ( $target['headers'] as $name => $value ) {
+			$headers[] = $name . ': ' . $value;
+		}
+
 		$ch = curl_init();
 		curl_setopt_array(
 			$ch,
 			array(
-				CURLOPT_URL            => 'https://generativelanguage.googleapis.com/v1beta/models/' . $this->model_name() . ':streamGenerateContent?alt=sse',
+				CURLOPT_URL            => $target['url'],
 				CURLOPT_POST           => true,
-				CURLOPT_HTTPHEADER     => array(
-					'x-goog-api-key: ' . $api_key,
-					'Content-Type: application/json',
-					'Accept: text/event-stream',
-				),
+				CURLOPT_HTTPHEADER     => $headers,
 				CURLOPT_POSTFIELDS     => $this->json_encode( $payload ),
 				CURLOPT_RETURNTRANSFER => false,
 				CURLOPT_TIMEOUT        => 60,

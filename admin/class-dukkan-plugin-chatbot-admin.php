@@ -162,6 +162,8 @@ class Dukkan_Plugin_Chatbot_Admin {
 		$clean['enabled'] = empty( $input['enabled'] ) ? 0 : 1;
 
 		$clean['google_api_key'] = isset( $input['google_api_key'] ) ? sanitize_text_field( $input['google_api_key'] ) : '';
+		$clean['gateway_url']    = isset( $input['gateway_url'] ) ? esc_url_raw( $input['gateway_url'] ) : '';
+		$clean['gateway_token']  = isset( $input['gateway_token'] ) ? sanitize_text_field( $input['gateway_token'] ) : '';
 
 		$clean['language']       = isset( $input['language'] ) && in_array( $input['language'], array( 'auto', 'fixed', 'site' ), true ) ? $input['language'] : 'auto';
 		$clean['fixed_language'] = isset( $input['fixed_language'] ) ? sanitize_text_field( $input['fixed_language'] ) : 'en';
