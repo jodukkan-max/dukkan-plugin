@@ -84,6 +84,20 @@ class Dukkan_Plugin_Attributes_API {
 			),
 		) );
 
+		// GET /attributes/{id}/settings — read the attribute's Rey swatch settings.
+		register_rest_route( self::NAMESPACE, '/attributes/(?P<id>\d+)/settings', array(
+			array(
+				'methods'             => WP_REST_Server::READABLE,
+				'callback'            => array( $this, 'get_attribute_settings' ),
+				'permission_callback' => array( $this, 'check_permissions' ),
+			),
+			array(
+				'methods'             => WP_REST_Server::EDITABLE,
+				'callback'            => array( $this, 'update_attribute_settings' ),
+				'permission_callback' => array( $this, 'check_edit_permissions' ),
+			),
+		) );
+
 		// GET /terms/{id}/swatch — read a term's swatch settings.
 		register_rest_route( self::NAMESPACE, '/terms/(?P<id>\d+)/swatch', array(
 			array(
@@ -215,6 +229,141 @@ class Dukkan_Plugin_Attributes_API {
 		return rest_ensure_response( array(
 			'id'   => $attribute_id,
 			'type' => $type,
+		) );
+	}
+
+	/**
+	 * Resolve an attribute ID to its taxonomy name (e.g. 1 → pa_color).
+	 *
+	 * @param int $attribute_id
+	 * @return string|false Taxonomy name, or false if not found.
+	 */
+	private function attribute_taxonomy_name( $attribute_id ) {
+		global $wpdb;
+		$name = $wpdb->get_var( $wpdb->prepare(
+			"SELECT attribute_name FROM {$wpdb->prefix}woocommerce_attribute_taxonomies WHERE attribute_id = %d",
+			$attribute_id
+		) );
+		if ( ! $name ) {
+			return false;
+		}
+		return function_exists( 'wc_attribute_taxonomy_name' )
+			? wc_attribute_taxonomy_name( $name )
+			: 'pa_' . sanitize_title( $name );
+	}
+
+	/**
+	 * Reads the raw Rey swatch settings for an attribute from the `rey_swatches_data`
+	 * option, keyed by taxonomy name.
+	 *
+	 * @param int $attribute_id
+	 * @return array
+	 */
+	private function read_attribute_settings( $attribute_id ) {
+		$taxonomy = $this->attribute_taxonomy_name( $attribute_id );
+		if ( ! $taxonomy ) {
+			return array();
+		}
+		$opt = get_option( 'rey_swatches_data', array() );
+		if ( ! is_array( $opt ) || ! isset( $opt[ $taxonomy ] ) || ! is_array( $opt[ $taxonomy ] ) ) {
+			return array();
+		}
+		return $opt[ $taxonomy ];
+	}
+
+	/**
+	 * GET /attributes/{id}/settings — read the attribute's Rey swatch settings.
+	 *
+	 * @param WP_REST_Request $request
+	 * @return WP_REST_Response|WP_Error
+	 */
+	public function get_attribute_settings( WP_REST_Request $request ) {
+		$attribute_id = (int) $request['id'];
+		$taxonomy     = $this->attribute_taxonomy_name( $attribute_id );
+
+		if ( ! $taxonomy ) {
+			return new WP_Error( 'attribute_not_found', __( 'Attribute not found.', 'dukkan-plugin' ), array( 'status' => 404 ) );
+		}
+
+		return rest_ensure_response( array(
+			'attribute_id' => $attribute_id,
+			'taxonomy'     => $taxonomy,
+			'settings'     => $this->read_attribute_settings( $attribute_id ),
+		) );
+	}
+
+	/**
+	 * PUT /attributes/{id}/settings — merge settings into the attribute's Rey
+	 * swatch settings (stored in the `rey_swatches_data` option).
+	 *
+	 * Accepts arbitrary keys (swatch_tooltip, use_variation_img, label_display,
+	 * swatch_width, swatch_height, swatch_radius, swatch_padding, swatch_spacing,
+	 * etc.). Each provided key overwrites the existing value; keys not provided
+	 * are left untouched.
+	 *
+	 * @param WP_REST_Request $request
+	 * @return WP_REST_Response|WP_Error
+	 */
+	public function update_attribute_settings( WP_REST_Request $request ) {
+		$attribute_id = (int) $request['id'];
+		$taxonomy     = $this->attribute_taxonomy_name( $attribute_id );
+
+		if ( ! $taxonomy ) {
+			return new WP_Error( 'attribute_not_found', __( 'Attribute not found.', 'dukkan-plugin' ), array( 'status' => 404 ) );
+		}
+
+		$params = $request->get_json_params();
+		if ( ! is_array( $params ) || empty( $params ) ) {
+			return new WP_Error( 'invalid_data', __( 'Invalid or missing JSON body.', 'dukkan-plugin' ), array( 'status' => 400 ) );
+		}
+
+		$opt = get_option( 'rey_swatches_data', array() );
+		if ( ! is_array( $opt ) ) {
+			$opt = array();
+		}
+
+		if ( ! isset( $opt[ $taxonomy ] ) || ! is_array( $opt[ $taxonomy ] ) ) {
+			$opt[ $taxonomy ] = array();
+		}
+
+		// Allowed/known swatch settings keys (whitelist) — keeps unrelated keys out.
+		$allowed = array(
+			'swatch_tooltip', 'swatch_tooltip_image', 'use_variation_img', 'label_display',
+			'swatch_width', 'swatch_height', 'swatch_radius', 'swatch_font_size',
+			'swatch_padding', 'swatch_spacing', 'swatch_per_row', 'swatch_align',
+			'swatch_show_desc', 'swatch_direction', 'swatch_fallback',
+		);
+
+		foreach ( $params as $key => $value ) {
+			if ( ! in_array( $key, $allowed, true ) ) {
+				continue;
+			}
+			// Numbers are stored as strings by Rey; keep them as-is but sanitize.
+			if ( in_array( $key, array( 'swatch_width', 'swatch_height', 'swatch_radius', 'swatch_font_size', 'swatch_padding', 'swatch_spacing', 'swatch_per_row' ), true ) ) {
+				$opt[ $taxonomy ][ $key ] = '' === $value ? '' : (string) absint( $value );
+			} else {
+				$opt[ $taxonomy ][ $key ] = sanitize_text_field( (string) $value );
+			}
+		}
+
+		// Preserve the authoritative type/id/label on the cache entry.
+		global $wpdb;
+		$attr = $wpdb->get_row( $wpdb->prepare(
+			"SELECT * FROM {$wpdb->prefix}woocommerce_attribute_taxonomies WHERE attribute_id = %d",
+			$attribute_id
+		) );
+		if ( $attr ) {
+			$opt[ $taxonomy ]['attribute_id']    = (int) $attr->attribute_id;
+			$opt[ $taxonomy ]['attribute_type']  = (string) $attr->attribute_type;
+			$opt[ $taxonomy ]['attribute_label'] = (string) $attr->attribute_label;
+		}
+
+		update_option( 'rey_swatches_data', $opt, false );
+
+		return rest_ensure_response( array(
+			'attribute_id' => $attribute_id,
+			'taxonomy'     => $taxonomy,
+			'settings'     => $opt[ $taxonomy ],
 		) );
 	}
 

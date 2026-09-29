@@ -1,10 +1,16 @@
 # Dukkan Plugin — Work Log & Structure
 
-> Last updated: v1.0.39 — September 29, 2026
+> Last updated: v1.0.40 — September 29, 2026
 
 ---
 
 ## Recent Changes
+
+### v1.0.40 — Attribute swatch settings endpoints
+
+- Added attribute-level Rey swatch settings read/write to `dukkan-attributes/v1`:
+  - `GET /attributes/{id}/settings` — reads the attribute's entry from the `rey_swatches_data` option.
+  - `PUT /attributes/{id}/settings` — merges arbitrary swatch settings keys (whitelisted: `swatch_tooltip`, `swatch_tooltip_image`, `use_variation_img`, `label_display`, `swatch_width`, `swatch_height`, `swatch_radius`, `swatch_font_size`, `swatch_padding`, `swatch_spacing`, `swatch_per_row`, `swatch_align`, `swatch_show_desc`, `swatch_direction`, `swatch_fallback`), preserving the authoritative `attribute_id`/`attribute_type`/`attribute_label` from the taxonomy table. `api/class-dukkan-plugin-attributes-api.php`
 
 ### v1.0.39 — Rey attribute swatch API
 
