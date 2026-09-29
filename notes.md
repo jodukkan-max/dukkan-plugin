@@ -1,10 +1,20 @@
 # Dukkan Plugin — Work Log & Structure
 
-> Last updated: v1.0.38 — September 29, 2026
+> Last updated: v1.0.39 — September 29, 2026
 
 ---
 
 ## Recent Changes
+
+### v1.0.39 — Rey attribute swatch API
+
+- **New API class** `Dukkan_Plugin_Attributes_API` (`api/class-dukkan-plugin-attributes-api.php`) exposing Rey theme variation-swatch settings to the mobile app under the `dukkan-attributes/v1` namespace (WooCommerce-authenticated):
+  - `GET /types` — list available attribute types (core `select` + Rey swatches `rey_color`, `rey_image`, `rey_button`, `rey_large_button`, `rey_radio`) via `wc_get_attribute_types()`.
+  - `PUT /attributes/{id}/type` — set an attribute's type (validated against `wc_get_attribute_types()`).
+  - `GET /terms/{id}/swatch` — read a term's swatch meta (`rey_attribute_color`, `rey_attribute_color_secondary`, `rey_attribute_image`).
+  - `PUT /terms/{id}/swatch` — write a term's swatch meta; accepts `color`, `color_secondary`, and `image_url` (sideloads the remote URL into the media library via `media_handle_sideload()` and stores the attachment ID as `rey_attribute_image`).
+- **Registered** in `includes/class-dukkan-plugin.php` (`define_attributes_api_hooks()`).
+- **Note**: the standard WooCommerce `wc/v3/products/attributes` API already returns/accepts `type`, but the per-term swatch meta is not exposed there — hence the dedicated endpoints.
 
 ### v1.0.38 — TranslatePress canonicalization: full HTML entity coverage (incl. `&`)
 
@@ -225,13 +235,37 @@ No wordpress.org hosting required. The plugin reads `version.json` from the repo
 
 **Release workflow:**
 
-1. Build the ZIP: `zip -r dukkan-plugin.zip dukkan-plugin -x "dukkan-plugin/.git/*" "*.DS_Store" "*.backup"`
-2. Bump version in `dukkan-plugin.php` (header comment + `DUKKAN_PLUGIN_VERSION` constant)
-3. Bump version and package URL in `version.json`
-4. Commit and push
-5. Create a GitHub Release with the same tag (`vX.Y.Z`) and attach the ZIP
+1. Edit source in `dukkan-plugin/`.
+2. Bump version in `dukkan-plugin.php` (header + `DUKKAN_PLUGIN_VERSION`) and `version.json`.
+3. Rebuild the archive:
+   `zip -r dukkan-plugin.zip dukkan-plugin -x "*.git*" "*.DS_Store" "*__MACOSX*" "dukkan-plugin/dukkan-plugin.zip"`
+   > ⚠️ The extra `"dukkan-plugin/dukkan-plugin.zip"` exclude is required now that the git
+   > repo tracks `dukkan-plugin.zip` inside `dukkan-plugin/` — otherwise the built zip nests
+   > the previous release zip inside itself (doubles the size).
+4. Commit, tag `vX.Y.Z`, push `main` + tag.
+5. Create the GitHub release and attach `dukkan-plugin.zip`.
 
 Updates are applied manually by the admin via the "update now" button on the Plugins screen (or WordPress auto-updates if enabled). There is no scheduled cron and no automatic background install.
+
+---
+
+## Notes / Gotchas
+
+- **nginx fastcgi cache** at `/var/cache/nginx` (`keys_zone=WORDPRESS`, 30-min TTL).
+  Cleared only via root/sudo. Cache bypasses on any query string or the
+  `wordpress_no_cache=1` cookie (see `/etc/nginx/snippets/wordpress-cache.conf`).
+- **`fm.php` (web file manager) sits in the public web root** — security exposure; remove it.
+- **`query-monitor` plugin is active on production** — leaks request/DB info; disable in prod.
+- **TranslatePress plugin** is at `wp-content/plugins/translatepress-multilingual/`
+  (free version). Dictionary tables are `wp_trp_dictionary_*`, originals in
+  `wp_trp_original_strings` / `wp_trp_gettext_original_strings`.
+- **Translation is client-side AI**: the Flutter app calls Gemini directly (`GEMINI_API_KEY`
+  in the app's `.env`), then POSTs results to the plugin's
+  `dukkan-translation-translatepress/v1/*` endpoints. The plugin only stores into
+  TranslatePress (no server-side AI for translation).
+- **Plugin detection endpoint:** `GET /wp-json/dukkan-general-api/v1/plugin-status?plugin=<slug>`.
+- **Gemini model note:** app translation was using `gemini-2.5-flash-image` (image model)
+  for text translation — corrected to `gemini-2.5-flash` in the app repo (2026-09-28).
 
 ---
 

@@ -81,6 +81,7 @@ class Dukkan_Plugin {
 		$this->define_woo_extended_hooks();
 		$this->define_general_api_hooks();
 		$this->define_translatepress_api_hooks();
+		$this->define_attributes_api_hooks();
 		$this->define_product_addon_api_hooks();
 		$this->define_order_status_api_hooks();
 		$this->define_dynamic_pricing_api_hooks();
@@ -134,10 +135,15 @@ class Dukkan_Plugin {
 		 */
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'api/woo-extended/class-dukkan-woo-extended-api.php';
 
-		/**
-		 * The class responsible for defining general apis.
-		 */
+	/**
+	 * The class responsible for defining general apis.
+	 */
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'api/class-dukkan-plugin-general.php';
+
+		/**
+		 * The class responsible for defining the attribute swatch apis.
+		 */
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'api/class-dukkan-plugin-attributes-api.php';
 
 		/**
 		 * The class responsible for defining product addon apis.
@@ -352,6 +358,17 @@ class Dukkan_Plugin {
 
 		$plugin_general_api = new Dukkan_Plugin_API_General( $this->get_plugin_name(), $this->get_version() );
 
+	}
+
+	/**
+	 * Register all of the hooks related to the attribute swatch api functionality
+	 * of the plugin.
+	 *
+	 * @since    1.0.39
+	 * @access   private
+	 */
+	private function define_attributes_api_hooks() {
+		new Dukkan_Plugin_Attributes_API( $this->get_plugin_name(), $this->get_version() );
 	}
 
 	/**
