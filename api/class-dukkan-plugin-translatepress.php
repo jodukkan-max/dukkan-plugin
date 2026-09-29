@@ -109,6 +109,11 @@ class Dukkan_Plugin_Translatepress {
 			'callback' => array($this, 'dukkan_plugin_save_translation'),
 			'permission_callback' => array( $this, 'check_edit_permissions' ),
 		));
+		register_rest_route('dukkan-translation-translatepress/v1', '/translate-block', array(
+			'methods' => 'POST',
+			'callback' => array($this, 'dukkan_plugin_save_translation_block'),
+			'permission_callback' => array( $this, 'check_edit_permissions' ),
+		));
 		register_rest_route('dukkan-translation-translatepress/v1', '/get-translations', array(
 			'methods' => 'GET',
 			'callback' => array($this, 'dukkan_plugin_get_translations'),
@@ -190,19 +195,23 @@ class Dukkan_Plugin_Translatepress {
 	 * its dictionary tables, so lookups and writes match regardless of the
 	 * punctuation encoding the caller (mobile app) sent.
 	 *
-	 * TranslatePress extracts strings from the rendered page where WordPress's
-	 * `wptexturize()` has already converted straight quotes/dashes into HTML
-	 * entities (e.g. `it&#8217;s`). The app, however, typically sends the raw
-	 * text (`it's` or `it’s`), which then never matches the stored key.
+	 * TranslatePress extracts strings from the rendered page with
+	 * `html_entity_decode()` (see `class-translation-render.php`) and matches them
+	 * EXACTLY against the dictionary `original` column. That column therefore
+	 * holds DECODED raw Unicode (e.g. `you’re`), NOT numeric entities
+	 * (`you&#8217;re`).
 	 *
-	 * We canonicalize by: (1) decoding any entities to raw Unicode, (2) running
-	 * `wptexturize()` to convert straight quotes/dashes into the curly form, and
-	 * (3) re-encoding curly punctuation back to the numeric-entity form that
-	 * TranslatePress actually stores.
+	 * We canonicalize by: (1) decoding any entities to raw UTF-8, (2) running
+	 * `wptexturize()` so straight quotes/dashes become curly, and (3) decoding a
+	 * final time in case `wptexturize()` produced numeric entities.
+	 *
+	 * NOTE: We must NOT re-encode curly punctuation back to numeric entities —
+	 * that was the previous bug which produced keys the front-end never matches,
+	 * leaving descriptions with apostrophes/quotes/dashes untranslated.
 	 *
 	 * @since 1.0.35
 	 * @param string $string Raw original string.
-	 * @return string Canonicalized original string.
+	 * @return string Canonicalized original string (decoded raw UTF-8).
 	 */
 	public function dukkan_plugin_canonicalize_original( $string ) {
 		if ( ! is_string( $string ) ) {
@@ -212,23 +221,13 @@ class Dukkan_Plugin_Translatepress {
 		// Decode numeric + named entities to raw UTF-8.
 		$string = html_entity_decode( $string, ENT_QUOTES, 'UTF-8' );
 
-		// Straight quotes/dashes -> curly (may already produce numeric entities).
+		// Straight quotes/dashes -> curly (may produce numeric entities).
 		if ( function_exists( 'wptexturize' ) ) {
 			$string = wptexturize( $string );
 		}
 
-		// Encode any remaining raw curly punctuation to the numeric-entity form
-		// used by WordPress/TranslatePress dictionaries.
-		$replace = array(
-			'’' => '&#8217;',
-			'‘' => '&#8216;',
-			'“' => '&#8220;',
-			'”' => '&#8221;',
-			'–' => '&#8211;',
-			'—' => '&#8212;',
-		);
-
-		return str_replace( array_keys( $replace ), array_values( $replace ), $string );
+		// Final decode so the key matches TranslatePress's decoded lookup form.
+		return html_entity_decode( $string, ENT_QUOTES, 'UTF-8' );
 	}
 
 	public function dukkan_plugin_get_translatepress_text_domains(){
@@ -854,6 +853,174 @@ class Dukkan_Plugin_Translatepress {
 			'status' => 'success',
 			'results' => $results
 		];
+	}
+
+	/**
+	 * Create or update a TranslatePress "translation block" (merged string).
+	 *
+	 * A translation block is the editor's "merge into one block" feature: several
+	 * adjacent DOM strings are treated as a single unit. TranslatePress stores the
+	 * merged text as one dictionary row with `block_type = 1` (ACTIVE), and the
+	 * renderer replaces the whole parent element's inner HTML with that single
+	 * original before looking up the translation.
+	 *
+	 * This endpoint exposes that same capability over REST so the mobile app can
+	 * translate a multi-element description (e.g. a page builder that wraps each
+	 * sentence in its own <span>/<div>) as one block instead of many strings.
+	 *
+	 * Request body:
+	 *   {
+	 *     "source_lang": "en_US",
+	 *     "original": "Full merged text of the block",
+	 *     "child_originals": ["sentence one", "sentence two"],  // optional
+	 *     "translations": { "ar": "...", "fr": "..." }
+	 *   }
+	 *
+	 * @since 1.0.36
+	 * @param WP_REST_Request $request Request.
+	 * @return WP_Error|array
+	 */
+	public function dukkan_plugin_save_translation_block( $request ) {
+		global $wpdb;
+
+		if ( ! class_exists( 'TRP_Translate_Press' ) ) {
+			return new WP_Error( 'tp_missing', 'TranslatePress not active', array( 'status' => 400 ) );
+		}
+
+		$params = $request->get_json_params();
+
+		if ( ! is_array( $params ) ) {
+			return new WP_Error( 'invalid_data', 'Invalid or missing JSON body', array( 'status' => 400 ) );
+		}
+
+		$original        = isset( $params['original'] ) ? (string) $params['original'] : '';
+		$source_lang     = isset( $params['source_lang'] ) ? sanitize_key( (string) $params['source_lang'] ) : '';
+		$child_originals = isset( $params['child_originals'] ) && is_array( $params['child_originals'] ) ? $params['child_originals'] : array();
+		$translations    = isset( $params['translations'] ) && is_array( $params['translations'] ) ? $params['translations'] : array();
+
+		if ( empty( $original ) || empty( $source_lang ) ) {
+			return new WP_Error( 'invalid_data', 'Missing data', array( 'status' => 400 ) );
+		}
+
+		$trp       = TRP_Translate_Press::get_trp_instance();
+		$trp_query = $trp->get_component( 'query' );
+
+		$settings     = get_option( 'trp_settings' );
+		$default_lang = isset( $settings['default-language'] ) ? $settings['default-language'] : $source_lang;
+
+		// Canonicalize punctuation so it matches TranslatePress's stored entity form.
+		$original = $this->dukkan_plugin_canonicalize_original( $original );
+
+		$child_originals = array_map(
+			array( $this, 'dukkan_plugin_canonicalize_original' ),
+			array_map( 'strval', $child_originals )
+		);
+
+		$active_block_type     = TRP_Query::BLOCK_TYPE_ACTIVE;
+		$deprecated_block_type = TRP_Query::BLOCK_TYPE_DEPRECATED;
+
+		// Every non-default language configured in TranslatePress.
+		$all_langs = isset( $settings['translation-languages'] ) && is_array( $settings['translation-languages'] )
+			? $settings['translation-languages']
+			: array();
+
+		$target_langs = array();
+		foreach ( $all_langs as $lang ) {
+			$lang = sanitize_key( (string) $lang );
+			if ( '' !== $lang && $lang !== $default_lang ) {
+				$target_langs[] = $lang;
+			}
+		}
+
+		$results = array();
+
+		// 1. Upsert the block into every non-default language with block_type = ACTIVE,
+		//    so the renderer can find and replace the block in whichever language is active.
+		foreach ( $target_langs as $target_lang ) {
+			$table = $trp_query->get_table_name( $target_lang );
+
+			if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) != $table ) {
+				$results[ $target_lang ] = array( 'status' => 'table_not_found' );
+				continue;
+			}
+
+			$translated = isset( $translations[ $target_lang ] ) ? trim( (string) $translations[ $target_lang ] ) : '';
+
+			// Ensure the merged original exists as a row in this language's dictionary.
+			$existing = $trp_query->get_string_ids( array( $original ), $target_lang );
+			$row_id   = isset( $existing[ $original ] ) ? (int) $existing[ $original ]->id : 0;
+
+			if ( ! $row_id ) {
+				$trp_query->insert_strings( array( $original ), $target_lang, $active_block_type );
+				$existing = $trp_query->get_string_ids( array( $original ), $target_lang );
+				$row_id   = isset( $existing[ $original ] ) ? (int) $existing[ $original ]->id : 0;
+			}
+
+			if ( ! $row_id ) {
+				$results[ $target_lang ] = array( 'status' => 'error' );
+				continue;
+			}
+
+			$trp_query->update_strings(
+				array(
+					array(
+						'id'         => $row_id,
+						'original'   => $original,
+						'translated' => $translated,
+						'status'     => ( '' !== $translated ) ? TRP_Query::HUMAN_REVIEWED : TRP_Query::NOT_TRANSLATED,
+						'block_type' => $active_block_type,
+					)
+				),
+				$target_lang,
+				array( 'id', 'original', 'translated', 'status', 'block_type' )
+			);
+
+			$results[ $target_lang ] = array(
+				'status'   => ( '' !== $translated ) ? 'saved' : 'block_created',
+				'block_id' => $row_id,
+			);
+		}
+
+		// 2. Mark the child strings as DEPRECATED so they no longer render individually
+		//    (the parent block now owns their rendering).
+		if ( ! empty( $child_originals ) ) {
+			foreach ( $target_langs as $target_lang ) {
+				$table = $trp_query->get_table_name( $target_lang );
+				if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) != $table ) {
+					continue;
+				}
+
+				$ids = $trp_query->get_string_ids( $child_originals, $target_lang );
+				if ( empty( $ids ) ) {
+					continue;
+				}
+
+				$update_rows = array();
+				foreach ( $child_originals as $child ) {
+					if ( isset( $ids[ $child ] ) ) {
+						$update_rows[] = array(
+							'id'         => (int) $ids[ $child ]->id,
+							'block_type' => $deprecated_block_type,
+						);
+					}
+				}
+
+				if ( ! empty( $update_rows ) ) {
+					// Only flip block_type (non-destructive: keeps the child's
+					// translation intact in case the block is later split again).
+					$trp_query->update_strings( $update_rows, $target_lang, array( 'id', 'block_type' ) );
+				}
+			}
+		}
+
+		// Flush caches so the block renders immediately.
+		wp_cache_flush();
+
+		return array(
+			'status'   => 'success',
+			'original' => $this->dukkan_plugin_trp_unformat_string( $original ),
+			'results'  => $results,
+		);
 	}
 
 }
