@@ -1,10 +1,16 @@
 # Dukkan Plugin — Work Log & Structure
 
-> Last updated: v1.0.37 — September 28, 2026
+> Last updated: v1.0.38 — September 29, 2026
 
 ---
 
 ## Recent Changes
+
+### v1.0.38 — TranslatePress canonicalization: full HTML entity coverage (incl. `&`)
+
+- **Bug**: strings containing `&` (or the double-encoded `&amp;` in imported content) never translated, same root cause as the apostrophe bug. `wptexturize()` re-encodes a bare `&` as `&#038;`, and imported source data stored literal `&amp;` in term/title names.
+- **Fix**: `dukkan_plugin_canonicalize_original()` now decodes with `ENT_QUOTES | ENT_HTML5` (was `ENT_QUOTES` only) so **all** named + numeric entities (`&amp;`, `&lt;`, `&gt;`, `&quot;`, `&apos;`, `&nbsp;`, `&#038;`, `&#8217;`, `&#8211;`, etc.) normalize to raw UTF-8. `api/class-dukkan-plugin-translatepress.php`
+- **Data repair** (one-off, `thecoach-jo.com`): decoded 19 double-encoded plain-text rows — `wp_terms.name` (`Dun &amp; Burst` → `Dun & Burst`) and `wp_posts.post_title` (`Terms &amp; Conditions` page + 17 `LZEL … iPhone 18 Pro &amp; 18 Pro Max` products).
 
 ### v1.0.37 — TranslatePress punctuation canonicalization fix (decode, not encode)
 

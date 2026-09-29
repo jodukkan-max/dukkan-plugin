@@ -218,16 +218,20 @@ class Dukkan_Plugin_Translatepress {
 			return $string;
 		}
 
-		// Decode numeric + named entities to raw UTF-8.
-		$string = html_entity_decode( $string, ENT_QUOTES, 'UTF-8' );
+		// Decode ALL HTML entities (named + numeric, HTML5 set) to raw UTF-8, so
+		// &amp;, &lt;, &gt;, &quot;, &apos;, &nbsp;, &#038;, &#8217;, etc. all
+		// become their literal characters — matching TranslatePress's decoded key.
+		$string = html_entity_decode( $string, ENT_QUOTES | ENT_HTML5, 'UTF-8' );
 
-		// Straight quotes/dashes -> curly (may produce numeric entities).
+		// Straight quotes/dashes -> curly. NOTE: wptexturize() re-encodes a bare
+		// ampersand as &#038; and curly punctuation as numeric entities, so we
+		// MUST decode again afterwards.
 		if ( function_exists( 'wptexturize' ) ) {
 			$string = wptexturize( $string );
 		}
 
 		// Final decode so the key matches TranslatePress's decoded lookup form.
-		return html_entity_decode( $string, ENT_QUOTES, 'UTF-8' );
+		return html_entity_decode( $string, ENT_QUOTES | ENT_HTML5, 'UTF-8' );
 	}
 
 	public function dukkan_plugin_get_translatepress_text_domains(){
