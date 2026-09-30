@@ -1,10 +1,16 @@
 # Dukkan Plugin — Work Log & Structure
 
-> Last updated: v1.0.40 — September 29, 2026
+> Last updated: v1.0.41 — September 29, 2026
 
 ---
 
 ## Recent Changes
+
+### v1.0.41 — Media upload endpoint (drop ImgBB from product flow)
+
+- **New API class** `Dukkan_Plugin_Media_API` (`api/class-dukkan-plugin-media-api.php`) exposing `POST /dukkan-media/v1/upload` (WooCommerce-key authenticated, multipart `file` field) that stores the image directly into the WordPress media library via `wp_handle_upload` + `wp_insert_attachment` and returns `{ id, source_url }`.
+- **Why**: the app previously uploaded product/variation images to ImgBB (with a hardcoded shared key) and then had WooCommerce sideload the ImgBB URL. This replaces that double hop with a single, direct upload using the store's existing WooCommerce key.
+- **Registered** in `includes/class-dukkan-plugin.php` (`define_media_api_hooks()`).
 
 ### v1.0.40 — Attribute swatch settings endpoints
 
