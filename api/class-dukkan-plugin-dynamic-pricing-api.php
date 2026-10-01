@@ -155,6 +155,27 @@ class Dukkan_Plugin_Dynamic_Pricing_API {
 			'callback'            => array( $this, 'search_products' ),
 			'permission_callback' => '__return_true',
 		));
+
+		register_rest_route( 'dukkan-dynamic-pricing/v1', '/status', array(
+			'methods'             => 'GET',
+			'callback'            => array( $this, 'get_status' ),
+			'permission_callback' => '__return_true',
+		));
+	}
+
+	// =====================================================================
+	// GET /status  —  Report whether the WCDPD (WooCommerce Dynamic Pricing
+	// & Discounts) plugin is installed and active.
+	// =====================================================================
+
+	public function get_status( $request ) {
+		$active = class_exists( 'RP_WCDPD_Settings' );
+		return new WP_REST_Response(
+			array(
+				'wcdpd_active' => $active,
+			),
+			200
+		);
 	}
 
 	// =====================================================================

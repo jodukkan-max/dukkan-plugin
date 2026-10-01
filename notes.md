@@ -1,10 +1,14 @@
 # Dukkan Plugin — Work Log & Structure
 
-> Last updated: v1.0.41 — September 29, 2026
+> Last updated: v1.0.42 — October 1, 2026
 
 ---
 
 ## Recent Changes
+
+### v1.0.42 — Dynamic pricing plugin status endpoint
+
+- **New endpoint** `GET /dukkan-dynamic-pricing/v1/status` returning `{ "wcdpd_active": bool }` — checks `class_exists('RP_WCDPD_Settings')` so the mobile app can detect whether the WooCommerce Dynamic Pricing & Discounts (WCDPD) plugin is installed and active. `api/class-dukkan-plugin-dynamic-pricing-api.php`
 
 ### v1.0.41 — Media upload endpoint (drop ImgBB from product flow)
 
