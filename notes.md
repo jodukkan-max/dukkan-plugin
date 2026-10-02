@@ -1,10 +1,15 @@
 # Dukkan Plugin — Work Log & Structure
 
-> Last updated: v1.0.42 — October 1, 2026
+> Last updated: v1.0.43 — October 1, 2026
 
 ---
 
 ## Recent Changes
+
+### v1.0.43 — Secure the shipping-status webhook (optional shared secret)
+
+- **Security**: `dukkan-woo-webhook/v1/shipping-status` was fully public (`permission_callback => __return_true`, auth block commented out). It now checks an optional shared secret via the `dukkan_shipping_webhook_secret` filter — when set, requests must send a matching `X-Webhook-Secret` header (constant-time `hash_equals`), otherwise they get a `401`. When no secret is configured the endpoint stays open for backwards compatibility and logs an `AUTH_WARNING`. `api/webhook/woo/class-dukkan-woo-webhook.php`
+- **To lock it down**: add `add_filter( 'dukkan_shipping_webhook_secret', fn() => 'YOUR_LONG_RANDOM_SECRET' );` (or set it in `wp-config.php`) and configure the same secret on the shipping platform.
 
 ### v1.0.42 — Dynamic pricing plugin status endpoint
 

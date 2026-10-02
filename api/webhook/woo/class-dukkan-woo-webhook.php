@@ -77,6 +77,17 @@ class Dukkan_Plugin_Woo_Webhook {
 
     /**
      * ─────────────────────────────────────────────
+     *  SHARED SECRET
+     *  Resolve the optional webhook secret. Set it once via a filter (or in
+     *  wp-config.php) and give the same value to the shipping platform.
+     * ─────────────────────────────────────────────
+     */
+    public function dukkan_plugin_shipping_secret() {
+        return (string) apply_filters( 'dukkan_shipping_webhook_secret', '' );
+    }
+
+    /**
+     * ─────────────────────────────────────────────
      *  REGISTER REST ROUTE
      * ─────────────────────────────────────────────
      * https://yoursite.com/wp-json/dukkan-woo-webhook/v1/shipping-status
@@ -96,12 +107,22 @@ class Dukkan_Plugin_Woo_Webhook {
      * ─────────────────────────────────────────────
      */
     public function dukkan_plugin_handle_shipping_status_webhook( WP_REST_Request $request ) {
-        // ── 1. Authenticate ──────────────────────────────────────────────────────
-        // $secret = $request->get_header( 'x-webhook-secret' );
-        // if ( SWH_SECRET_TOKEN !== '' && $secret !== SWH_SECRET_TOKEN ) {
-        //     $this->dukkan_plugin_webhook_log( 'AUTH_FAIL', 'Invalid or missing X-Webhook-Secret header.' );
-        //     return new WP_REST_Response( array( 'error' => 'Unauthorized' ), 401 );
-        // }
+        // ── 1. Authenticate (shared secret, optional) ────────────────────────────
+        // When a secret is configured via the `dukkan_shipping_webhook_secret`
+        // filter, requests without a matching `X-Webhook-Secret` header are
+        // rejected. If no secret is set the endpoint stays open for backwards
+        // compatibility, but a warning is logged to nudge the owner to lock it.
+        $configured_secret = $this->dukkan_plugin_shipping_secret();
+
+        if ( '' !== $configured_secret ) {
+            $provided_secret = (string) $request->get_header( 'x-webhook-secret' );
+            if ( ! hash_equals( $configured_secret, $provided_secret ) ) {
+                $this->dukkan_plugin_webhook_log( 'AUTH_FAIL', 'Invalid or missing X-Webhook-Secret header.' );
+                return new WP_REST_Response( array( 'error' => 'Unauthorized' ), 401 );
+            }
+        } else {
+            $this->dukkan_plugin_webhook_log( 'AUTH_WARNING', 'shipping-status endpoint is open (no `dukkan_shipping_webhook_secret` filter set).' );
+        }
 
         // ── 2. Parse payload ─────────────────────────────────────────────────────
         $payload = $request->get_json_params();
