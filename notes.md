@@ -1,10 +1,17 @@
 # Dukkan Plugin — Work Log & Structure
 
-> Last updated: v1.0.44 — October 2, 2026
+> Last updated: v1.0.45 — October 2, 2026
 
 ---
 
 ## Recent Changes
+
+### v1.0.45 — Shipping status webhook: full LogesTechs status map + fixes
+
+- **Full status map**: `dukkan_plugin_get_woo_order_status_map()` now maps the complete LogesTechs status vocabulary (PENDING_CUSTOMER_CARE_APPROVAL, APPROVED_BY_CUSTOMER_CARE_AND_WAITING_FOR_DISPATCHER, ASSIGNED_TO_DRIVER_AND_PENDING_APPROVAL, ACCEPTED_BY_DRIVER_AND_PENDING_PICKUP, MOVED_TO_SHELF_AND_OUT_OF_HANDLER_CUSTODY, OUT_FOR_DELIVERY, POSTPONED_DELIVERY, COMPLETED, PARTIALLY_DELIVERED, RETURNED_BY_RECIPIENT, DELIVERED_TO_SENDER, FAILED, LOST, DAMAGED, REJECTED_BY_DRIVER_AND_PENDING_MANGEMENT, OPENED_ISSUE_AND_WAITING_FOR_MANAGEMENT, TRANSFERRED_OUT, EXPORTED_TO_THIRD_PARTY, SWAPPED, BROUGHT) to the correct WooCommerce/Dukkan statuses — previously only 4 were handled and `OUT_FOR_DELIVERY` was dropped.
+- **Order lookup hardened**: falls back to matching by `_logestechs_barcode` order meta when the invoice number isn't a WooCommerce order ID.
+- **Notes/postponed date**: the platform's `notes` + `postponedDate` are now appended to the WooCommerce order note (so failed/postponed reasons are visible), and `packageId` is properly captured + logged (was undefined).
+- **Barcode persisted** to `_logestechs_barcode` order meta for future lookups. `api/webhook/woo/class-dukkan-woo-webhook.php`
 
 ### v1.0.44 — AI Translation: gettext search + Elementor templates
 

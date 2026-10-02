@@ -68,10 +68,44 @@ class Dukkan_Plugin_Woo_Webhook {
     public function dukkan_plugin_get_woo_order_status_map() {
         return apply_filters( 'dukkan_plugin_woo_order_status_map', array(
             // Shipping platform status  =>  WooCommerce status (without "wc-" prefix)
+            //
+            // Full map aligned with the LogesTechs API + Webhook docs.
+            // Built-in WC statuses: pending, processing, on-hold, completed,
+            // cancelled, refunded, failed, checkout-draft.
+            // Custom Dukkan statuses (seeded on activation):
+            //   ready-delivery, out-for-delivery, with-carrier.
+
+            // ── Lifecycle / in-transit ─────────────────────────────
+            'PENDING_CUSTOMER_CARE_APPROVAL'                     => 'processing',
+            'APPROVED_BY_CUSTOMER_CARE_AND_WAITING_FOR_DISPATCHER' => 'ready-delivery',
+            'ASSIGNED_TO_DRIVER_AND_PENDING_APPROVAL'            => 'ready-delivery',
+            'ACCEPTED_BY_DRIVER_AND_PENDING_PICKUP'              => 'ready-delivery',
             'SCANNED_BY_HANDLER_AND_UNLOADED'                    => 'with-carrier',
-            'SCANNED_BY_DRIVER_AND_IN_CAR'                    => 'out-for-delivery',
-            'DELIVERED_TO_RECIPIENT'                  => 'completed',
-            'CANCELLED'                  => 'cancelled',
+            'MOVED_TO_SHELF_AND_OUT_OF_HANDLER_CUSTODY'          => 'with-carrier',
+            'SCANNED_BY_DRIVER_AND_IN_CAR'                       => 'out-for-delivery',
+            'OUT_FOR_DELIVERY'                                   => 'out-for-delivery',
+            'POSTPONED_DELIVERY'                                 => 'on-hold',
+
+            // ── Successful delivery ────────────────────────────────
+            'DELIVERED_TO_RECIPIENT'                             => 'completed',
+            'COMPLETED'                                          => 'completed',
+            'PARTIALLY_DELIVERED'                                => 'completed',
+
+            // ── Failed / returned / cancelled ─────────────────────
+            'CANCELLED'                                          => 'cancelled',
+            'RETURNED_BY_RECIPIENT'                              => 'refunded',
+            'DELIVERED_TO_SENDER'                                => 'refunded',
+            'FAILED'                                             => 'failed',
+            'LOST'                                               => 'failed',
+            'DAMAGED'                                            => 'failed',
+            'REJECTED_BY_DRIVER_AND_PENDING_MANGEMENT'           => 'failed',
+            'OPENED_ISSUE_AND_WAITING_FOR_MANAGEMENT'            => 'failed',
+
+            // ── Transfers / swaps (treat as completed or in-transit) ─
+            'TRANSFERRED_OUT'                                    => 'with-carrier',
+            'EXPORTED_TO_THIRD_PARTY'                            => 'with-carrier',
+            'SWAPPED'                                            => 'completed',
+            'BROUGHT'                                            => 'completed',
         ) );
     }
 
@@ -136,28 +170,38 @@ class Dukkan_Plugin_Woo_Webhook {
         $barcode        = isset( $payload['barcode'] )       ? sanitize_text_field( $payload['barcode'] )       : '';
         $new_status     = isset( $payload['newStatus'] )     ? strtoupper( sanitize_text_field( $payload['newStatus'] ) ) : '';
         $invoice_number = isset( $payload['invoiceNumber'] ) ? sanitize_text_field( $payload['invoiceNumber'] ) : '';
-        // $notes          = isset( $payload['notes'] )         ? sanitize_text_field( $payload['notes'] )         : '';
-        // $driver_name    = isset( $payload['driverName'] )    ? sanitize_text_field( $payload['driverName'] )    : '';
-        // $driver_phone   = isset( $payload['driverPhone'] )   ? sanitize_text_field( $payload['driverPhone'] )   : '';
-        // $package_id     = isset( $payload['packageId'] )     ? intval( $payload['packageId'] )                  : 0;
-        // $cod            = isset( $payload['cod'] )           ? floatval( $payload['cod'] )                      : 0;
-        // $payment_type   = isset( $payload['paymentType'] )   ? sanitize_text_field( $payload['paymentType'] )   : '';
+        $notes          = isset( $payload['notes'] )         ? sanitize_text_field( $payload['notes'] )         : '';
+        $postponed_date = isset( $payload['postponedDate'] ) ? sanitize_text_field( $payload['postponedDate'] )  : '';
+        $package_id     = isset( $payload['packageId'] )     ? intval( $payload['packageId'] )                  : 0;
+
         if ( empty( $new_status ) ) {
             $this->dukkan_plugin_webhook_log( 'MISSING_FIELD', 'newStatus is missing from payload.', $payload );
             return new WP_REST_Response( array( 'error' => 'newStatus is required' ), 422 );
         }
 
         // ── 4. Find the WooCommerce order ─────────────────────────────────────────
-        //    Strategy A: match by order meta "_shipping_barcode" or "_tracking_number"
-        //    Strategy B: match by invoice number stored in order meta "_invoice_number"
-        //    Strategy C: match by WooCommerce order ID embedded in the invoiceNumber
-        //                e.g. "3465404-18422171-1" → try last segment as order ID
+        //    Strategy A: invoice number is the WooCommerce order ID (the app sends
+        //                `invoiceNumber = order.id`, so this is the primary path).
+        //    Strategy B: barcode stored in order meta `_shipping_barcode` /
+        //                `_tracking_number` / `_logestechs_barcode`.
         $order = null;
-        // Strategy C – invoice number as order ID (last resort)
-        if ( ! $order && $invoice_number ) {
+
+        if ( $invoice_number ) {
             $candidate = wc_get_order( $invoice_number );
             if ( $candidate ) {
                 $order = $candidate;
+            }
+        }
+
+        if ( ! $order && $barcode ) {
+            $orders = wc_get_orders( array(
+                'limit'        => 1,
+                'meta_key'     => '_logestechs_barcode',
+                'meta_value'   => $barcode,
+                'return'       => 'objects',
+            ) );
+            if ( ! empty( $orders ) ) {
+                $order = $orders[0];
             }
         }
 
@@ -179,19 +223,29 @@ class Dukkan_Plugin_Woo_Webhook {
         }
 
         $order_id = $order->get_id();
- 
+
         // ── 6. Update the order status ────────────────────────────────────────────
         $note = sprintf(
             __( 'Shipping platform update: %s', 'shipping-webhook-handler' ),
             $new_status
         );
-    
+
+        // Attach the platform's Notes / postponed date as an order note so the
+        // merchant can see WHY a shipment failed or was postponed.
+        if ( '' !== $notes ) {
+            $note .= ' — ' . $notes;
+        }
+        if ( '' !== $postponed_date ) {
+            $note .= sprintf( __( ' (postponed until %s)', 'shipping-webhook-handler' ), $postponed_date );
+        }
+
         $order->update_status( $wc_status, $note );
         $order->update_meta_data( '_shipping_last_updated', current_time( 'mysql' ) );
+        $order->update_meta_data( '_logestechs_barcode', $barcode );
 
         $order->save();
  
-        $this->dukkan_plugin_webhook_log( 'SUCCESS', "Order #{$order_id} updated to '{$wc_status}' (shipping: {$new_status})." );
+        $this->dukkan_plugin_webhook_log( 'SUCCESS', "Order #{$order_id} updated to '{$wc_status}' (shipping: {$new_status}, packageId: {$package_id})." );
     
         return new WP_REST_Response( array(
             'success'     => true,
