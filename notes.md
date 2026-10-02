@@ -1,10 +1,15 @@
 # Dukkan Plugin — Work Log & Structure
 
-> Last updated: v1.0.43 — October 1, 2026
+> Last updated: v1.0.44 — October 2, 2026
 
 ---
 
 ## Recent Changes
+
+### v1.0.44 — AI Translation: gettext search + Elementor templates
+
+- **Gettext search**: `translatepress-gettext-original-strings` now accepts an optional `search` param that filters by `original LIKE %query%` (safe `$wpdb->esc_like()`), so the mobile app's Strings tab can do full-domain server-side search (not just the loaded page). `api/class-dukkan-plugin-translatepress.php`
+- **Elementor templates**: new endpoint `GET /dukkan-translation-translatepress/v1/elementor-templates` lists every `elementor_library` post (headers, footers, sections, containers, page/single/archive templates, popups, loop items) with `id`, `title`, `type`, `subtype`, `status` and rendered `content` (via `get_builder_content_for_display`), so the app's new "Elementor Blocks" tab can translate them. Returns an empty list when Elementor is inactive.
 
 ### v1.0.43 — Secure the shipping-status webhook (optional shared secret)
 

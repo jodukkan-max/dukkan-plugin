@@ -156,6 +156,12 @@ class Dukkan_Plugin_Translatepress {
 			'callback' => array($this, 'dukkan_plugin_get_translatepress_gettext_original_strings'),
 			'permission_callback' => array( $this, 'check_permissions' ),
 		));
+
+		register_rest_route('dukkan-translation-translatepress/v1', '/elementor-templates', array(
+			'methods' => 'GET',
+			'callback' => array($this, 'dukkan_plugin_get_elementor_templates'),
+			'permission_callback' => array( $this, 'check_permissions' ),
+		));
 	}
 
 	public function dukkan_plugin_trp_format_string($string){
@@ -270,6 +276,7 @@ class Dukkan_Plugin_Translatepress {
 		global $wpdb;
 
 		$domain   = $request->get_param('domain'); // optional
+		$search   = trim( (string) $request->get_param('search') ); // optional substring
 		$page     = max(1, (int)$request->get_param('page'));
 		$per_page = min( 100, max( 10, (int) $request->get_param( 'per_page' ) ) ); // cap to prevent abuse
 		$offset   = ($page - 1) * $per_page;
@@ -282,24 +289,54 @@ class Dukkan_Plugin_Translatepress {
 		}
 
 		// Build query
+		$like = '';
+		if ( '' !== $search ) {
+			$like = '%' . $wpdb->esc_like( $search ) . '%';
+		}
+
 		if(!empty($domain)){
-			$query = $wpdb->prepare(
-				"SELECT id, original, domain 
-				FROM $table 
-				WHERE domain = %s 
-				ORDER BY id DESC LIMIT %d OFFSET %d",
-				$domain,
-				$per_page,
-				$offset
-			);
+			if ( '' !== $like ) {
+				$query = $wpdb->prepare(
+					"SELECT id, original, domain 
+					FROM $table 
+					WHERE domain = %s AND original LIKE %s 
+					ORDER BY id DESC LIMIT %d OFFSET %d",
+					$domain,
+					$like,
+					$per_page,
+					$offset
+				);
+			} else {
+				$query = $wpdb->prepare(
+					"SELECT id, original, domain 
+					FROM $table 
+					WHERE domain = %s 
+					ORDER BY id DESC LIMIT %d OFFSET %d",
+					$domain,
+					$per_page,
+					$offset
+				);
+			}
 		} else {
-			$query = $wpdb->prepare(
-				"SELECT id, original, domain 
-				FROM $table 
-				ORDER BY id DESC LIMIT %d OFFSET %d",
-				$per_page,
-				$offset
-			);
+			if ( '' !== $like ) {
+				$query = $wpdb->prepare(
+					"SELECT id, original, domain 
+					FROM $table 
+					WHERE original LIKE %s 
+					ORDER BY id DESC LIMIT %d OFFSET %d",
+					$like,
+					$per_page,
+					$offset
+				);
+			} else {
+				$query = $wpdb->prepare(
+					"SELECT id, original, domain 
+					FROM $table 
+					ORDER BY id DESC LIMIT %d OFFSET %d",
+					$per_page,
+					$offset
+				);
+			}
 		}
 
 		$rows = $wpdb->get_results($query);
@@ -1025,6 +1062,62 @@ class Dukkan_Plugin_Translatepress {
 			'original' => $this->dukkan_plugin_trp_unformat_string( $original ),
 			'results'  => $results,
 		);
+	}
+
+	/**
+	 * GET /elementor-templates — list all Elementor templates/blocks
+	 * (headers, footers, sections, containers, pages, popups, etc.).
+	 *
+	 * Returns each template's id, title, type, status and rendered content so
+	 * the mobile app can extract translatable strings. When Elementor is not
+	 * active the endpoint returns an empty list (no error) so the tab simply
+	 * shows the "no templates" empty state.
+	 *
+	 * @since 1.0.44
+	 * @param WP_REST_Request $request
+	 * @return array
+	 */
+	public function dukkan_plugin_get_elementor_templates( WP_REST_Request $request ) {
+		if ( ! post_type_exists( 'elementor_library' ) ) {
+			return array( 'templates' => array() );
+		}
+
+		$posts = get_posts( array(
+			'post_type'      => 'elementor_library',
+			'post_status'    => array( 'publish', 'draft', 'private' ),
+			'posts_per_page' => -1,
+			'orderby'        => 'menu_order date',
+			'order'          => 'ASC',
+		) );
+
+		$templates = array();
+
+		foreach ( $posts as $post ) {
+			$type    = get_post_meta( $post->ID, '_elementor_template_type', true );
+			$subtype = get_post_meta( $post->ID, '_elementor_template_subtype', true );
+
+			// Render the block content. Elementor stores raw JSON in
+			// `_elementor_data`; `get_builder_content_for_display` renders it to
+			// HTML so the app can extract human-readable strings.
+			$content = '';
+			if ( class_exists( '\\Elementor\\Plugin' ) && \Elementor\Plugin::$instance->frontend ) {
+				$content = \Elementor\Plugin::$instance->frontend->get_builder_content_for_display( $post->ID, true );
+			}
+			if ( '' === trim( $content ) ) {
+				$content = $post->post_content;
+			}
+
+			$templates[] = array(
+				'id'      => $post->ID,
+				'title'   => $post->post_title,
+				'type'    => $type,
+				'subtype' => $subtype,
+				'status'  => $post->post_status,
+				'content' => $content,
+			);
+		}
+
+		return array( 'templates' => $templates );
 	}
 
 }
