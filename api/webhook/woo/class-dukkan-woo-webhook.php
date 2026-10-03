@@ -73,15 +73,16 @@ class Dukkan_Plugin_Woo_Webhook {
             // Built-in WC statuses: pending, processing, on-hold, completed,
             // cancelled, refunded, failed, checkout-draft.
             // Custom Dukkan statuses (seeded on activation):
-            //   ready-delivery, out-for-delivery, with-carrier.
+            //   ready-delivery, out-for-delivery, with-carrier,
+            //   at-sorting-center, partially-delivered, delivered-to-sender.
 
             // ── Lifecycle / in-transit ─────────────────────────────
             'PENDING_CUSTOMER_CARE_APPROVAL'                     => 'processing',
             'APPROVED_BY_CUSTOMER_CARE_AND_WAITING_FOR_DISPATCHER' => 'ready-delivery',
             'ASSIGNED_TO_DRIVER_AND_PENDING_APPROVAL'            => 'ready-delivery',
             'ACCEPTED_BY_DRIVER_AND_PENDING_PICKUP'              => 'ready-delivery',
-            'SCANNED_BY_HANDLER_AND_UNLOADED'                    => 'with-carrier',
-            'MOVED_TO_SHELF_AND_OUT_OF_HANDLER_CUSTODY'          => 'with-carrier',
+            'SCANNED_BY_HANDLER_AND_UNLOADED'                    => 'at-sorting-center',
+            'MOVED_TO_SHELF_AND_OUT_OF_HANDLER_CUSTODY'          => 'at-sorting-center',
             'SCANNED_BY_DRIVER_AND_IN_CAR'                       => 'out-for-delivery',
             'OUT_FOR_DELIVERY'                                   => 'out-for-delivery',
             'POSTPONED_DELIVERY'                                 => 'on-hold',
@@ -89,12 +90,12 @@ class Dukkan_Plugin_Woo_Webhook {
             // ── Successful delivery ────────────────────────────────
             'DELIVERED_TO_RECIPIENT'                             => 'completed',
             'COMPLETED'                                          => 'completed',
-            'PARTIALLY_DELIVERED'                                => 'completed',
+            'PARTIALLY_DELIVERED'                                => 'partially-delivered',
 
             // ── Failed / returned / cancelled ─────────────────────
             'CANCELLED'                                          => 'cancelled',
             'RETURNED_BY_RECIPIENT'                              => 'refunded',
-            'DELIVERED_TO_SENDER'                                => 'refunded',
+            'DELIVERED_TO_SENDER'                                => 'delivered-to-sender',
             'FAILED'                                             => 'failed',
             'LOST'                                               => 'failed',
             'DAMAGED'                                            => 'failed',

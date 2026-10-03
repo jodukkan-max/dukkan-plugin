@@ -1,10 +1,16 @@
 # Dukkan Plugin — Work Log & Structure
 
-> Last updated: v1.0.45 — October 2, 2026
+> Last updated: v1.0.46 — October 2, 2026
 
 ---
 
 ## Recent Changes
+
+### v1.0.46 — New LogesTechs-aligned order statuses (At Sorting Center / Partially Delivered / Delivered To Sender)
+
+- **3 new custom statuses** added to the default seed: `at-sorting-center` ("At Sorting Center"), `partially-delivered` ("Partially Delivered"), `delivered-to-sender` ("Delivered To Sender").
+- **Idempotent migration** `Dukkan_Plugin_Activator::maybe_migrate_statuses()` appends any missing default statuses (matched by slug) to existing installs without removing user-created statuses. Hooked on `plugins_loaded`. `includes/class-dukkan-plugin-activator.php`, `dukkan-plugin.php`
+- **Status map re-aligned**: `SCANNED_BY_HANDLER_AND_UNLOADED` + `MOVED_TO_SHELF_AND_OUT_OF_HANDLER_CUSTODY` → `at-sorting-center`; `PARTIALLY_DELIVERED` → `partially-delivered`; `DELIVERED_TO_SENDER` → `delivered-to-sender`. `api/webhook/woo/class-dukkan-woo-webhook.php`
 
 ### v1.0.45 — Shipping status webhook: full LogesTechs status map + fixes
 

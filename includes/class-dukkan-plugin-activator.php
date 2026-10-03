@@ -211,14 +211,16 @@ class Dukkan_Plugin_Activator {
 	}
 
 	/**
-	 * Seed default custom order statuses if none exist yet.
+	 * The full set of default, LogesTechs-aligned order statuses.
 	 *
-	 * Uses add_option() so existing data is never overwritten.
+	 * Single source of truth used by both fresh activation seeding and the
+	 * idempotent `maybe_migrate_statuses()` migration.
 	 *
-	 * @since 1.0.0
+	 * @since 1.0.46
+	 * @return array<int, array{name: string, slug: string}>
 	 */
-	private static function seed_default_statuses() {
-		$defaults = array(
+	public static function get_default_statuses() {
+		return array(
 			array(
 				'name' => __( 'Ready For Delivery', 'dukkan-plugin' ),
 				'slug' => 'ready-delivery',
@@ -231,9 +233,68 @@ class Dukkan_Plugin_Activator {
 				'name' => __( 'With Carrier', 'dukkan-plugin' ),
 				'slug' => 'with-carrier',
 			),
+			array(
+				'name' => __( 'At Sorting Center', 'dukkan-plugin' ),
+				'slug' => 'at-sorting-center',
+			),
+			array(
+				'name' => __( 'Partially Delivered', 'dukkan-plugin' ),
+				'slug' => 'partially-delivered',
+			),
+			array(
+				'name' => __( 'Delivered To Sender', 'dukkan-plugin' ),
+				'slug' => 'delivered-to-sender',
+			),
 		);
+	}
 
-		add_option( 'dukkan_custom_order_statuses', $defaults, '', 'yes' );
+	/**
+	 * Seed default custom order statuses if none exist yet.
+	 *
+	 * Uses add_option() so existing data is never overwritten.
+	 *
+	 * @since 1.0.0
+	 */
+	private static function seed_default_statuses() {
+		add_option( 'dukkan_custom_order_statuses', self::get_default_statuses(), '', 'yes' );
+	}
+
+	/**
+	 * Idempotent migration: append any missing default statuses (matched by
+	 * slug) to the existing `dukkan_custom_order_statuses` option. Never
+	 * removes or renames user-created statuses. Safe to run on every load.
+	 *
+	 * @since 1.0.46
+	 */
+	public static function maybe_migrate_statuses() {
+		$existing = get_option( 'dukkan_custom_order_statuses', array() );
+		if ( ! is_array( $existing ) ) {
+			$existing = array();
+		}
+
+		$existing_slugs = array();
+		foreach ( $existing as $status ) {
+			if ( is_array( $status ) && isset( $status['slug'] ) ) {
+				$existing_slugs[ sanitize_title( $status['slug'] ) ] = true;
+			}
+		}
+
+		$changed = false;
+		foreach ( self::get_default_statuses() as $default ) {
+			$slug = sanitize_title( $default['slug'] );
+			if ( ! isset( $existing_slugs[ $slug ] ) ) {
+				$existing[] = array(
+					'name' => $default['name'],
+					'slug' => $slug,
+				);
+				$existing_slugs[ $slug ] = true;
+				$changed = true;
+			}
+		}
+
+		if ( $changed ) {
+			update_option( 'dukkan_custom_order_statuses', $existing, 'no' );
+		}
 	}
 
 }
