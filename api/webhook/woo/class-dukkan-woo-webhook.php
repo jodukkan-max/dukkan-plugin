@@ -83,7 +83,7 @@ class Dukkan_Plugin_Woo_Webhook {
             'ACCEPTED_BY_DRIVER_AND_PENDING_PICKUP'              => 'ready-delivery',
             'SCANNED_BY_HANDLER_AND_UNLOADED'                    => 'at-sorting-center',
             'MOVED_TO_SHELF_AND_OUT_OF_HANDLER_CUSTODY'          => 'at-sorting-center',
-            'SCANNED_BY_DRIVER_AND_IN_CAR'                       => 'out-for-delivery',
+            'SCANNED_BY_DRIVER_AND_IN_CAR'                       => 'ready-delivery',
             'OUT_FOR_DELIVERY'                                   => 'out-for-delivery',
             'POSTPONED_DELIVERY'                                 => 'on-hold',
 

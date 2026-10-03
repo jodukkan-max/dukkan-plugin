@@ -1,10 +1,14 @@
 # Dukkan Plugin — Work Log & Structure
 
-> Last updated: v1.0.46 — October 2, 2026
+> Last updated: v1.0.47 — October 2, 2026
 
 ---
 
 ## Recent Changes
+
+### v1.0.47 — SCANNED_BY_DRIVER_AND_IN_CAR → Ready For Delivery
+
+- **Status-map tweak**: `SCANNED_BY_DRIVER_AND_IN_CAR` ("Picked") now maps to `ready-delivery` (Ready For Delivery) instead of `out-for-delivery`. `api/webhook/woo/class-dukkan-woo-webhook.php`
 
 ### v1.0.46 — New LogesTechs-aligned order statuses (At Sorting Center / Partially Delivered / Delivered To Sender)
 
