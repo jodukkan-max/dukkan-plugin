@@ -1,10 +1,16 @@
 # Dukkan Plugin — Work Log & Structure
 
-> Last updated: v1.0.47 — October 2, 2026
+> Last updated: v1.0.48 — October 2, 2026
 
 ---
 
 ## Recent Changes
+
+### v1.0.48 — Fix custom order-status registration (critical)
+
+- **Critical bug**: custom order statuses (`ready-delivery`, `out-for-delivery`, `with-carrier`, etc.) were **never registered** with WooCommerce. `Dukkan_Plugin_WooCommerce::__construct` added a `plugins_loaded` hook, but the class is instantiated inside `run_dukkan_plugin()` (which itself runs on `plugins_loaded`), so the nested hook never fired. The webhook then called `update_status('out-for-delivery')` with an unregistered status → WooCommerce silently fell back to `pending`, and the "cancel unpaid orders" cron cancelled real Completed orders.
+- **Fix**: hook `register_custom_order_statuses()` directly on `init` (and the `wc_order_statuses` filter directly), removing the dead `plugins_loaded` re-hook. `admin/class-dukkan-plugin-woocommerce.php`
+- **Impact**: this caused the iamkbeauty.shop incident where 6 Completed orders were wrongly cancelled. Those orders were restored manually.
 
 ### v1.0.47 — SCANNED_BY_DRIVER_AND_IN_CAR → Ready For Delivery
 

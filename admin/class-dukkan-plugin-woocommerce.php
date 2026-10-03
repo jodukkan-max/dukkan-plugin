@@ -70,20 +70,13 @@ class Dukkan_Plugin_WooCommerce {
 		$this->plugin_name = $plugin_name;
 		$this->version     = $version;
 
-		add_action( 'plugins_loaded', array( $this, 'register_hooks' ) );
-
-	}
-
-	/**
-	 * Register WooCommerce hooks when WooCommerce is active.
-	 *
-	 * @since 1.0.0
-	 */
-	public function register_hooks() {
-		if ( ! class_exists( 'WooCommerce' ) ) {
-			return;
-		}
-
+		// Hook directly on `init` — do NOT re-hook `plugins_loaded`. This class
+		// is instantiated inside `run_dukkan_plugin()`, which itself runs on
+		// `plugins_loaded`, so a nested `plugins_loaded` add_action() would
+		// never fire and the custom statuses would never register.
+		//
+		// `register_custom_order_statuses()` internally checks WooCommerce
+		// availability, so it is safe to run on every request.
 		add_action( 'init', array( $this, 'register_custom_order_statuses' ) );
 		add_filter( 'wc_order_statuses', array( $this, 'add_custom_order_statuses' ) );
 	}

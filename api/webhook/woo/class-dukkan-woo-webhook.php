@@ -77,13 +77,8 @@ class Dukkan_Plugin_Woo_Webhook {
             //   at-sorting-center, partially-delivered, delivered-to-sender.
 
             // ── Lifecycle / in-transit ─────────────────────────────
-            'PENDING_CUSTOMER_CARE_APPROVAL'                     => 'processing',
-            'APPROVED_BY_CUSTOMER_CARE_AND_WAITING_FOR_DISPATCHER' => 'ready-delivery',
-            'ASSIGNED_TO_DRIVER_AND_PENDING_APPROVAL'            => 'ready-delivery',
-            'ACCEPTED_BY_DRIVER_AND_PENDING_PICKUP'              => 'ready-delivery',
             'SCANNED_BY_HANDLER_AND_UNLOADED'                    => 'at-sorting-center',
             'MOVED_TO_SHELF_AND_OUT_OF_HANDLER_CUSTODY'          => 'at-sorting-center',
-            'SCANNED_BY_DRIVER_AND_IN_CAR'                       => 'ready-delivery',
             'OUT_FOR_DELIVERY'                                   => 'out-for-delivery',
             'POSTPONED_DELIVERY'                                 => 'on-hold',
 
@@ -95,18 +90,15 @@ class Dukkan_Plugin_Woo_Webhook {
             // ── Failed / returned / cancelled ─────────────────────
             'CANCELLED'                                          => 'cancelled',
             'RETURNED_BY_RECIPIENT'                              => 'refunded',
-            'DELIVERED_TO_SENDER'                                => 'delivered-to-sender',
             'FAILED'                                             => 'failed',
             'LOST'                                               => 'failed',
             'DAMAGED'                                            => 'failed',
             'REJECTED_BY_DRIVER_AND_PENDING_MANGEMENT'           => 'failed',
             'OPENED_ISSUE_AND_WAITING_FOR_MANAGEMENT'            => 'failed',
 
-            // ── Transfers / swaps (treat as completed or in-transit) ─
+            // ── Transfers ──────────────────────────────────────────
             'TRANSFERRED_OUT'                                    => 'with-carrier',
             'EXPORTED_TO_THIRD_PARTY'                            => 'with-carrier',
-            'SWAPPED'                                            => 'completed',
-            'BROUGHT'                                            => 'completed',
         ) );
     }
 
