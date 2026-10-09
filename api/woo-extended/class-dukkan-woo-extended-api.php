@@ -157,6 +157,11 @@ class Dukkan_Plugin_Woo_Extended_API {
 
     /**
      * Generate store connection auth code.
+     *
+     * Returns the generated code so the automated "Build New Website" flow can
+     * immediately complete the key-generation handshake. The code is still
+     * single-use: `dukkan_plugin_auth_code_permission_callback` deletes it on
+     * first successful use.
      */
     public function dukkan_plugin_generate_store_connection_auth_code(WP_REST_Request $request)
     {
@@ -168,7 +173,8 @@ class Dukkan_Plugin_Woo_Extended_API {
 
         return new WP_REST_Response(
             array(
-                'success' => true,
+                'success'   => true,
+                'auth_code' => $auth_code,
             ),
             200
         );
