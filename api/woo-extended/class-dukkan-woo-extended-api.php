@@ -94,6 +94,12 @@ class Dukkan_Plugin_Woo_Extended_API {
                 ),
             ),
         ));
+
+        register_rest_route('dukkan-woo-extended/v1', '/rest-api-keys', array(
+            'methods'             => 'DELETE',
+            'callback'            => array($this, 'dukkan_plugin_delete_woo_rest_api_keys'),
+            'permission_callback' => array($this, 'dukkan_plugin_static_key_permission_callback')
+        ));
     }
 
     /**
@@ -296,6 +302,48 @@ class Dukkan_Plugin_Woo_Extended_API {
             'consumer_key'    => $consumer_key,
             'consumer_secret' => $consumer_secret,
         );
+    }
+
+    /**
+     * Delete (revoke) a WooCommerce REST API key by its plaintext consumer key.
+     *
+     * The consumer key is matched against WooCommerce's `truncated_key`
+     * column (the last 7 characters of the plaintext key). Protected by the
+     * static API key, so the app can revoke keys it created.
+     */
+    public function dukkan_plugin_delete_woo_rest_api_keys(WP_REST_Request $request)
+    {
+        global $wpdb;
+
+        $consumer_key = trim((string) $request->get_header('x-dukkan-consumer-key'));
+        if (empty($consumer_key)) {
+            $consumer_key = trim((string) $request->get_param('consumer_key'));
+        }
+
+        if (empty($consumer_key)) {
+            return new WP_Error('missing_consumer_key', 'A consumer key is required.', array('status' => 400));
+        }
+
+        $truncated = substr($consumer_key, -7);
+        $table = $wpdb->prefix . 'woocommerce_api_keys';
+
+        // Find the key by its truncated suffix (WooCommerce stores substr($key, -7)).
+        $key_id = $wpdb->get_var($wpdb->prepare(
+            "SELECT key_id FROM {$table} WHERE truncated_key = %s LIMIT 1",
+            $truncated
+        ));
+
+        if (empty($key_id)) {
+            return new WP_Error('key_not_found', 'WooCommerce API key not found.', array('status' => 404));
+        }
+
+        $deleted = $wpdb->delete($table, array('key_id' => absint($key_id)), array('%d'));
+
+        if ($deleted === false) {
+            return new WP_Error('key_delete_failed', 'Unable to delete WooCommerce API key.', array('status' => 500));
+        }
+
+        return new WP_REST_Response(array('success' => true, 'key_id' => absint($key_id)), 200);
     }
 
     /**

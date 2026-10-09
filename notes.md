@@ -1,10 +1,14 @@
 # Dukkan Plugin — Work Log & Structure
 
-> Last updated: v1.0.50 — October 9, 2026 — Elementor widget settings API (full builder read/write)
+> Last updated: v1.0.51 — October 9, 2026 — WooCommerce API key revoke endpoint
 
 ---
 
 ## Recent Changes
+
+### v1.0.51 — Revoke WooCommerce API keys
+
+- New `DELETE /dukkan-woo-extended/v1/rest-api-keys` route (static-key auth). Deletes a WooCommerce REST API key by matching the plaintext `consumer_key` against WooCommerce's `truncated_key` column (last 7 chars). Lets the app revoke a store's keys when the merchant deletes a website.
 
 ### v1.0.50 — Elementor widget settings API (Heading + Text Editor)
 
