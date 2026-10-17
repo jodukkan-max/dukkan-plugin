@@ -125,6 +125,10 @@ class Dukkan_Plugin_Attributes_API {
 						'type'              => 'string',
 						'sanitize_callback' => 'esc_url_raw',
 					),
+					'image_id'         => array(
+						'required'          => false,
+						'type'              => 'integer',
+					),
 				),
 			),
 		) );
@@ -441,8 +445,23 @@ class Dukkan_Plugin_Attributes_API {
 			}
 		}
 
-		// Image — sideload from URL into the media library.
-		if ( array_key_exists( 'image_url', $params ) ) {
+		// Image — accept an existing attachment ID directly (the app uploads the
+		// raw file to /dukkan-media/v1/upload first, then references that ID
+		// here). This avoids a third-party host AND avoids re-downloading the
+		// store's own URL back into the media library a second time.
+		if ( array_key_exists( 'image_id', $params ) ) {
+			$image_id = absint( $params['image_id'] );
+			if ( $image_id && 'attachment' === get_post_type( $image_id ) ) {
+				update_term_meta( $term_id, 'rey_attribute_image', $image_id );
+				$response['image_id']  = $image_id;
+				$response['image_url'] = (string) wp_get_attachment_url( $image_id );
+			} else {
+				delete_term_meta( $term_id, 'rey_attribute_image' );
+				$response['image_id']  = 0;
+				$response['image_url'] = '';
+			}
+		} elseif ( array_key_exists( 'image_url', $params ) ) {
+			// Image — sideload from URL into the media library (legacy path).
 			$image_url = esc_url_raw( (string) $params['image_url'] );
 			if ( $image_url ) {
 				$attachment_id = $this->sideload_image( $image_url );
