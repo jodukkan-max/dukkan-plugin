@@ -168,6 +168,21 @@ class Dukkan_Plugin_Elementor_API {
 			),
 		) );
 
+		register_rest_route( self::NAMESPACE, '/products', array(
+			'methods'             => WP_REST_Server::READABLE,
+			'callback'            => array( $this, 'get_products' ),
+			'permission_callback' => array( $this, 'check_permissions' ),
+			'args'                => array(
+				'type' => array( 'required' => false, 'type' => 'string' ),
+				'category' => array( 'required' => false, 'type' => 'string' ),
+				'tag' => array( 'required' => false, 'type' => 'string' ),
+				'include' => array( 'required' => false, 'type' => 'string' ),
+				'orderby' => array( 'required' => false, 'type' => 'string' ),
+				'order' => array( 'required' => false, 'type' => 'string' ),
+				'limit' => array( 'required' => false, 'type' => 'integer' ),
+			),
+		) );
+
 		register_rest_route( self::NAMESPACE, '/globals', array(
 			'methods'             => WP_REST_Server::READABLE,
 			'callback'            => array( $this, 'get_globals' ),
@@ -375,10 +390,33 @@ class Dukkan_Plugin_Elementor_API {
 		}
 		$page     = max( 1, (int) $request->get_param( 'page' ) );
 		$per_page = max( 1, min( 100, (int) $request->get_param( 'per_page' ) ) );
+		$search   = trim( (string) $request->get_param( 'search' ) );
+		$ids      = array_filter( array_map( 'intval', array_map( 'trim', explode( ',', (string) $request->get_param( 'ids' ) ) ) ) );
+		$slugs    = array_filter( array_map( 'trim', explode( ',', (string) $request->get_param( 'slugs' ) ) ) );
+
+		// Common term query args. `search` filters by name; `ids` resolves
+		// specific term ids; `slugs` resolves specific term SLUGS (the value
+		// Rey's product-grid `categories`/`tags` controls actually store).
+		$term_args = array(
+			'hide_empty' => false,
+			'number'     => $per_page,
+			'offset'     => ( $page - 1 ) * $per_page,
+		);
+		if ( '' !== $search ) {
+			$term_args['search'] = $search;
+		}
+		if ( ! empty( $ids ) ) {
+			$term_args['include'] = $ids;
+			unset( $term_args['number'], $term_args['offset'] );
+		}
+		if ( ! empty( $slugs ) ) {
+			$term_args['slug'] = $slugs;
+			unset( $term_args['number'], $term_args['offset'] );
+		}
 
 		switch ( $type ) {
 			case 'tags':
-				$terms = get_terms( array( 'taxonomy' => 'product_tag', 'hide_empty' => false, 'number' => $per_page, 'offset' => ( $page - 1 ) * $per_page ) );
+				$terms = get_terms( array_merge( $term_args, array( 'taxonomy' => 'product_tag' ) ) );
 				break;
 			case 'attributes':
 				$terms = function_exists( 'wc_get_attribute_taxonomies' ) ? wc_get_attribute_taxonomies() : array();
@@ -396,7 +434,7 @@ class Dukkan_Plugin_Elementor_API {
 						}
 					}
 				}
-				$terms = $taxonomy ? get_terms( array( 'taxonomy' => $taxonomy, 'hide_empty' => false, 'number' => $per_page, 'offset' => ( $page - 1 ) * $per_page ) ) : array();
+				$terms = $taxonomy ? get_terms( array_merge( $term_args, array( 'taxonomy' => $taxonomy ) ) ) : array();
 				break;
 			case 'loop_skins':
 				$skins = array();
@@ -445,7 +483,7 @@ class Dukkan_Plugin_Elementor_API {
 				}, $items ) ) );
 			case 'categories':
 			default:
-				$terms = get_terms( array( 'taxonomy' => 'product_cat', 'hide_empty' => false, 'number' => $per_page, 'offset' => ( $page - 1 ) * $per_page ) );
+				$terms = get_terms( array_merge( $term_args, array( 'taxonomy' => 'product_cat' ) ) );
 				break;
 		}
 
@@ -466,8 +504,124 @@ class Dukkan_Plugin_Elementor_API {
 			if ( $thumb && function_exists( 'wp_get_attachment_image_url' ) ) {
 				$image = (string) wp_get_attachment_image_url( $thumb, 'woocommerce_thumbnail' );
 			}
-			return array( 'id' => (int) $t->term_id, 'label' => $t->name, 'image' => $image );
+			// `slug` is the value Rey's product-grid `categories`/`tags` controls
+			// actually store (`rey-query` with `field => slug`), so the app must
+			// round-trip slugs, not term ids.
+			return array( 'id' => (int) $t->term_id, 'slug' => (string) $t->slug, 'label' => $t->name, 'image' => $image );
 		}, $terms ) ) );
+	}
+
+	/**
+	 * GET /products — query the store catalog with the SAME semantics as Rey's
+	 * product-grid widget (`product-archive.php`), so the app preview can show
+	 * the correct products without reimplementing the query server-side.
+	 *
+	 * Accepts (all optional):
+	 *   type     — query_type (recent|featured|best-selling|sale|top|manual-selection|custom|…)
+	 *   category — comma-separated category SLUGS (Rey stores slugs)
+	 *   tag      — comma-separated tag SLUGS
+	 *   include  — comma-separated product ids (manual-selection)
+	 *   orderby / order / limit
+	 *
+	 * Returns the trimmed product shape the builder preview needs (id, name,
+	 * prices, price_html, images, categories, tags, on_sale, date_created).
+	 *
+	 * @param WP_REST_Request $request
+	 * @return WP_REST_Response
+	 */
+	public function get_products( WP_REST_Request $request ) {
+		if ( ! function_exists( 'wc_get_products' ) ) {
+			return rest_ensure_response( array() );
+		}
+
+		$type    = (string) $request->get_param( 'type' );
+		$orderby = (string) $request->get_param( 'orderby' );
+		$order   = (string) $request->get_param( 'order' );
+		$limit   = (int) $request->get_param( 'limit' );
+
+		$args = array(
+			'status' => 'publish',
+			'limit'  => max( 1, min( 100, $limit > 0 ? $limit : 12 ) ),
+		);
+
+		// Manual selection → exact ids, in the given order.
+		if ( 'manual-selection' === $type ) {
+			$include = array_filter( array_map( 'absint', array_map( 'trim', explode( ',', (string) $request->get_param( 'include' ) ) ) ) );
+			if ( $include ) {
+				$args['include'] = $include;
+				$args['orderby'] = 'include';
+				$args['order']   = 'asc';
+			}
+		} else {
+			// Category / tag slugs (Rey stores slugs, not ids).
+			$category = array_filter( array_map( 'trim', explode( ',', (string) $request->get_param( 'category' ) ) ) );
+			if ( $category ) {
+				$args['category'] = $category;
+			}
+			$tag = array_filter( array_map( 'trim', explode( ',', (string) $request->get_param( 'tag' ) ) ) );
+			if ( $tag ) {
+				$args['tag'] = $tag;
+			}
+
+			// Specialized query types (mirrors product-archive.php).
+			switch ( $type ) {
+				case 'featured':
+					$args['featured'] = true;
+					break;
+				case 'sale':
+					$args['on_sale'] = true;
+					break;
+				case 'best-selling':
+					$args['orderby'] = 'popularity';
+					$args['order']   = 'desc';
+					break;
+				case 'top':
+					$args['orderby'] = 'rating';
+					$args['order']   = 'desc';
+					break;
+				case 'recent':
+					$args['orderby'] = 'date';
+					$args['order']   = 'desc';
+					break;
+				default:
+					// custom / current_query / related / … use the stored order.
+					$args['orderby'] = '' !== $orderby ? $orderby : 'date';
+					$args['order']   = '' !== $order ? $order : 'desc';
+			}
+		}
+
+		$products = wc_get_products( $args );
+
+		$out = array();
+		foreach ( $products as $p ) {
+			$image_ids = array_merge(
+				$p->get_image_id() ? array( (int) $p->get_image_id() ) : array(),
+				$p->get_gallery_image_ids()
+			);
+			$categories = get_the_terms( $p->get_id(), 'product_cat' );
+			$tags       = get_the_terms( $p->get_id(), 'product_tag' );
+			$out[] = array(
+				'id'            => $p->get_id(),
+				'name'          => $p->get_name(),
+				'price'         => $p->get_price(),
+				'regular_price' => $p->get_regular_price(),
+				'sale_price'    => $p->get_sale_price(),
+				'price_html'    => $p->get_price_html(),
+				'on_sale'       => $p->is_on_sale(),
+				'date_created'  => $p->get_date_created() ? $p->get_date_created()->date( 'c' ) : '',
+				'images'        => array_values( array_map( function ( $id ) {
+					return array( 'id' => (int) $id, 'src' => (string) wp_get_attachment_url( $id ) );
+				}, $image_ids ) ),
+				'categories'    => array_values( array_map( function ( $t ) {
+					return array( 'id' => (int) $t->term_id, 'slug' => (string) $t->slug, 'name' => (string) $t->name );
+				}, is_array( $categories ) ? $categories : array() ) ),
+				'tags'          => array_values( array_map( function ( $t ) {
+					return array( 'id' => (int) $t->term_id, 'slug' => (string) $t->slug, 'name' => (string) $t->name );
+				}, is_array( $tags ) ? $tags : array() ) ),
+			);
+		}
+
+		return rest_ensure_response( $out );
 	}
 
 	/**
