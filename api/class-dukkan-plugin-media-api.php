@@ -55,6 +55,19 @@ class Dukkan_Plugin_Media_API {
 			'callback'            => array( $this, 'upload_media' ),
 			'permission_callback' => array( $this, 'check_edit_permissions' ),
 		) );
+
+		register_rest_route( self::NAMESPACE, '/sideload', array(
+			'methods'             => WP_REST_Server::CREATABLE,
+			'callback'            => array( $this, 'sideload_media' ),
+			'permission_callback' => array( $this, 'check_edit_permissions' ),
+			'args'                => array(
+				'url' => array(
+					'required'          => true,
+					'type'              => 'string',
+					'sanitize_callback' => 'esc_url_raw',
+				),
+			),
+		) );
 	}
 
 	/**
@@ -136,5 +149,57 @@ class Dukkan_Plugin_Media_API {
 			isset( $movefile['error'] ) ? $movefile['error'] : __( 'Upload failed.', 'dukkan-plugin' ),
 			array( 'status' => 500 )
 		);
+	}
+
+	/**
+	 * POST /sideload — download a remote image URL into the media library.
+	 *
+	 * Used by the website builder's "From Pinterest" flow: the app extracts the
+	 * pin's direct image URL and hands it here, and WordPress downloads it into
+	 * the store's own media library (so it survives on the live site).
+	 *
+	 * Expects JSON `{ url }`. Returns `{ id, source_url }` on success.
+	 *
+	 * @param WP_REST_Request $request
+	 * @return WP_REST_Response|WP_Error
+	 */
+	public function sideload_media( WP_REST_Request $request ) {
+		$url = $request->get_param( 'url' );
+		if ( empty( $url ) ) {
+			return new WP_Error( 'no_url', __( 'No image URL provided.', 'dukkan-plugin' ), array( 'status' => 400 ) );
+		}
+
+		require_once ABSPATH . 'wp-admin/includes/file.php';
+		require_once ABSPATH . 'wp-admin/includes/media.php';
+		require_once ABSPATH . 'wp-admin/includes/image.php';
+
+		// Download with a browser-like user agent — some image CDNs (e.g. Pinimg)
+		// reject requests from a blank/script UA.
+		add_filter( 'http_headers_useragent', function () {
+			return 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
+		} );
+
+		$tmp = download_url( $url, 60 );
+		if ( is_wp_error( $tmp ) ) {
+			return new WP_Error( 'image_download_failed', $tmp->get_error_message(), array( 'status' => 400 ) );
+		}
+
+		$file_array = array(
+			'name'     => basename( (string) wp_parse_url( $url, PHP_URL_PATH ) ?: 'pinterest.jpg' ),
+			'tmp_name' => $tmp,
+		);
+
+		$attachment_id = media_handle_sideload( $file_array, 0 );
+		if ( is_wp_error( $attachment_id ) && file_exists( $tmp ) ) {
+			@unlink( $tmp );
+		}
+		if ( is_wp_error( $attachment_id ) ) {
+			return new WP_Error( 'image_sideload_failed', $attachment_id->get_error_message(), array( 'status' => 400 ) );
+		}
+
+		return rest_ensure_response( array(
+			'id'         => (int) $attachment_id,
+			'source_url' => (string) wp_get_attachment_url( $attachment_id ),
+		) );
 	}
 }
