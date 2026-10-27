@@ -141,7 +141,7 @@ class Dukkan_Plugin_Elementor_API {
 				'type' => array(
 					'required' => false,
 					'type'     => 'string',
-					'enum'     => array( 'categories', 'tags', 'attributes', 'attribute_terms', 'loop_skins', 'pages', 'menus', 'menu_items' ),
+					'enum'     => array( 'categories', 'tags', 'attributes', 'attribute_terms', 'loop_skins', 'pages', 'menus', 'menu_items', 'products', 'brands' ),
 				),
 				'attribute_id' => array(
 					'required' => false,
@@ -445,17 +445,60 @@ class Dukkan_Plugin_Elementor_API {
 					return array( 'id' => $k, 'label' => $v );
 				}, array_keys( $skins ), array_values( $skins ) ) );
 			case 'pages':
-				$posts = get_posts( array(
+				$page_args = array(
 					'post_type'   => 'page',
 					'post_status' => 'publish',
 					'numberposts' => $per_page,
 					'offset'      => ( $page - 1 ) * $per_page,
 					'orderby'     => 'title',
 					'order'       => 'ASC',
-				) );
+				);
+				if ( '' !== $search ) {
+					$page_args['s'] = $search;
+				}
+				if ( ! empty( $ids ) ) {
+					$page_args['include']     = $ids;
+					$page_args['numberposts'] = count( $ids );
+					unset( $page_args['offset'] );
+				}
+				$posts = get_posts( $page_args );
 				return rest_ensure_response( array_values( array_map( function ( $p ) {
 					return array( 'id' => (int) $p->ID, 'label' => $p->post_title );
 				}, $posts ) ) );
+			case 'products':
+				// Searchable product list for dynamic-tag pickers (e.g. the
+				// "Product" link tag). `s` searches name; `ids` resolves a
+				// previously-saved selection back to a display name.
+				if ( ! function_exists( 'wc_get_products' ) ) {
+					return rest_ensure_response( array() );
+				}
+				$product_args = array(
+					'status'  => 'publish',
+					'limit'   => $per_page,
+					'page'    => $page,
+					'orderby' => 'title',
+					'order'   => 'ASC',
+				);
+				if ( '' !== $search ) {
+					$product_args['s'] = $search;
+				}
+				if ( ! empty( $ids ) ) {
+					$product_args['include'] = $ids;
+					unset( $product_args['limit'], $product_args['page'] );
+				}
+				$products = wc_get_products( $product_args );
+				return rest_ensure_response( array_values( array_map( function ( $p ) {
+					return array( 'id' => (int) $p->get_id(), 'label' => $p->get_name() );
+				}, $products ) ) );
+			case 'brands':
+				// Brand terms for the "Product Brand" link tag, resolved the
+				// same way Rey's Brands module does.
+				$brand_tax = get_theme_mod( 'brand_taxonomy', '' );
+				if ( ! $brand_tax || ! taxonomy_exists( $brand_tax ) ) {
+					$brand_tax = taxonomy_exists( 'product_brand' ) ? 'product_brand' : 'pa_brand';
+				}
+				$terms = get_terms( array_merge( $term_args, array( 'taxonomy' => $brand_tax ) ) );
+				break;
 			case 'menus':
 				$menus = wp_get_nav_menus();
 				if ( is_wp_error( $menus ) ) {
