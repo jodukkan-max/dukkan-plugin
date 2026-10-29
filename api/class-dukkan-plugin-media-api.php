@@ -44,6 +44,39 @@ class Dukkan_Plugin_Media_API {
 		$this->plugin_name = $plugin_name;
 		$this->version     = $version;
 		add_action( 'rest_api_init', array( $this, 'register_routes' ) );
+		// Allow SVG icons (e.g. the website builder's Lucide/Iconify picker) to
+		// be uploaded into the media library alongside raster images.
+		add_filter( 'upload_mimes', array( $this, 'allow_svg_mime' ) );
+	}
+
+	/**
+	 * Add SVG to the allowed upload MIME types, and add the sanitization helper
+	 * used to strip scripts/event handlers from uploaded icons.
+	 *
+	 * @param array $mimes Existing mime map.
+	 * @return array
+	 */
+	public function allow_svg_mime( $mimes ) {
+		$mimes['svg']  = 'image/svg+xml';
+		$mimes['svgz'] = 'image/svg+xml';
+		return $mimes;
+	}
+
+	/**
+	 * Best-effort sanitization of an uploaded SVG: removes <script> blocks and
+	 * on* event attributes. Not a full XML parser, but enough for icons sourced
+	 * from trusted icon sets.
+	 *
+	 * @param string $path Temp file path.
+	 */
+	private function sanitize_svg_file( $path ) {
+		$svg = @file_get_contents( $path );
+		if ( false === $svg ) {
+			return;
+		}
+		$svg = preg_replace( '#<script\b[^>]*>.*?</script>#is', '', $svg );
+		$svg = preg_replace( '#\son\w+\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)#i', '', $svg );
+		@file_put_contents( $path, $svg );
 	}
 
 	/**
@@ -68,6 +101,48 @@ class Dukkan_Plugin_Media_API {
 				),
 			),
 		) );
+
+		register_rest_route( self::NAMESPACE, '/list', array(
+			'methods'             => WP_REST_Server::READABLE,
+			'callback'            => array( $this, 'list_media' ),
+			'permission_callback' => array( $this, 'check_edit_permissions' ),
+		) );
+	}
+
+	/**
+	 * GET /list — list media-library attachments (optionally filtered to a MIME
+	 * type via `?mime_type=image/svg+xml`). Returns `{ id, source_url, mime_type,
+	 * title }` per attachment, newest first.
+	 *
+	 * @param WP_REST_Request $request
+	 * @return WP_REST_Response|WP_Error
+	 */
+	public function list_media( WP_REST_Request $request ) {
+		$mime_type = (string) $request->get_param( 'mime_type' );
+
+		$args = array(
+			'post_type'      => 'attachment',
+			'post_status'    => 'inherit',
+			'posts_per_page' => 100,
+			'orderby'        => 'date',
+			'order'          => 'DESC',
+		);
+		if ( '' !== $mime_type ) {
+			$args['post_mime_type'] = $mime_type;
+		}
+
+		$attachments = get_posts( $args );
+		$items       = array();
+		foreach ( $attachments as $att ) {
+			$items[] = array(
+				'id'         => (int) $att->ID,
+				'source_url' => (string) wp_get_attachment_url( $att->ID ),
+				'mime_type'  => (string) $att->post_mime_type,
+				'title'      => (string) $att->post_title,
+			);
+		}
+
+		return rest_ensure_response( $items );
 	}
 
 	/**
@@ -109,6 +184,12 @@ class Dukkan_Plugin_Media_API {
 		$check = wp_check_filetype_and_ext( $file['tmp_name'], $file['name'] );
 		if ( empty( $check['type'] ) || 0 !== strpos( $check['type'], 'image/' ) ) {
 			return new WP_Error( 'invalid_type', __( 'Only image files are allowed.', 'dukkan-plugin' ), array( 'status' => 400 ) );
+		}
+
+		// Sanitize SVG uploads: strip scripts/event handlers so an uploaded icon
+		// can never carry XSS payloads into the store.
+		if ( 'image/svg+xml' === $check['type'] ) {
+			$this->sanitize_svg_file( $file['tmp_name'] );
 		}
 
 		require_once ABSPATH . 'wp-admin/includes/file.php';

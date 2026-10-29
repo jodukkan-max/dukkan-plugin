@@ -1513,16 +1513,37 @@ class Dukkan_Plugin_Elementor_API {
 				);
 
 			case 'icons':
-				// Icon picker value: `{value: 'fas fa-star', library: 'fa-solid'}`.
+				// Icon picker value: either a FontAwesome class string
+				// `{value: 'fas fa-star', library: 'fa-solid'}` OR an uploaded
+				// media/SVG map `{value: {id, url, size}, library: 'svg'}` (from
+				// the Lucide/Iconify picker). The media form must be preserved as
+				// a nested array — casting it to string produces the literal
+				// "Array" and corrupts the icon.
 				if ( is_string( $value ) ) {
 					$value = array( 'value' => $value, 'library' => '' );
 				}
 				if ( ! is_array( $value ) ) {
 					return $this->invalid( 'expected {value, library}' );
 				}
+
+				$library = isset( $value['library'] ) ? sanitize_text_field( (string) $value['library'] ) : '';
+				$inner   = isset( $value['value'] ) ? $value['value'] : '';
+
+				// SVG / uploaded media icon — keep the nested {id,url,size} map.
+				if ( 'svg' === $library && is_array( $inner ) ) {
+					return array(
+						'value'   => array(
+							'id'   => isset( $inner['id'] ) && '' !== $inner['id'] ? absint( $inner['id'] ) : '',
+							'url'  => isset( $inner['url'] ) ? esc_url_raw( (string) $inner['url'] ) : '',
+							'size' => isset( $inner['size'] ) ? sanitize_text_field( (string) $inner['size'] ) : 'full',
+						),
+						'library' => 'svg',
+					);
+				}
+
 				return array(
-					'value'   => isset( $value['value'] ) ? sanitize_text_field( (string) $value['value'] ) : '',
-					'library' => isset( $value['library'] ) ? sanitize_text_field( (string) $value['library'] ) : '',
+					'value'   => is_string( $inner ) ? sanitize_text_field( $inner ) : '',
+					'library' => $library,
 				);
 
 			case 'text_shadow':
