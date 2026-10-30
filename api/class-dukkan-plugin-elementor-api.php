@@ -128,6 +128,24 @@ class Dukkan_Plugin_Elementor_API {
 			'permission_callback' => array( $this, 'check_permissions' ),
 		) );
 
+		register_rest_route( self::NAMESPACE, '/pages/(?P<id>\d+)/settings', array(
+			'methods'             => WP_REST_Server::READABLE,
+			'callback'            => array( $this, 'get_page_settings' ),
+			'permission_callback' => array( $this, 'check_permissions' ),
+		) );
+
+		register_rest_route( self::NAMESPACE, '/pages/(?P<id>\d+)/settings', array(
+			'methods'             => 'PATCH, PUT, POST',
+			'callback'            => array( $this, 'update_page_settings' ),
+			'permission_callback' => array( $this, 'check_edit_permissions' ),
+			'args'                => array(
+				'settings' => array(
+					'required' => true,
+					'type'     => 'object',
+				),
+			),
+		) );
+
 		register_rest_route( self::NAMESPACE, '/sections', array(
 			'methods'             => WP_REST_Server::READABLE,
 			'callback'            => array( $this, 'list_sections' ),
@@ -378,6 +396,119 @@ class Dukkan_Plugin_Elementor_API {
 		}
 
 		return rest_ensure_response( $this->format_page( get_post( $post_id ), (int) get_option( 'page_on_front' ) ) );
+	}
+
+	/**
+	 * GET /pages/{id}/settings — the page's "General" settings (title, status,
+	 * featured image, allow comments, hide title, page layout/template).
+	 *
+	 * @param WP_REST_Request $request
+	 * @return WP_REST_Response|WP_Error
+	 */
+	public function get_page_settings( WP_REST_Request $request ) {
+		$post_id  = (int) $request['id'];
+		$document = $this->get_document( $post_id );
+		if ( is_wp_error( $document ) ) {
+			return $document;
+		}
+		return rest_ensure_response( $this->read_page_settings( $post_id ) );
+	}
+
+	/**
+	 * PATCH|PUT|POST /pages/{id}/settings — update the page's "General" settings.
+	 *
+	 * Body `{ "settings": { "title", "status", "featured_image", "comment_status",
+	 * "hide_title", "page_layout" } }`. Only provided keys are written; others are
+	 * left untouched. Returns the full settings object.
+	 *
+	 * @param WP_REST_Request $request
+	 * @return WP_REST_Response|WP_Error
+	 */
+	public function update_page_settings( WP_REST_Request $request ) {
+		$post_id  = (int) $request['id'];
+		$document = $this->get_document( $post_id );
+		if ( is_wp_error( $document ) ) {
+			return $document;
+		}
+
+		$settings = $request->get_param( 'settings' );
+		if ( ! is_array( $settings ) ) {
+			return new WP_Error( 'dukkan_elementor_invalid_settings', __( 'settings must be an object.', 'dukkan-plugin' ), array( 'status' => 400 ) );
+		}
+
+		$post_data = array( 'ID' => $post_id );
+		if ( array_key_exists( 'title', $settings ) ) {
+			$post_data['post_title'] = sanitize_text_field( (string) $settings['title'] );
+		}
+		if ( array_key_exists( 'status', $settings ) && in_array( $settings['status'], array( 'publish', 'draft', 'private', 'pending', 'future' ), true ) ) {
+			$post_data['post_status'] = $settings['status'];
+		}
+		if ( array_key_exists( 'comment_status', $settings ) ) {
+			$post_data['comment_status'] = 'open' === $settings['comment_status'] ? 'open' : 'closed';
+		}
+		if ( count( $post_data ) > 1 ) {
+			wp_update_post( $post_data, true );
+		}
+
+		// Featured image (attachment id; 0/'' removes it).
+		if ( array_key_exists( 'featured_image', $settings ) ) {
+			$thumb_id = (int) $settings['featured_image'];
+			if ( $thumb_id > 0 ) {
+				set_post_thumbnail( $post_id, $thumb_id );
+			} else {
+				delete_post_thumbnail( $post_id );
+			}
+		}
+
+		// hide_title lives in Elementor's page settings meta.
+		$page_settings = get_post_meta( $post_id, '_elementor_page_settings', true );
+		if ( ! is_array( $page_settings ) ) {
+			$page_settings = array();
+		}
+		if ( array_key_exists( 'hide_title', $settings ) ) {
+			$page_settings['hide_title'] = $settings['hide_title'] ? 'yes' : '';
+		}
+		update_post_meta( $post_id, '_elementor_page_settings', $page_settings );
+
+		// Page layout = the WordPress page template slug.
+		if ( array_key_exists( 'page_layout', $settings ) ) {
+			$template = sanitize_text_field( (string) $settings['page_layout'] );
+			if ( '' === $template || 'default' === $template ) {
+				update_post_meta( $post_id, '_wp_page_template', '' );
+			} else {
+				update_post_meta( $post_id, '_wp_page_template', $template );
+			}
+		}
+
+		return rest_ensure_response( $this->read_page_settings( $post_id ) );
+	}
+
+	/**
+	 * Build the "General" settings array for a page.
+	 *
+	 * @param int $post_id
+	 * @return array
+	 */
+	private function read_page_settings( $post_id ) {
+		$post          = get_post( $post_id );
+		$page_settings = get_post_meta( $post_id, '_elementor_page_settings', true );
+		if ( ! is_array( $page_settings ) ) {
+			$page_settings = array();
+		}
+		$template = (string) get_post_meta( $post_id, '_wp_page_template', true );
+		if ( '' === $template ) {
+			$template = 'default';
+		}
+
+		return array(
+			'title'          => html_entity_decode( get_the_title( $post ), ENT_QUOTES, 'UTF-8' ),
+			'status'         => $post->post_status,
+			'featured_image' => (int) get_post_thumbnail_id( $post_id ),
+			'featured_url'   => (string) get_the_post_thumbnail_url( $post_id, 'full' ),
+			'comment_status' => $post->comment_status,
+			'hide_title'     => ! empty( $page_settings['hide_title'] ) ? 'yes' : '',
+			'page_layout'    => $template,
+		);
 	}
 
 	/**
