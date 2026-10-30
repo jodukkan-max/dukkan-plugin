@@ -109,6 +109,19 @@ class Dukkan_Plugin_Elementor_API {
 			'permission_callback' => array( $this, 'check_permissions' ),
 		) );
 
+		register_rest_route( self::NAMESPACE, '/pages', array(
+			'methods'             => WP_REST_Server::CREATABLE,
+			'callback'            => array( $this, 'create_page' ),
+			'permission_callback' => array( $this, 'check_create_permissions' ),
+			'args'                => array(
+				'title' => array(
+					'required'          => true,
+					'type'              => 'string',
+					'sanitize_callback' => 'sanitize_text_field',
+				),
+			),
+		) );
+
 		register_rest_route( self::NAMESPACE, '/pages/(?P<id>\d+)', array(
 			'methods'             => WP_REST_Server::READABLE,
 			'callback'            => array( $this, 'get_page' ),
@@ -279,6 +292,24 @@ class Dukkan_Plugin_Elementor_API {
 		return true;
 	}
 
+	/**
+	 * Permission callback for creating a new page — WooCommerce edit access plus
+	 * the ability to publish pages.
+	 *
+	 * @param WP_REST_Request $request
+	 * @return bool|WP_Error
+	 */
+	public function check_create_permissions( WP_REST_Request $request ) {
+		if ( ! wc_rest_check_manager_permissions( 'settings', 'edit' ) || ! current_user_can( 'edit_pages' ) ) {
+			return new WP_Error(
+				'woocommerce_rest_cannot_create',
+				__( 'Sorry, you cannot create a page.', 'dukkan-plugin' ),
+				array( 'status' => rest_authorization_required_code() )
+			);
+		}
+		return true;
+	}
+
 	// -------------------------------------------------------------------------
 	// Callbacks
 	// -------------------------------------------------------------------------
@@ -308,6 +339,45 @@ class Dukkan_Plugin_Elementor_API {
 			return (int) $b['is_front_page'] - (int) $a['is_front_page'];
 		} );
 		return rest_ensure_response( $items );
+	}
+
+	/**
+	 * POST /pages — create a new WordPress page marked as Elementor-built (so it
+	 * shows up in the editor's Pages list and opens in the builder).
+	 *
+	 * Body: `{ "title": "About Us" }`. Returns the formatted page (same shape as
+	 * `GET /pages/{id}`, without `elements`).
+	 *
+	 * @param WP_REST_Request $request
+	 * @return WP_REST_Response|WP_Error
+	 */
+	public function create_page( WP_REST_Request $request ) {
+		$title = trim( (string) $request->get_param( 'title' ) );
+		if ( '' === $title ) {
+			return new WP_Error( 'dukkan_elementor_empty_title', __( 'Page title is required.', 'dukkan-plugin' ), array( 'status' => 400 ) );
+		}
+
+		$post_id = wp_insert_post( array(
+			'post_type'    => 'page',
+			'post_title'   => $title,
+			'post_status'  => 'draft',
+			'post_content' => '',
+		), true );
+
+		if ( is_wp_error( $post_id ) ) {
+			return $post_id;
+		}
+
+		// Mark it as an Elementor page with an empty element tree, so
+		// `list_pages` / `get_page` treat it like any other builder page.
+		update_post_meta( $post_id, '_elementor_edit_mode', 'builder' );
+		update_post_meta( $post_id, '_elementor_template_type', 'wp-page' );
+		update_post_meta( $post_id, '_elementor_data', array() );
+		if ( defined( 'ELEMENTOR_VERSION' ) ) {
+			update_post_meta( $post_id, '_elementor_version', ELEMENTOR_VERSION );
+		}
+
+		return rest_ensure_response( $this->format_page( get_post( $post_id ), (int) get_option( 'page_on_front' ) ) );
 	}
 
 	/**
@@ -550,7 +620,7 @@ class Dukkan_Plugin_Elementor_API {
 			// `slug` is the value Rey's product-grid `categories`/`tags` controls
 			// actually store (`rey-query` with `field => slug`), so the app must
 			// round-trip slugs, not term ids.
-			return array( 'id' => (int) $t->term_id, 'slug' => (string) $t->slug, 'label' => $t->name, 'image' => $image );
+			return array( 'id' => (int) $t->term_id, 'slug' => (string) $t->slug, 'label' => $t->name, 'image' => $image, 'parent' => (int) $t->parent );
 		}, $terms ) ) );
 	}
 
