@@ -16,7 +16,7 @@
  * Plugin Name:       Dukkan
  * Plugin URI:        https://dukkanjo.com
  * Description:       WooCommerce companion plugin — REST APIs, product add-ons, dynamic pricing (simple, bulk, BOGO), loyalty points, AI chatbot, TranslatePress integration.
- * Version:           1.0.58
+ * Version:           1.0.59
  * Author:            Dukkan Ecommerce LLC
  * Author URI:        https://dukkanjo.com/
  * License:           GPL-2.0+

@@ -378,7 +378,7 @@ class Dukkan_Plugin_Elementor_API {
 		$post_id = wp_insert_post( array(
 			'post_type'    => 'page',
 			'post_title'   => $title,
-			'post_status'  => 'draft',
+			'post_status'  => 'publish',
 			'post_content' => '',
 		), true );
 
@@ -391,6 +391,8 @@ class Dukkan_Plugin_Elementor_API {
 		update_post_meta( $post_id, '_elementor_edit_mode', 'builder' );
 		update_post_meta( $post_id, '_elementor_template_type', 'wp-page' );
 		update_post_meta( $post_id, '_elementor_data', array() );
+		// New pages always start with the title hidden (hide_title on).
+		update_post_meta( $post_id, '_elementor_page_settings', array( 'hide_title' => 'yes' ) );
 		if ( defined( 'ELEMENTOR_VERSION' ) ) {
 			update_post_meta( $post_id, '_elementor_version', ELEMENTOR_VERSION );
 		}
