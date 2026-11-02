@@ -42,6 +42,11 @@ class Dukkan_Plugin_Elementor_API {
 		'text-editors' => 'text-editor',
 		'images'       => 'image',
 		'buttons'      => 'button',
+		'tabs'         => 'tabs',
+		'accordions'   => 'accordion',
+		'icons'        => 'icon',
+		'image-boxes'  => 'image-box',
+		'icon-lists'   => 'icon-list',
 		'rey-buttons'  => 'reycore-button-skew',
 		'icon-boxes'   => 'icon-box',
 		'rey-marquees' => 'reycore-marquee',
@@ -149,6 +154,12 @@ class Dukkan_Plugin_Elementor_API {
 		register_rest_route( self::NAMESPACE, '/sections', array(
 			'methods'             => WP_REST_Server::READABLE,
 			'callback'            => array( $this, 'list_sections' ),
+			'permission_callback' => array( $this, 'check_permissions' ),
+		) );
+
+		register_rest_route( self::NAMESPACE, '/plugins', array(
+			'methods'             => WP_REST_Server::READABLE,
+			'callback'            => array( $this, 'get_plugins_status' ),
 			'permission_callback' => array( $this, 'check_permissions' ),
 		) );
 
@@ -557,6 +568,34 @@ class Dukkan_Plugin_Elementor_API {
 		}
 
 		return rest_ensure_response( $items );
+	}
+
+	/**
+	 * GET /plugins — whether optional plugins the app's editor depends on are
+	 * active on this site. The app uses this to hide Rey-only widgets when the
+	 * `rey-core` plugin isn't installed/active.
+	 *
+	 * @param WP_REST_Request $request
+	 * @return WP_REST_Response
+	 */
+	public function get_plugins_status( WP_REST_Request $request ) {
+		return rest_ensure_response( array(
+			'elementor' => true, // the route only registers once Elementor is loaded.
+			'rey'       => $this->has_rey_core(),
+		) );
+	}
+
+	/**
+	 * Whether the `rey-core` plugin (Rey theme core) is active. `rey-core`
+	 * registers the `rey-global-sections` post type on load, so its presence is
+	 * the same signal the rest of this class already relies on.
+	 *
+	 * @return bool
+	 */
+	private function has_rey_core() {
+		return post_type_exists( 'rey-global-sections' )
+			|| class_exists( 'ReyCore' )
+			|| defined( 'REY_CORE_VERSION' );
 	}
 
 	/**
