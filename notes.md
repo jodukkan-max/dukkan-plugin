@@ -1,10 +1,19 @@
 # Dukkan Plugin — Work Log & Structure
 
-> Last updated: v1.0.51 — October 9, 2026 — WooCommerce API key revoke endpoint
+> Last updated: v1.0.60 (patch) — November 5, 2026 — fix stale `DUKKAN_PLUGIN_VERSION` constant
 
 ---
 
 ## Recent Changes
+
+### v1.0.60 (patch) — Fix stale `DUKKAN_PLUGIN_VERSION` constant (false "update available")
+
+- **Bug**: the plugin header `Version: 1.0.60` and the internal constant `DUKKAN_PLUGIN_VERSION` drifted apart — the header was bumped to `1.0.60` but the constant stayed at `1.0.58`. The GitHub updater (`class-dukkan-plugin-updater.php`) compares `version.json`'s `1.0.60` against `DUKKAN_PLUGIN_VERSION` (`1.0.58`), saw `1.0.60 > 1.0.58`, and showed a perpetual "update available" even though the installed plugin was already 1.0.60.
+- **Fix**: `define( 'DUKKAN_PLUGIN_VERSION', '1.0.60' );` — now matches the header. Applied locally + in-place across all 21 live sites.
+- ⚠️ **Prevention rule (IMPORTANT)**: when bumping the plugin version, you MUST update **BOTH** places in `dukkan-plugin.php`:
+  1. The header `* Version:` (read by WordPress as the installed version)
+  2. The constant `define( 'DUKKAN_PLUGIN_VERSION', 'x.y.z' );` (read by the GitHub updater)
+  If only one is bumped, either WordPress shows a false "update available" (constant stale) or the updater fails to offer a real update (header stale). Also, after ANY edit to a live PHP file, always run `php -l` and confirm the site returns 200 before declaring it done.
 
 ### v1.0.51 — Revoke WooCommerce API keys
 
