@@ -61,6 +61,7 @@ class Dukkan_Plugin_Elementor_API {
 		'rey-sliders'  => 'reycore-basic-slider',
 		'rey-grids'    => 'reycore-product-grid',
 		'rey-carousels' => 'reycore-carousel',
+		'rey-card-grids' => 'reycore-grid',
 	);
 
 	/**

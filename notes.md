@@ -1,10 +1,15 @@
 # Dukkan Plugin — Work Log & Structure
 
-> Last updated: v1.0.60 (patch) — November 5, 2026 — fix stale `DUKKAN_PLUGIN_VERSION` constant
+> Last updated: v1.0.61 — November 6, 2026 — Elementor route for Rey `reycore-grid` widget
 
 ---
 
 ## Recent Changes
+
+### v1.0.61 — Elementor API: `rey-card-grids` → `reycore-grid` widget route
+
+- The mobile website builder added a `reycore-grid` widget (the standalone Rey card-grid block). The plugin's Elementor API now maps the `rey-card-grids` REST route slug to `reycore-grid` in `api/class-dukkan-plugin-elementor-api.php`'s `WIDGETS` map, so the app can fetch/save its controls the same way it does for `rey-sliders`, `rey-grids` and `rey-carousels`.
+- **Deployed manually to `thecoach-jo.com` only** (docroot `/var/www/soccer.dukkan.pro`). Other sites will pick it up on their next GitHub updater check (or manual update).
 
 ### v1.0.60 (patch) — Fix stale `DUKKAN_PLUGIN_VERSION` constant (false "update available")
 
