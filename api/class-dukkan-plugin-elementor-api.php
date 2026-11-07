@@ -238,6 +238,12 @@ class Dukkan_Plugin_Elementor_API {
 			'permission_callback' => array( $this, 'check_permissions' ),
 		) );
 
+		register_rest_route( self::NAMESPACE, '/loop-theme', array(
+			'methods'             => WP_REST_Server::READABLE,
+			'callback'            => array( $this, 'get_loop_theme' ),
+			'permission_callback' => array( $this, 'check_permissions' ),
+		) );
+
 		foreach ( self::WIDGETS as $slug => $widget_type ) {
 			register_rest_route( self::NAMESPACE, '/widgets/' . $widget_type . '/controls', array(
 				'methods'             => WP_REST_Server::READABLE,
@@ -808,9 +814,11 @@ class Dukkan_Plugin_Elementor_API {
 	 *   tag      — comma-separated tag SLUGS
 	 *   include  — comma-separated product ids (manual-selection)
 	 *   orderby / order / limit
+	 *   image_size — WooCommerce image size (default `woocommerce_thumbnail`)
 	 *
 	 * Returns the trimmed product shape the builder preview needs (id, name,
-	 * prices, price_html, images, categories, tags, on_sale, date_created).
+	 * prices, price_html, images, categories, tags, on_sale, average_rating,
+	 * rating_count, date_created).
 	 *
 	 * @param WP_REST_Request $request
 	 * @return WP_REST_Response
@@ -824,6 +832,14 @@ class Dukkan_Plugin_Elementor_API {
 		$orderby = (string) $request->get_param( 'orderby' );
 		$order   = (string) $request->get_param( 'order' );
 		$limit   = (int) $request->get_param( 'limit' );
+
+		// Rey product-grid image size (Group_Control_Image_Size), default
+		// `woocommerce_thumbnail`. The app passes it through so the preview uses
+		// the same cropped size as the live card (not the full-size original).
+		$image_size = (string) $request->get_param( 'image_size' );
+		if ( '' === $image_size ) {
+			$image_size = 'woocommerce_thumbnail';
+		}
 
 		$args = array(
 			'status' => 'publish',
@@ -894,9 +910,20 @@ class Dukkan_Plugin_Elementor_API {
 				'sale_price'    => $p->get_sale_price(),
 				'price_html'    => $p->get_price_html(),
 				'on_sale'       => $p->is_on_sale(),
+				'average_rating' => (string) $p->get_average_rating(),
+				'rating_count'   => (int) $p->get_rating_count(),
 				'date_created'  => $p->get_date_created() ? $p->get_date_created()->date( 'c' ) : '',
-				'images'        => array_values( array_map( function ( $id ) {
-					return array( 'id' => (int) $id, 'src' => (string) wp_get_attachment_url( $id ) );
+				'images'        => array_values( array_map( function ( $id ) use ( $image_size ) {
+					// Sized thumbnail (Rey `image_size`, default woocommerce_thumbnail),
+					// falling back to the full original when the size isn't registered.
+					$sized = function_exists( 'wp_get_attachment_image_src' ) ? wp_get_attachment_image_src( (int) $id, $image_size ) : false;
+					$src   = is_array( $sized ) && ! empty( $sized[0] ) ? (string) $sized[0] : (string) wp_get_attachment_url( $id );
+					return array(
+						'id'     => (int) $id,
+						'src'    => $src,
+						'width'  => is_array( $sized ) && ! empty( $sized[1] ) ? (int) $sized[1] : 0,
+						'height' => is_array( $sized ) && ! empty( $sized[2] ) ? (int) $sized[2] : 0,
+					);
 				}, $image_ids ) ),
 				'categories'    => array_values( array_map( function ( $t ) {
 					return array( 'id' => (int) $t->term_id, 'slug' => (string) $t->slug, 'name' => (string) $t->name );
@@ -974,6 +1001,183 @@ class Dukkan_Plugin_Elementor_API {
 		return rest_ensure_response( array(
 			'colors'     => $colors,
 			'typography' => $typography,
+		) );
+	}
+
+	/**
+	 * GET /loop-theme — the theme's product-loop (card) settings that the
+	 * product-grid widget INHERITS from the Customizer, so the app can render
+	 * the card with the same image ratio + typography as the live store.
+	 *
+	 * Sources:
+	 *   - image: WooCommerce `woocommerce_thumbnail` registered size
+	 *     (Customizer > WooCommerce > Product Images) + cropping option.
+	 *   - title: `typography_catalog_product_title` (Customizer > Catalog > Title).
+	 *   - category: `.rey-productCategories` (theme CSS — 0.625rem/bold/uppercase).
+	 *   - price: `loop_price_typo` + `loop_price_color`.
+	 *   - flags: `loop_show_categories`, `loop_show_sale_label`.
+	 *
+	 * @return WP_REST_Response
+	 */
+	public function get_loop_theme( WP_REST_Request $request ) {
+		global $_wp_additional_image_sizes;
+
+		$thumb_size = isset( $_wp_additional_image_sizes['woocommerce_thumbnail'] )
+			? $_wp_additional_image_sizes['woocommerce_thumbnail']
+			: array( 'width' => (int) get_option( 'woocommerce_thumbnail_image_width', 450 ), 'height' => (int) get_option( 'woocommerce_thumbnail_image_height', 450 ), 'crop' => 1 );
+		$thumb_width  = isset( $thumb_size['width'] ) ? (int) $thumb_size['width'] : 450;
+		$thumb_height = isset( $thumb_size['height'] ) ? (int) $thumb_size['height'] : 450;
+
+		$title_typo = get_theme_mod( 'typography_catalog_product_title', array() );
+		$price_typo = get_theme_mod( 'loop_price_typo', array() );
+
+		// Font size: a theme-mod value is "16px" (or a bare number). PHP's float
+		// cast keeps the leading numeric part, so "16px" → 16.0.
+		// NOTE: an array always means a typography group — read its `font-size`
+		// key (even when empty → fallback), never string-cast the whole array
+		// (which yields "Array" → 0.0 and makes the text render at 0px).
+		$px = function ( $raw, $fallback ) {
+			if ( is_array( $raw ) ) {
+				$v = trim( (string) ( isset( $raw['font-size'] ) ? $raw['font-size'] : '' ) );
+			} else {
+				$v = trim( (string) $raw );
+			}
+			if ( '' === $v ) {
+				return $fallback;
+			}
+			return (float) $v;
+		};
+
+		$weight = function ( $raw, $fallback ) {
+			if ( is_array( $raw ) ) {
+				$raw = isset( $raw['font-weight'] ) ? $raw['font-weight'] : '';
+			}
+			$raw = trim( (string) $raw );
+			if ( '' === $raw || '0' === $raw ) {
+				return $fallback;
+			}
+			return (int) $raw;
+		};
+
+		// Responsive typography cascade (mobile → tablet → base), mirroring
+		// Elementor's media queries. `_mobile`/`_tablet` are theme mods with the
+		// same shape as the base (empty = inherit the wider breakpoint).
+		$mobile_size = function ( $base, $fallback ) use ( $px ) {
+			$m = get_theme_mod( $base . '_mobile', array() );
+			$t = get_theme_mod( $base . '_tablet', array() );
+			$base_val = get_theme_mod( $base, array() );
+			$v = $px( $m, null );
+			if ( null !== $v ) {
+				return $v;
+			}
+			$v = $px( $t, null );
+			if ( null !== $v ) {
+				return $v;
+			}
+			return $px( $base_val, $fallback );
+		};
+		$mobile_weight = function ( $base, $fallback ) use ( $weight ) {
+			$m = get_theme_mod( $base . '_mobile', array() );
+			$t = get_theme_mod( $base . '_tablet', array() );
+			$base_val = get_theme_mod( $base, array() );
+			$w = $weight( $m, 0 );
+			if ( 0 !== $w ) {
+				return $w;
+			}
+			$w = $weight( $t, 0 );
+			if ( 0 !== $w ) {
+				return $w;
+			}
+			return $weight( $base_val, $fallback );
+		};
+
+		// Resolve an Elementor global reference `var(--e-global-color-<id>)`
+		// (or a bare `<id>`) to its hex via the active kit's color palette.
+		$resolve_color = function ( $raw, $fallback ) {
+			$raw = trim( (string) $raw );
+			if ( '' === $raw ) {
+				return $fallback;
+			}
+			if ( preg_match( '/--e-global-color-([a-z0-9]+)/', $raw, $m ) ) {
+				$id = $m[1];
+				if ( class_exists( '\Elementor\Plugin' ) && \Elementor\Plugin::$instance->kits_manager ) {
+					$kit = \Elementor\Plugin::$instance->kits_manager->get_active_kit();
+					if ( $kit ) {
+						$settings = $kit->get_settings();
+						foreach ( array( 'system_colors', 'custom_colors' ) as $group ) {
+							if ( empty( $settings[ $group ] ) ) {
+								continue;
+							}
+							foreach ( $settings[ $group ] as $c ) {
+								if ( ( $c['_id'] ?? '' ) === $id && ! empty( $c['color'] ) ) {
+									return (string) $c['color'];
+								}
+							}
+						}
+					}
+				}
+			}
+			// Plain hex/color value.
+			if ( preg_match( '/^#([0-9a-fA-F]{3,8})$/', $raw ) ) {
+				return $raw;
+			}
+			return $fallback;
+		};
+
+		$title_color = is_array( $title_typo ) && ! empty( $title_typo['color'] ) ? (string) $title_typo['color'] : '#252525';
+		$price_color_raw = (string) get_theme_mod( 'loop_price_color', '' );
+
+		return rest_ensure_response( array(
+			'skin'     => (string) get_theme_mod( 'loop_skin', 'basic' ),
+			'image'    => array(
+				'width'  => $thumb_width,
+				'height' => $thumb_height,
+				'size'   => 'woocommerce_thumbnail',
+			),
+			'title'    => array(
+				'font_size'    => $px( $title_typo, 16 ),
+				'font_weight'  => $weight( $title_typo, 500 ),
+				'color'        => $resolve_color( $title_color, '#252525' ),
+				'lines'        => (string) get_theme_mod( 'product_titles_height', '' ),
+				// Responsive variants (mobile → tablet → base cascade).
+				'font_size_mobile'   => $mobile_size( 'typography_catalog_product_title', 16 ),
+				'font_weight_mobile' => $mobile_weight( 'typography_catalog_product_title', 500 ),
+			),
+			'category' => array(
+				'font_size'   => 10, // .rey-productCategories { font-size: .625rem }
+				'font_weight' => 700, // var(--font-weight-bold)
+				'uppercase'   => true,
+			),
+			'price'    => array(
+				'font_size'   => $px( $price_typo, 16 ),
+				'font_weight' => $weight( $price_typo, 600 ),
+				'color'       => $resolve_color( $price_color_raw, '#252525' ),
+				'font_size_mobile'   => $mobile_size( 'loop_price_typo', 16 ),
+				'font_weight_mobile' => $mobile_weight( 'loop_price_typo', 600 ),
+			),
+			'show_prices'    => '2' !== (string) get_theme_mod( 'loop_show_prices', '1' ),
+			'show_categories' => '1' === (string) get_theme_mod( 'loop_show_categories', '2' ),
+			'ratings'        => (string) get_theme_mod( 'loop_ratings', '2' ),
+			'sale_label'     => (string) get_theme_mod( 'loop_show_sale_label', 'percentage' ),
+			'add_to_cart'    => array(
+				'enabled'        => (bool) get_theme_mod( 'loop_add_to_cart', true ),
+				'text'           => (string) get_theme_mod( 'loop_atc__text', '' ),
+				'style'          => (string) get_theme_mod( 'loop_add_to_cart_style', '' ),
+				'show_on_mobile' => (bool) get_theme_mod( 'loop_add_to_cart_mobile', false ),
+			),
+			'new_badge'      => array(
+				'enabled'  => '1' === (string) get_theme_mod( 'loop_new_badge', '1' ),
+				'duration' => (int) get_theme_mod( 'loop_new_badge_duration', 30 ),
+				'text'     => (string) get_theme_mod( 'loop_new_badge_text', 'NEW' ),
+			),
+			'stock_display'  => (string) get_theme_mod( 'loop_stock_display', 'badge_so' ),
+			'card_background' => (string) get_theme_mod( 'proto_loop_bg_color', get_theme_mod( 'loop_basic_bg_color', get_theme_mod( 'loop_bg_color', '' ) ) ),
+			'content_padding' => (int) get_theme_mod( 'loop_item_inner_padding', 30 ),
+			// Badge colors — Rey CSS defaults (`.rey-discount`, `.rey-itemBadge`),
+			// overridable via Customizer.
+			'discount_color' => $resolve_color( (string) get_theme_mod( 'loop_discount_label_color', '' ), '#cf2929' ),
+			'new_badge_color' => '#101010',
+			'new_badge_background' => '#fafafa',
 		) );
 	}
 

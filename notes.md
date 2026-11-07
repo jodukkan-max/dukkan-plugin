@@ -1,10 +1,19 @@
 # Dukkan Plugin — Work Log & Structure
 
-> Last updated: v1.0.61 — November 6, 2026 — Elementor route for Rey `reycore-grid` widget
+> Last updated: v1.0.62 — November 7, 2026 — `/products` sized thumbnails + rating, `/loop-theme`
 
 ---
 
 ## Recent Changes
+
+### v1.0.62 — `/products` sized thumbnails + rating, new `/loop-theme` endpoint
+
+- The app's product-grid preview was showing the **full-size** product photo, a fake 5-star rating, and wrong title/label sizes. Rey's product grid inherits these from the theme: `woocommerce_thumbnail` (330×440 cropped on thecoach-jo.com), title `typography_catalog_product_title` (16px/500), category `.rey-productCategories` (0.625rem=10px/bold/uppercase), price `loop_price_typo` (16px).
+- `GET /dukkan-elementor/v1/products` now:
+  - accepts an `image_size` param (default `woocommerce_thumbnail`) and returns each image at that size (`wp_get_attachment_image_src`, falling back to the full URL), plus `width`/`height`;
+  - returns `average_rating` + `rating_count` per product.
+- **NEW** `GET /dukkan-elementor/v1/loop-theme` returns the theme-inherited product-loop settings the grid needs, mirroring **Customizer > WooCommerce > Catalog Settings > Product Layout & Components** (`catalog-product.php`): `skin` (`loop_skin`), `image` (registered `woocommerce_thumbnail` width/height), `title`/`category`/`price` typography (font-size/weight/color — Elementor `var(--e-global-color-*)` references resolved to hex via the active kit, with `*_mobile` responsive variants), plus component flags: `show_prices` (`loop_show_prices`), `show_categories` (`loop_show_categories`), `ratings` (`loop_ratings`), `sale_label` (`loop_show_sale_label`), `add_to_cart` (`loop_add_to_cart` + `loop_atc__text` + `loop_add_to_cart_style` + `loop_add_to_cart_mobile`), `new_badge` (`loop_new_badge` + `loop_new_badge_duration` + `loop_new_badge_text`), `stock_display` (`loop_stock_display`), badge colors (`discount_color`, `new_badge_color`, `new_badge_background`), and the proto skin's `card_background` (`proto_loop_bg_color`) + `content_padding` (`loop_item_inner_padding`).
+- Deployed to `thecoach-jo.com` only (docroot `/var/www/soccer.dukkan.pro`). Other sites pick it up on their next GitHub updater check.
 
 ### v1.0.61 — Elementor API: `rey-card-grids` → `reycore-grid` widget route
 
