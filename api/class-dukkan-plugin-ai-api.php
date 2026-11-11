@@ -217,6 +217,12 @@ class Dukkan_Plugin_AI_API {
 			),
 			'temperature' => $temperature,
 			'max_tokens'  => $max_tokens,
+			// Thinking mode is ON by default and spends 800-1200 output tokens
+			// on reasoning_content before writing the answer — measured at 80-87%
+			// of all output on this task. Turning it off cuts cost ~4.6x and
+			// latency ~3x, and it also makes `temperature` take effect (thinking
+			// mode silently ignores it).
+			'thinking'    => array( 'type' => 'disabled' ),
 		);
 
 		$response = wp_remote_post( self::ENDPOINT, array(
