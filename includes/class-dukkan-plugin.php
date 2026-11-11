@@ -82,6 +82,7 @@ class Dukkan_Plugin {
 		$this->define_general_api_hooks();
 		$this->define_translatepress_api_hooks();
 		$this->define_attributes_api_hooks();
+		$this->define_ai_api_hooks();
 		$this->define_media_api_hooks();
 		$this->define_elementor_api_hooks();
 		$this->define_product_addon_api_hooks();
@@ -146,6 +147,11 @@ class Dukkan_Plugin {
 		 * The class responsible for defining the attribute swatch apis.
 		 */
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'api/class-dukkan-plugin-attributes-api.php';
+
+		/**
+		 * The class responsible for proxying AI text requests (key stays server-side).
+		 */
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'api/class-dukkan-plugin-ai-api.php';
 
 		/**
 		 * The class responsible for defining the media upload apis.
@@ -381,6 +387,15 @@ class Dukkan_Plugin {
 	 */
 	private function define_attributes_api_hooks() {
 		new Dukkan_Plugin_Attributes_API( $this->get_plugin_name(), $this->get_version() );
+	}
+
+	/**
+	 * Register the AI text proxy hooks.
+	 *
+	 * @access   private
+	 */
+	private function define_ai_api_hooks() {
+		new Dukkan_Plugin_AI_API( $this->get_plugin_name(), $this->get_version() );
 	}
 
 	/**
