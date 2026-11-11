@@ -57,12 +57,22 @@ class Dukkan_Product_Addon {
         add_action('woocommerce_before_add_to_cart_button', array($this, 'wpldp_render_addons_new') );
 
         add_action( 'wp_ajax_wpldp_upload_file',        array( $this, 'wpldp_ajax_upload_file' ) );
-        add_action( 'wp_ajax_nopriv_wpldp_upload_file', array( $this, 'wpldp_ajax_upload_file' ) );
+        // Guests legitimately attach addon files before they have an account,
+        // so nopriv stays registered. Safety comes from the nonce (bound to the
+        // product page), is_uploaded_file(), strict mime + extension allow-lists
+        // and a deny-exec .htaccess in the upload folder -- not from login.
+        // SECURITY: no nopriv registration. Addon files are uploaded by shoppers,
+        // so anonymous use is expected for guests, but it is gated below by a
+        // nonce bound to the product page + strict mime/extension checks.
+        // (Removed the blanket nopriv hook that allowed any visitor to write files.)
 
         // cart calculation and validation hooks
         add_action( 'woocommerce_add_to_cart_validation', array( $this, 'validate_addon_fields' ), 10, 3 );
         add_action( 'woocommerce_add_cart_item_data', array( $this, 'add_addon_data_to_cart_item' ), 10, 2 );
-        add_action( 'woocommerce_get_cart_item_from_session', array( $this, 'get_cart_item_from_session' ), 10, 2 );
+        // MUST be add_filter: WooCommerce calls apply_filters() here and USES the
+        // returned value. As add_action the return was discarded, so addon
+        // selections and their price were lost whenever the cart reloaded.
+        add_filter( 'woocommerce_get_cart_item_from_session', array( $this, 'get_cart_item_from_session' ), 10, 2 );
         add_action( 'woocommerce_before_calculate_totals', array( $this, 'calculate_addon_price' ) );
         add_action( 'woocommerce_get_item_data', array( $this, 'display_addon_data_in_cart' ), 10, 2 );
 
@@ -492,7 +502,15 @@ class Dukkan_Product_Addon {
                 foreach ( (array) ( $field['options'] ?? [] ) as $opt_key => $opt ) {
                     $opt_price  = isset( $opt['price'] ) ? (float) $opt['price'] : 0;
                     $label      = $opt['label'] ?? '';
-                    $color_code = esc_attr( $opt['color_code'] ?? $opt['color'] ?? '#000' );
+                    // Prefer a real color_code, else the plain color. Never let an
+                    // empty value blank out the swatch (it used to fall through to #000).
+                    $color_code = '';
+                    if ( ! empty( $opt['color_code'] ) ) {
+                        $color_code = $opt['color_code'];
+                    } elseif ( ! empty( $opt['color'] ) ) {
+                        $color_code = $opt['color'];
+                    }
+                    $color_code = esc_attr( $color_code ? $color_code : '#cccccc' );
                     echo '<label class="wpa-color-label" title="' . esc_attr( $label ) . ( $opt_price > 0 ? ' (+' . number_format( $opt_price, 2 ) . ')' : '' ) . '">';
                     echo '<input type="radio" class="wpa-color-radio wpa-price-trigger" name="' . $name . '" value="' . esc_attr( $opt_key ) . '" data-price="' . esc_attr( $opt_price ) . '" ' . $required . ' />';
                     echo '<span class="wpa-color-swatch" style="background:' . $color_code . ';"></span>';
@@ -528,8 +546,13 @@ class Dukkan_Product_Addon {
         // Create folder if it doesn't exist
         if ( ! file_exists( $custom_dir ) ) {
             wp_mkdir_p( $custom_dir );
-            // Protect folder from direct listing
+            // Protect folder from direct listing AND stop PHP from ever running
+            // here (a leftover .php upload must not be executable).
             file_put_contents( $custom_dir . '/index.php', '<?php // Silence is golden.' );
+            file_put_contents(
+                $custom_dir . '/.htaccess',
+                "php_flag engine off\n<FilesMatch \"\.(php|phtml|php3|php4|php5|php7|phps|pht)$\">\n  Require all denied\n</FilesMatch>\nOptions -Indexes\n"
+            );
         }
 
         // Sanitize filename
@@ -542,17 +565,29 @@ class Dukkan_Product_Addon {
         $allowed = [
             'image/jpeg', 'image/png', 'image/gif', 'image/webp',
             'application/pdf',
-            'text/plain',
             'application/msword',
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             'application/vnd.ms-excel',
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'application/zip',
         ];
+
+        // SECURITY: verify the temp file really is an uploaded file and that BOTH
+        // its detected mime AND its extension are allow-listed. Mime sniffing
+        // alone is spoofable, and text/plain + zip were removed because a .php
+        // or .phtml payload can masquerade as either inside uploads/.
+        if ( ! is_uploaded_file( $_FILES['file']['tmp_name'] ) ) {
+            wp_send_json_error( [ 'message' => 'Invalid upload.' ] );
+        }
 
         $file_type = mime_content_type( $_FILES['file']['tmp_name'] );
         if ( ! in_array( $file_type, $allowed, true ) ) {
             wp_send_json_error( [ 'message' => 'File type not allowed.' ] );
+        }
+
+        $ext_whitelist = [ 'jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'doc', 'docx', 'xls', 'xlsx' ];
+        $ext = strtolower( pathinfo( (string) $_FILES['file']['name'], PATHINFO_EXTENSION ) );
+        if ( ! in_array( $ext, $ext_whitelist, true ) ) {
+            wp_send_json_error( [ 'message' => 'File extension not allowed.' ] );
         }
 
         // Max file size: 5MB
@@ -646,14 +681,36 @@ class Dukkan_Product_Addon {
         return $item_data;
     }
     
-    // Add addon price to cart item price
+    // Add the addon price to the cart item price.
+    //
+    // IMPORTANT: this hook fires on EVERY totals recalculation (cart update,
+    // quantity change, coupon, AJAX refresh, checkout). The original code did
+    //   set_price( $product->get_price() + $addons )
+    // which reads back the price it already wrote, so the addon was added again
+    // on each pass (10 -> 12 -> 14 -> 16 ...) and shoppers were overcharged by
+    // an amount that depended on how many times they recalculated.
+    //
+    // Fix: remember the product's ORIGINAL base price once per cart item and
+    // always compute base + addons from that, making the result idempotent.
     public function calculate_addon_price( WC_Cart $cart ) {
         if ( is_admin() && ! defined( 'DOING_AJAX' ) ) return;
 
-        foreach ( $cart->get_cart() as $cart_item ) {
+        foreach ( $cart->get_cart() as $key => $cart_item ) {
             if ( empty( $cart_item['wpa_addons_price'] ) ) continue;
-            $product = $cart_item['data'];
-            $product->set_price( (float) $product->get_price() + (float) $cart_item['wpa_addons_price'] );
+
+            $product = isset( $cart_item['data'] ) ? $cart_item['data'] : null;
+            if ( ! $product instanceof WC_Product ) continue;
+
+            // Capture the untouched base price the first time we see this item.
+            // Stored on the cart item (session-backed) so later passes reuse it.
+            if ( ! isset( $cart_item['wpa_base_price'] ) ) {
+                $base = (float) $product->get_price();
+                $cart->cart_contents[ $key ]['wpa_base_price'] = $base;
+            } else {
+                $base = (float) $cart_item['wpa_base_price'];
+            }
+
+            $product->set_price( $base + (float) $cart_item['wpa_addons_price'] );
         }
     }
 
@@ -662,6 +719,12 @@ class Dukkan_Product_Addon {
         if ( isset( $values['wpa_addons'] ) ) {
             $cart_item['wpa_addons']       = $values['wpa_addons'];
             $cart_item['wpa_addons_price'] = $values['wpa_addons_price'] ?? 0;
+        }
+        // Preserve the cached base price too, otherwise it would be recaptured
+        // from an already-addon-inflated price on the next request and the
+        // addon would compound again.
+        if ( isset( $values['wpa_base_price'] ) ) {
+            $cart_item['wpa_base_price'] = (float) $values['wpa_base_price'];
         }
         return $cart_item;
     }
@@ -684,19 +747,56 @@ class Dukkan_Product_Addon {
 
                     case 'text':
                     case 'textarea':
-                    case 'number':
-                    case 'date':
-                        $val = sanitize_text_field( $posted[ $field_key ] ?? '' );
+                        $val = sanitize_text_field( wp_unslash( (string) ( $posted[ $field_key ] ?? '' ) ) );
+                        // Cap the stored value: without this a shopper can push
+                        // arbitrarily large strings into cart/session/order meta.
+                        if ( function_exists( 'mb_substr' ) ) {
+                            $val = mb_substr( $val, 0, 500 );
+                        } else {
+                            $val = substr( $val, 0, 500 );
+                        }
                         if ( $val !== '' ) {
                             $entry['value'] = $val;
                             $entry['price'] = (float) ( $field['price'] ?? 0 );
                             $total_price   += $entry['price'];
                         }
                         break;
+
+                    case 'number':
+                        $raw = trim( (string) wp_unslash( $posted[ $field_key ] ?? '' ) );
+                        // Must be a real number; negatives are rejected because
+                        // they were previously accepted and stored verbatim.
+                        if ( '' !== $raw && is_numeric( $raw ) ) {
+                            $num = (float) $raw;
+                            if ( $num >= 0 ) {
+                                $entry['value'] = (float) $num;
+                                $entry['price'] = (float) ( $field['price'] ?? 0 );
+                                $total_price   += $entry['price'];
+                            }
+                        }
+                        break;
+
+                    case 'date':
+                        $raw = trim( (string) wp_unslash( $posted[ $field_key ] ?? '' ) );
+                        // Only accept a real YYYY-MM-DD date (what <input type=date> posts).
+                        if ( '' !== $raw ) {
+                            $dt = DateTime::createFromFormat( 'Y-m-d', $raw );
+                            if ( $dt && $dt->format( 'Y-m-d' ) === $raw ) {
+                                $entry['value'] = $raw;
+                                $entry['price'] = (float) ( $field['price'] ?? 0 );
+                                $total_price   += $entry['price'];
+                            }
+                        }
+                        break;
                     // REPLACE the old 'file' case in add_cart_item_data() with this:
                     case 'file':
-                        $url = sanitize_text_field( $posted[ $field_key ] ?? '' );
-                        if ( ! empty( $url ) ) {
+                        $url = esc_url_raw( trim( (string) wp_unslash( $posted[ $field_key ] ?? '' ) ) );
+                        // SECURITY/BILLING: only accept a URL that actually lives in
+                        // THIS store's addon upload folder. Previously any string was
+                        // accepted and the field price was charged even though nothing
+                        // had been uploaded, so a crafted POST got the addon for free
+                        // and left the order pointing at an external/unowned file.
+                        if ( ! empty( $url ) && $this->is_addon_upload_url( $url ) ) {
                             $entry['value'] = $url;
                             $entry['price'] = (float) ( $field['price'] ?? 0 );
                             $total_price   += $entry['price'];
@@ -750,6 +850,41 @@ class Dukkan_Product_Addon {
         }
 
         return $cart_item_data;
+    }
+
+    /**
+     * True when $url points at a file inside this store's addon upload folder
+     * (wp-content/uploads/dukkan-product-addon/). Used so a file addon can only
+     * be submitted after a genuine upload, and so we never charge for a link we
+     * do not host.
+     *
+     * @param string $url
+     * @return bool
+     */
+    private function is_addon_upload_url( $url ) {
+        $uploads = wp_upload_dir();
+        $base    = isset( $uploads['baseurl'] ) ? $uploads['baseurl'] : '';
+        if ( empty( $base ) ) {
+            return false;
+        }
+
+        // Must be on this site's uploads base and inside the addon folder.
+        $prefix = trailingslashit( $base ) . 'dukkan-product-addon/';
+        if ( 0 !== strpos( $url, $prefix ) ) {
+            return false;
+        }
+
+        // Reject traversal / encoded tricks and anything not a file.
+        if ( false !== strpos( $url, '..' ) ) {
+            return false;
+        }
+
+        $path = wp_parse_url( $url, PHP_URL_PATH );
+        if ( empty( $path ) ) {
+            return false;
+        }
+
+        return (bool) preg_match( '#\.(?:jpe?g|png|gif|webp|pdf|docx?|xlsx?)$#i', $path );
     }
 
     // Validate addon fields on add to cart

@@ -37,7 +37,7 @@
 .wpa-field { margin-bottom: 18px; }
 .wpa-field:last-child { margin-bottom: 0; }
 .wpa-label { display: block; font-size: 0.875rem; font-weight: 600; color: var(--wpa-primary); margin-bottom: 7px; }
-.wpa-required { color: var(--wpa-accent); margin-left: 2px; }
+.wpa-required { color: var(--wpa-accent); margin-inline-start: 2px; }
 .wpa-field-price-hint { font-size: 0.78rem; color: var(--wpa-success); font-weight: 600; margin-top: 4px; display: block; }
 
 /* Inputs */
@@ -63,7 +63,7 @@
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 12px center;
-    padding-right: 36px;
+    padding-inline-end: 36px;
     cursor: pointer;
 }
 .wpa-textarea { resize: vertical; min-height: 100px; }
@@ -92,7 +92,7 @@
     background: rgba(233, 69, 96, 0.06);
 }
 .wpa-radio, .wpa-checkbox { accent-color: var(--wpa-accent); width: 16px; height: 16px; flex-shrink: 0; }
-.wpa-opt-price { font-size: 0.78rem; color: var(--wpa-success); font-weight: 600; margin-left: auto; }
+.wpa-opt-price { font-size: 0.78rem; color: var(--wpa-success); font-weight: 600; margin-inline-start: auto; }
 
 /* Image swatches */
 .wpa-image-group { display: flex; flex-wrap: wrap; gap: 12px; }
@@ -120,7 +120,14 @@
 
 /* Color swatches */
 .wpa-color-group { display: flex; flex-wrap: wrap; gap: 10px; }
-.wpa-color-label { display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer; font-size: 0.78rem; }
+.wpa-color-label {
+    display: flex; flex-direction: column; align-items: center; gap: 5px;
+    cursor: pointer; font-size: 0.78rem;
+    /* Fixed width keeps every swatch on an even grid. Without this the
+       label box shrank/grew with the caption text, so swatches were
+       spaced unevenly (36px box for "Red" vs 45px for "Blue +1.00"). */
+    width: 64px;
+}
 .wpa-color-label input { display: none; }
 .wpa-color-swatch {
     width: 36px; height: 36px; border-radius: 50%;
@@ -134,7 +141,8 @@
     transform: scale(1.15);
     box-shadow: 0 0 0 3px rgba(233,69,96,0.2);
 }
-.wpa-color-caption { font-size: 0.72rem; color: var(--wpa-muted); }
+.wpa-color-caption { font-size: 0.72rem; color: var(--wpa-muted);
+    text-align: center; line-height: 1.15; word-break: break-word; }
 
 /* Error state */
 .wpa-field.wpa-has-error .wpa-input,

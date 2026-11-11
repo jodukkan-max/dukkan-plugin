@@ -98,6 +98,15 @@ class Dukkan_Plugin_Attributes_API {
 			),
 		) );
 
+		// GET /attributes/{id}/terms — all terms WITH their Rey swatch in one
+		// call. The app needs the colour of every value at once to render
+		// swatches; calling /terms/{id}/swatch per term would be N requests.
+		register_rest_route( self::NAMESPACE, '/attributes/(?P<id>\d+)/terms', array(
+			'methods'             => WP_REST_Server::READABLE,
+			'callback'            => array( $this, 'get_attribute_terms_with_swatch' ),
+			'permission_callback' => array( $this, 'check_permissions' ),
+		) );
+
 		// GET /terms/{id}/swatch — read a term's swatch settings.
 		register_rest_route( self::NAMESPACE, '/terms/(?P<id>\d+)/swatch', array(
 			array(
@@ -488,6 +497,75 @@ class Dukkan_Plugin_Attributes_API {
 	 * @param string $image_url Remote image URL.
 	 * @return int|WP_Error Attachment ID on success, WP_Error on failure.
 	 */
+	/**
+	 * Reads the raw `attribute_type` (select | rey_color | rey_image |
+	 * rey_button | ...) from the WooCommerce attribute taxonomy table.
+	 *
+	 * @param int $attribute_id
+	 * @return string
+	 */
+	private function attribute_type( $attribute_id ) {
+		global $wpdb;
+		$type = $wpdb->get_var( $wpdb->prepare(
+			"SELECT attribute_type FROM {$wpdb->prefix}woocommerce_attribute_taxonomies WHERE attribute_id = %d",
+			$attribute_id
+		) );
+		return $type ? (string) $type : 'select';
+	}
+
+	/**
+	 * GET /attributes/{id}/terms — list an attribute's terms with swatch data.
+	 *
+	 * Returns every term for the attribute (name, slug, count) plus its Rey
+	 * swatch meta (color, secondary color, image). One request is enough for
+	 * the app to render a full colour/button/image swatch grid.
+	 *
+	 * @param WP_REST_Request $request
+	 * @return WP_REST_Response|WP_Error
+	 */
+	public function get_attribute_terms_with_swatch( WP_REST_Request $request ) {
+		$attribute_id = (int) $request['id'];
+		$taxonomy     = $this->attribute_taxonomy_name( $attribute_id );
+
+		if ( ! $taxonomy || ! taxonomy_exists( $taxonomy ) ) {
+			return new WP_Error( 'attribute_not_found', __( 'Attribute not found.', 'dukkan-plugin' ), array( 'status' => 404 ) );
+		}
+
+		$terms = get_terms( array(
+			'taxonomy'   => $taxonomy,
+			'hide_empty' => false,
+			'orderby'    => 'menu_order',
+			'order'      => 'ASC',
+		) );
+
+		if ( is_wp_error( $terms ) ) {
+			return $terms;
+		}
+
+		$out = array();
+		foreach ( $terms as $term ) {
+			$image_id = (int) get_term_meta( $term->term_id, 'rey_attribute_image', true );
+
+			$out[] = array(
+				'id'              => (int) $term->term_id,
+				'name'            => (string) $term->name,
+				'slug'            => (string) $term->slug,
+				'count'           => (int) $term->count,
+				'color'           => (string) get_term_meta( $term->term_id, 'rey_attribute_color', true ),
+				'color_secondary' => (string) get_term_meta( $term->term_id, 'rey_attribute_color_secondary', true ),
+				'image_id'        => $image_id,
+				'image_url'       => $image_id ? (string) wp_get_attachment_url( $image_id ) : '',
+			);
+		}
+
+		return rest_ensure_response( array(
+			'attribute_id' => $attribute_id,
+			'taxonomy'     => $taxonomy,
+			'type'         => (string) $this->attribute_type( $attribute_id ),
+			'terms'        => $out,
+		) );
+	}
+
 	private function sideload_image( $image_url ) {
 		require_once ABSPATH . 'wp-admin/includes/file.php';
 		require_once ABSPATH . 'wp-admin/includes/media.php';

@@ -328,7 +328,12 @@ class Dukkan_Plugin_Product_Addon_API {
         if ( isset( $field['id'] ) ) {
             $clean['id'] = sanitize_text_field( $field['id'] );
         }
-        $clean['type']     = isset( $field['type'] ) ? sanitize_key( $field['type'] ) : 'text';
+        // Whitelist the type: an unknown type renders nothing and silently
+        // charges nothing, which is very hard to diagnose.
+        $known_types       = array( 'text', 'textarea', 'number', 'date', 'file',
+                                   'select', 'radio', 'checkbox', 'color', 'image' );
+        $requested_type    = isset( $field['type'] ) ? sanitize_key( $field['type'] ) : 'text';
+        $clean['type']     = in_array( $requested_type, $known_types, true ) ? $requested_type : 'text';
         $clean['title']    = isset( $field['title'] ) ? sanitize_text_field( $field['title'] ) : '';
         $clean['width']    = isset( $field['width'] ) ? sanitize_text_field( $field['width'] ) : '100%';
         $clean['required'] = ! empty( $field['required'] ) ? 1 : 0;
@@ -367,7 +372,12 @@ class Dukkan_Plugin_Product_Addon_API {
         if ( 'color' === $field_type ) {
             $color = isset( $option['color'] ) ? sanitize_hex_color( $option['color'] ) : '';
             $clean['color'] = $color ? $color : '#000000';
-            $clean['color_code'] = isset( $option['color_code'] ) ? sanitize_text_field( $option['color_code'] ) : '#000000';
+            // color_code used to default to #000000, and the renderer prefers it
+            // over `color`, so every swatch drew black. Only store a real
+            // color_code when one was supplied; otherwise leave it empty so the
+            // renderer falls back to `color`.
+            $code = isset( $option['color_code'] ) ? sanitize_hex_color( $option['color_code'] ) : '';
+            $clean['color_code'] = $code ? $code : '';
         }
 
         if ( 'image' === $field_type ) {
