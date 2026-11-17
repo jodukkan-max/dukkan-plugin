@@ -1,0 +1,5 @@
+# Build artifacts — never commit.
+# A committed dukkan-plugin.zip nests inside itself on the next rebuild,
+# which previously ballooned the release to 2.35 MB.
+dukkan-plugin.zip
+*.zip

@@ -105,6 +105,24 @@ class Dukkan_Plugin_Attributes_API {
 			'methods'             => WP_REST_Server::READABLE,
 			'callback'            => array( $this, 'get_attribute_terms_with_swatch' ),
 			'permission_callback' => array( $this, 'check_permissions' ),
+			'args'                => array(
+				'limit'  => array(
+					'required' => false,
+					'type'     => 'integer',
+					'default'  => 0, // 0 = every term (backwards compatible)
+				),
+				'offset' => array(
+					'required' => false,
+					'type'     => 'integer',
+					'default'  => 0,
+				),
+				'search' => array(
+					'required'          => false,
+					'type'              => 'string',
+					'default'           => '',
+					'sanitize_callback' => 'sanitize_text_field',
+				),
+			),
 		) );
 
 		// GET /terms/{id}/swatch — read a term's swatch settings.
@@ -531,15 +549,49 @@ class Dukkan_Plugin_Attributes_API {
 			return new WP_Error( 'attribute_not_found', __( 'Attribute not found.', 'dukkan-plugin' ), array( 'status' => 404 ) );
 		}
 
-		$terms = get_terms( array(
+		// Paging. `limit` 0 keeps the old behaviour (send everything) so existing
+		// callers are unaffected; the Add Product screen asks for 10, then 5 more
+		// per "Show more" tap instead of pulling 1,500 rows up front.
+		$limit  = max( 0, (int) $request['limit'] );
+		$offset = max( 0, (int) $request['offset'] );
+		$search = trim( (string) $request['search'] );
+
+		$args = array(
 			'taxonomy'   => $taxonomy,
 			'hide_empty' => false,
 			'orderby'    => 'menu_order',
 			'order'      => 'ASC',
-		) );
+			'number'     => $limit > 0 ? $limit : 0,
+			'offset'     => $offset,
+		);
+		if ( '' !== $search ) {
+			$args['search'] = $search;
+		}
+
+		$terms = get_terms( $args );
 
 		if ( is_wp_error( $terms ) ) {
 			return $terms;
+		}
+
+		$total = null;
+		if ( $limit > 0 ) {
+			// `count => true` combined with `number` returns the size of the
+			// limited page, not the full total — so count separately with an
+			// unpaged query. `fields => ids` keeps that cheap (no term objects).
+			$total = count( get_terms( array(
+				'taxonomy'   => $taxonomy,
+				'hide_empty' => false,
+				'fields'     => 'ids',
+				'number'     => 0,
+				'offset'     => 0,
+				'search'     => '' !== $search ? $search : '',
+			) ) );
+
+			$terms = get_terms( $args );
+			if ( is_wp_error( $terms ) ) {
+				return $terms;
+			}
 		}
 
 		$out = array();
@@ -558,12 +610,20 @@ class Dukkan_Plugin_Attributes_API {
 			);
 		}
 
-		return rest_ensure_response( array(
+		$response = array(
 			'attribute_id' => $attribute_id,
 			'taxonomy'     => $taxonomy,
 			'type'         => (string) $this->attribute_type( $attribute_id ),
 			'terms'        => $out,
-		) );
+		);
+
+		if ( null !== $total ) {
+			$response['total']     = $total;
+			$response['offset']    = $offset;
+			$response['has_more']  = ( $offset + count( $out ) ) < $total;
+		}
+
+		return rest_ensure_response( $response );
 	}
 
 	private function sideload_image( $image_url ) {

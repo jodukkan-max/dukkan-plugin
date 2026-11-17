@@ -16,7 +16,7 @@
  * Plugin Name:       Dukkan
  * Plugin URI:        https://dukkanjo.com
  * Description:       WooCommerce companion plugin — REST APIs, product add-ons, dynamic pricing (simple, bulk, BOGO), loyalty points, AI chatbot, TranslatePress integration.
- * Version:           1.0.66
+ * Version:           1.0.67
  * Author:            Dukkan Ecommerce LLC
  * Author URI:        https://dukkanjo.com/
  * License:           GPL-2.0+
@@ -35,7 +35,7 @@ if ( ! defined( 'WPINC' ) ) {
  * Start at version 1.0.0 and use SemVer - https://semver.org
  * Rename this for your plugin and update it as you release new versions.
  */
-define( 'DUKKAN_PLUGIN_VERSION', '1.0.66' );
+define( 'DUKKAN_PLUGIN_VERSION', '1.0.67' );
 
 define( 'DUKKAN_PLUGIN_PATH', plugin_dir_path( __FILE__ ) );
 define( 'DUKKAN_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
@@ -102,3 +102,15 @@ add_action( 'plugins_loaded', 'run_dukkan_plugin' );
  */
 require_once plugin_dir_path( __FILE__ ) . 'includes/class-dukkan-plugin-updater.php';
 new Dukkan_Plugin_Updater( __FILE__, DUKKAN_PLUGIN_VERSION );
+
+/**
+ * Warn the site owner when file ownership makes self-updates impossible.
+ *
+ * WordPress reports this only as "some files could not be copied ... due to
+ * inconsistent file permissions", which does not say what to fix. This surfaces
+ * the exact `chown` command instead.
+ *
+ * @since 1.0.67
+ */
+require_once plugin_dir_path( __FILE__ ) . 'includes/class-dukkan-plugin-health.php';
+new Dukkan_Plugin_Health();

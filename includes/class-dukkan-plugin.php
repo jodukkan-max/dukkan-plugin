@@ -83,6 +83,7 @@ class Dukkan_Plugin {
 		$this->define_translatepress_api_hooks();
 		$this->define_attributes_api_hooks();
 		$this->define_ai_api_hooks();
+		$this->define_catalog_api_hooks();
 		$this->define_media_api_hooks();
 		$this->define_elementor_api_hooks();
 		$this->define_product_addon_api_hooks();
@@ -152,6 +153,11 @@ class Dukkan_Plugin {
 		 * The class responsible for proxying AI text requests (key stays server-side).
 		 */
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'api/class-dukkan-plugin-ai-api.php';
+
+		/**
+		 * The class responsible for the bulk catalogue terms (categories/tags) APIs.
+		 */
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'api/class-dukkan-plugin-catalog-api.php';
 
 		/**
 		 * The class responsible for defining the media upload apis.
@@ -293,7 +299,9 @@ class Dukkan_Plugin {
 
 		$plugin_i18n = new Dukkan_Plugin_i18n();
 
-		$this->loader->add_action( 'plugins_loaded', $plugin_i18n, 'load_plugin_textdomain' );
+		// WordPress 6.7+ warns when a text domain loads before `init`
+		// ("Translation loading ... triggered too early"). Load it on `init`.
+		$this->loader->add_action( 'init', $plugin_i18n, 'load_plugin_textdomain' );
 
 	}
 
@@ -396,6 +404,15 @@ class Dukkan_Plugin {
 	 */
 	private function define_ai_api_hooks() {
 		new Dukkan_Plugin_AI_API( $this->get_plugin_name(), $this->get_version() );
+	}
+
+	/**
+	 * Register the bulk catalogue terms hooks.
+	 *
+	 * @access   private
+	 */
+	private function define_catalog_api_hooks() {
+		new Dukkan_Plugin_Catalog_API( $this->get_plugin_name(), $this->get_version() );
 	}
 
 	/**
