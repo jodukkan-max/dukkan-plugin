@@ -1,10 +1,26 @@
 # Dukkan Plugin — Work Log & Structure
 
-> Last updated: v1.0.62 — November 7, 2026 — `/products` sized thumbnails + rating, `/loop-theme`
+> Last updated: v1.0.68 — November 22, 2026 — security fix + website-builder (Elementor API) fixes
 
 ---
 
 ## Recent Changes
+
+### v1.0.68 — Website builder (Elementor API) fixes — `api/class-dukkan-plugin-elementor-api.php`
+
+- **Image Carousel**: new per-widget route, so editing an image carousel in the app and publishing works.
+- **Arabic slugs**: `clean_query_value()` keeps percent-encoded category / tag / attribute slugs intact (`sanitize_text_field` stripped them to `""`/`"-"`, emptying product grids).
+- **Mask Shape / Custom CSS**: `visual_choice` and `code` controls are accepted by the sanitizer.
+- **CDN image URLs**: `get_page` refreshes media URLs to the attachment's current (offloaded) address (`refresh_media_urls` / `same_media_file`).
+- **Template photos copied into the store**: after `replace_elements` / `update_widget` save, media whose id is not this store's attachment for that file (templates designed on templates-dukkan.com) is sideloaded into the library (`_dukkan_source_url` meta, reused on later saves, max 40 per request), then the page is re-saved with local ids/URLs. Runs after the response (`fastcgi_finish_request`), inline under WP-CLI.
+
+### v1.0.68 — SECURITY: store-connection auth code no longer handed out (critical)
+
+- **Hole closed**: `dukkan-woo-extended/v1/request-store-connection-auth-code` returned the one-time `auth_code` in its response (since v1.0.49), protected only by the static key `DUKKAN_WOO_EXTENDED_STATIC_API_KEY`, which is hard-coded in this plugin AND in the app binary. Anyone with the app could therefore get a code from ANY store and mint a `read_write` WooCommerce key with it (orders, customer PII, products). Verified end to end on a throwaway store on 2026-11-20.
+- **Now** the code is returned only while `dukkan_build_handshake_until` (unix time) is in the future. The server's build pipeline (`create-site.sh`) sets it for 60 minutes right after building a store, so the app's automated "Build New Website" key handshake keeps working; the first successful key creation closes it. Outside that window the response is `{success: true}` only and the code is visible just in WP admin (manual connect flow — the app already treats an empty code as "plugin present").
+- Codes now **expire after 15 minutes** (`dukkan_plugin_store_connection_auth_code_time`) and are **destroyed after 5 wrong guesses** (`..._failures`) — a 4-character code is otherwise brute-forceable.
+- `DELETE /rest-api-keys` now matches the **full** consumer key (by `wc_api_hash`), not just its last 7 characters.
+- `api/woo-extended/class-dukkan-woo-extended-api.php`
 
 ### v1.0.62 — `/products` sized thumbnails + rating, new `/loop-theme` endpoint
 

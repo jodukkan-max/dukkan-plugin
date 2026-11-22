@@ -62,6 +62,7 @@ class Dukkan_Plugin_Elementor_API {
 		'rey-grids'    => 'reycore-product-grid',
 		'rey-carousels' => 'reycore-carousel',
 		'rey-card-grids' => 'reycore-grid',
+		'image-carousels' => 'image-carousel',
 	);
 
 	/**
@@ -1218,7 +1219,10 @@ class Dukkan_Plugin_Elementor_API {
 			return $document;
 		}
 		$page             = $this->format_page( get_post( $post_id ), (int) get_option( 'page_on_front' ) );
-		$page['elements'] = $document->get_elements_data();
+		// Media offloaders (e.g. Advanced Media Offloader → CDN) move files and
+		// rewrite their URLs only when the site renders, so the stored element
+		// data can keep dead local URLs. Send the app what the site shows.
+		$page['elements'] = $this->refresh_media_urls( $document->get_elements_data() );
 		return rest_ensure_response( $page );
 	}
 
@@ -1272,6 +1276,7 @@ class Dukkan_Plugin_Elementor_API {
 		if ( ! $saved ) {
 			return new WP_Error( 'dukkan_elementor_save_failed', __( 'Elementor could not save the page.', 'dukkan-plugin' ), array( 'status' => 500 ) );
 		}
+		$this->schedule_media_localize( $post_id );
 
 		return rest_ensure_response( array(
 			'success'  => true,
@@ -1513,6 +1518,7 @@ class Dukkan_Plugin_Elementor_API {
 		if ( ! $saved ) {
 			return new WP_Error( 'dukkan_elementor_save_failed', __( 'Elementor could not save the page.', 'dukkan-plugin' ), array( 'status' => 500 ) );
 		}
+		$this->schedule_media_localize( (int) $request['id'] );
 
 		return rest_ensure_response( $this->format_widget( $updated, $controls ) );
 	}
@@ -1830,6 +1836,15 @@ class Dukkan_Plugin_Elementor_API {
 		$type = $control['type'];
 
 		switch ( $type ) {
+			case 'code':
+				// Code fields (e.g. Rey Custom CSS) are stored raw like Elementor
+				// does; only tags are removed so `</style>` can't end the block.
+				// wp_kses_post would rewrite characters such as `&`.
+				if ( ! is_scalar( $value ) ) {
+					return $this->invalid( 'expected a string' );
+				}
+				return wp_strip_all_tags( (string) $value );
+
 			case 'text':
 			case 'textarea':
 			case 'wysiwyg':
@@ -1856,6 +1871,7 @@ class Dukkan_Plugin_Elementor_API {
 
 			case 'select':
 			case 'choose':
+			case 'visual_choice': // e.g. Mask → Shape: one key of `options`.
 				if ( ! is_scalar( $value ) ) {
 					return $this->invalid( 'expected a string' );
 				}
@@ -2045,12 +2061,12 @@ class Dukkan_Plugin_Elementor_API {
 				if ( is_array( $value ) ) {
 					$out = array();
 					foreach ( $value as $item ) {
-						$out[] = is_numeric( $item ) ? (int) $item : sanitize_text_field( (string) $item );
+						$out[] = is_numeric( $item ) ? (int) $item : $this->clean_query_value( $item );
 					}
 					return $out;
 				}
 				if ( is_scalar( $value ) ) {
-					return is_numeric( $value ) ? (int) $value : sanitize_text_field( (string) $value );
+					return is_numeric( $value ) ? (int) $value : $this->clean_query_value( $value );
 				}
 				return $this->invalid( 'expected an array of ids or a single id' );
 
@@ -2179,6 +2195,201 @@ class Dukkan_Plugin_Elementor_API {
 	 * @param string $message
 	 * @return WP_Error
 	 */
+	/**
+	 * Cleans one picker value (term slug, taxonomy name, id) without changing
+	 * it. `sanitize_text_field()` removes percent-encoded octets, which turned
+	 * every non-Latin slug into its hyphens (Arabic `%d8%a7%d8%b3...` → "",
+	 * `%d9%85...-%d8%a7...` → "-"), so the saved filter matched nothing.
+	 * Slugs keep `%xx`, letters (incl. Arabic taxonomy names like `pa_شوال`),
+	 * digits, `-` and `_`; tags, whitespace and control characters go.
+	 *
+	 * @param mixed $value
+	 * @return string
+	 */
+	private function clean_query_value( $value ) {
+		$value = wp_strip_all_tags( (string) $value );
+		$clean = preg_replace( '/[\x00-\x1F\x7F]/u', '', $value );
+		// preg_replace returns null on invalid UTF-8; keep the stripped text.
+		return trim( null === $clean ? $value : $clean );
+	}
+
+	/**
+	 * Replaces each stored media URL (`{id, url}` arrays: images, galleries,
+	 * backgrounds, SVG icons) with the attachment's current URL, the one the
+	 * site itself renders (CDN-aware). Only when the file name matches, so an
+	 * id carried over from another site's template never swaps in an
+	 * unrelated image. Anything else is returned unchanged.
+	 *
+	 * @param mixed $data
+	 * @return mixed
+	 */
+	private function refresh_media_urls( $data ) {
+		if ( ! is_array( $data ) ) {
+			return $data;
+		}
+		if ( isset( $data['id'], $data['url'] ) && is_numeric( $data['id'] ) && (int) $data['id'] > 0 && is_string( $data['url'] ) ) {
+			$current = wp_get_attachment_url( (int) $data['id'] );
+			if ( $current && $current !== $data['url'] && ( '' === $data['url'] || $this->same_media_file( $data['url'], $current ) ) ) {
+				$data['url'] = $current;
+			}
+		}
+		foreach ( $data as $key => $value ) {
+			if ( is_array( $value ) ) {
+				$data[ $key ] = $this->refresh_media_urls( $value );
+			}
+		}
+		return $data;
+	}
+
+	/**
+	 * Whether two media URLs name the same file, ignoring the host/folder and
+	 * WordPress size suffixes (`-330x440`, `-scaled`).
+	 *
+	 * @param string $a
+	 * @param string $b
+	 * @return bool
+	 */
+	private function same_media_file( $a, $b ) {
+		$name = function ( $url ) {
+			$base = strtolower( rawurldecode( wp_basename( (string) wp_parse_url( $url, PHP_URL_PATH ) ) ) );
+			return preg_replace( '/-(\d+x\d+|scaled)(?=\.[a-z0-9]+$)/', '', $base );
+		};
+		return '' !== $name( $a ) && $name( $a ) === $name( $b );
+	}
+
+	/**
+	 * After a save from the app, copy media that belongs to another store into
+	 * this store's library. Page templates and library sections are designed
+	 * on templates-dukkan.com, so their images carry that store's attachment
+	 * ids, which mean nothing here: Rey's sliders and Elementor render images by
+	 * id, so they showed blank. Runs after the response is sent (no app
+	 * timeout), then re-saves the page with this store's own ids and URLs.
+	 *
+	 * @param int $post_id
+	 */
+	private function schedule_media_localize( $post_id ) {
+		static $scheduled = array();
+		$post_id = (int) $post_id;
+		if ( $post_id <= 0 || isset( $scheduled[ $post_id ] ) ) {
+			return;
+		}
+		$scheduled[ $post_id ] = true;
+		if ( defined( 'WP_CLI' ) && WP_CLI ) {
+			$this->localize_document_media( $post_id );
+			return;
+		}
+		add_action( 'shutdown', function () use ( $post_id ) {
+			if ( function_exists( 'fastcgi_finish_request' ) ) {
+				fastcgi_finish_request();
+			}
+			$this->localize_document_media( $post_id );
+		}, 9999 );
+	}
+
+	/**
+	 * @param int $post_id
+	 * @return int Number of media references switched to this store's copies.
+	 */
+	private function localize_document_media( $post_id ) {
+		if ( function_exists( 'set_time_limit' ) ) {
+			@set_time_limit( 300 );
+		}
+		ignore_user_abort( true );
+		$document = $this->get_document( $post_id );
+		if ( is_wp_error( $document ) ) {
+			return 0;
+		}
+		$count    = 0;
+		$elements = $this->localize_media( $document->get_elements_data(), $count );
+		if ( $count > 0 ) {
+			$document->save( array( 'elements' => $elements ) );
+		}
+		return $count;
+	}
+
+	/**
+	 * Walks element data; every `{id, url}` media array whose id is not this
+	 * store's attachment for that same file gets a local copy.
+	 *
+	 * @param mixed $data
+	 * @param int   $count
+	 * @return mixed
+	 */
+	private function localize_media( $data, &$count ) {
+		if ( ! is_array( $data ) ) {
+			return $data;
+		}
+		if ( array_key_exists( 'id', $data ) && isset( $data['url'] ) && is_string( $data['url'] ) && preg_match( '#^https?://#i', $data['url'] ) ) {
+			$id    = is_numeric( $data['id'] ) ? (int) $data['id'] : 0;
+			$local = $id > 0 && 'attachment' === get_post_type( $id ) && $this->same_media_file( $data['url'], (string) wp_get_attachment_url( $id ) );
+			if ( ! $local ) {
+				$new_id = $this->import_media( $data['url'] );
+				if ( $new_id ) {
+					$data['id']  = $new_id;
+					$data['url'] = (string) wp_get_attachment_url( $new_id );
+					$count++;
+				}
+			}
+		}
+		foreach ( $data as $key => $value ) {
+			if ( is_array( $value ) ) {
+				$data[ $key ] = $this->localize_media( $value, $count );
+			}
+		}
+		return $data;
+	}
+
+	/**
+	 * This store's attachment for a media URL: one copied before from that same
+	 * URL, an existing local file, or a new copy downloaded now. 0 on failure.
+	 *
+	 * @param string $url
+	 * @return int
+	 */
+	private function import_media( $url ) {
+		static $done = array(), $budget = 40;
+		if ( isset( $done[ $url ] ) ) {
+			return $done[ $url ];
+		}
+		$previous = get_posts( array(
+			'post_type'      => 'attachment',
+			'post_status'    => 'inherit',
+			'meta_key'       => '_dukkan_source_url',
+			'meta_value'     => $url,
+			'fields'         => 'ids',
+			'posts_per_page' => 1,
+		) );
+		if ( $previous ) {
+			return $done[ $url ] = (int) $previous[0];
+		}
+		$existing = attachment_url_to_postid( $url );
+		if ( $existing ) {
+			return $done[ $url ] = (int) $existing;
+		}
+		if ( $budget <= 0 ) {
+			return $done[ $url ] = 0;
+		}
+		$budget--;
+		require_once ABSPATH . 'wp-admin/includes/file.php';
+		require_once ABSPATH . 'wp-admin/includes/media.php';
+		require_once ABSPATH . 'wp-admin/includes/image.php';
+		$tmp = download_url( $url, 60 );
+		if ( is_wp_error( $tmp ) ) {
+			return $done[ $url ] = 0;
+		}
+		$file = array(
+			'name'     => sanitize_file_name( rawurldecode( wp_basename( (string) wp_parse_url( $url, PHP_URL_PATH ) ) ) ),
+			'tmp_name' => $tmp,
+		);
+		$id = media_handle_sideload( $file, 0 );
+		if ( is_wp_error( $id ) ) {
+			@unlink( $tmp );
+			return $done[ $url ] = 0;
+		}
+		update_post_meta( $id, '_dukkan_source_url', esc_url_raw( $url ) );
+		return $done[ $url ] = (int) $id;
+	}
+
 	private function invalid( $message ) {
 		return new WP_Error( 'dukkan_elementor_invalid_value', $message );
 	}

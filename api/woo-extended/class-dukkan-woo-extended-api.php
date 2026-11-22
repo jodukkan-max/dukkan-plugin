@@ -49,6 +49,28 @@ class Dukkan_Plugin_Woo_Extended_API {
      */
     private $store_connection_auth_code_option_name = 'dukkan_plugin_store_connection_auth_code';
 
+    /** When the current auth code was generated (unix time). */
+    private $auth_code_time_option_name = 'dukkan_plugin_store_connection_auth_code_time';
+
+    /** Wrong guesses against the current auth code. */
+    private $auth_code_failures_option_name = 'dukkan_plugin_store_connection_auth_code_failures';
+
+    /**
+     * Unix time until which the auth code may be RETURNED by the API.
+     *
+     * Set only by the server's build pipeline (create-site.sh) right after a
+     * new store is built, so the app can finish the automated key handshake.
+     * Closed again by the first successful key creation. Outside this window
+     * the code is only shown in WP admin (manual "connect my store" flow).
+     */
+    const BUILD_HANDSHAKE_OPTION = 'dukkan_build_handshake_until';
+
+    /** An auth code expires after this many seconds. */
+    const AUTH_CODE_TTL = 900;
+
+    /** Wrong guesses allowed before the code is destroyed. */
+    const AUTH_CODE_MAX_FAILURES = 5;
+
 	/**
 	 * Initialize the class and set its properties.
 	 *
@@ -114,14 +136,46 @@ class Dukkan_Plugin_Woo_Extended_API {
             $request_auth_code = trim((string) $request->get_param('auth_code'));
         }
 
-        if (empty($generated_auth_code) || empty($request_auth_code) || !hash_equals($generated_auth_code, $request_auth_code)) {
+        // Expired codes are destroyed, not accepted.
+        $created = (int) get_option($this->auth_code_time_option_name, 0);
+        if (!empty($generated_auth_code) && $created > 0 && (time() - $created) > self::AUTH_CODE_TTL) {
+            $this->dukkan_plugin_clear_auth_code();
+            $generated_auth_code = '';
+        }
+
+        if (empty($generated_auth_code) || empty($request_auth_code) || !hash_equals(strtoupper($generated_auth_code), strtoupper($request_auth_code))) {
+            // The code is short (it is typed by hand in the manual flow), so it
+            // must not be guessable: a few wrong tries destroy it.
+            if (!empty($generated_auth_code) && !empty($request_auth_code)) {
+                $failures = (int) get_option($this->auth_code_failures_option_name, 0) + 1;
+                if ($failures >= self::AUTH_CODE_MAX_FAILURES) {
+                    $this->dukkan_plugin_clear_auth_code();
+                } else {
+                    update_option($this->auth_code_failures_option_name, $failures, false);
+                }
+            }
             return new WP_Error('dukkan_woo_extended_unauthorized', 'Invalid or missing store connection auth code.', array('status' => 401));
         }
 
-        // Delete the auth code after successful authentication.
-        delete_option($this->store_connection_auth_code_option_name);
+        // Single use: the code, its counters and any open build window go.
+        $this->dukkan_plugin_clear_auth_code();
+        delete_option(self::BUILD_HANDSHAKE_OPTION);
 
         return true;
+    }
+
+    private function dukkan_plugin_clear_auth_code()
+    {
+        delete_option($this->store_connection_auth_code_option_name);
+        delete_option($this->auth_code_time_option_name);
+        delete_option($this->auth_code_failures_option_name);
+    }
+
+    /** True while the build pipeline allows the code to be returned by the API. */
+    private function dukkan_plugin_build_handshake_open()
+    {
+        $until = (int) get_option(self::BUILD_HANDSHAKE_OPTION, 0);
+        return $until > time();
     }
 
     private function dukkan_plugin_get_store_connection_auth_code()
@@ -164,26 +218,32 @@ class Dukkan_Plugin_Woo_Extended_API {
     /**
      * Generate store connection auth code.
      *
-     * Returns the generated code so the automated "Build New Website" flow can
-     * immediately complete the key-generation handshake. The code is still
-     * single-use: `dukkan_plugin_auth_code_permission_callback` deletes it on
-     * first successful use.
+     * SECURITY (v1.0.68): the code is returned in the response ONLY during the
+     * short build window the server opens right after building a new store
+     * (see BUILD_HANDSHAKE_OPTION). Before, it was always returned, and the
+     * only protection was the static key that ships inside the app - so anyone
+     * with the app could mint read_write WooCommerce keys on every store.
+     *
+     * Outside the window the code is shown only in WP admin (Dukkan > Store App
+     * Connection), which is the manual "connect my store" flow: the merchant
+     * reads it there and types it into the app. The code is single-use,
+     * expires after AUTH_CODE_TTL and is destroyed after a few wrong guesses.
      */
     public function dukkan_plugin_generate_store_connection_auth_code(WP_REST_Request $request)
     {
-        // Generate a 4-character alphanumeric code.
+        // Generate a 4-character alphanumeric code (typed by hand in the manual flow).
         $auth_code = strtoupper( wp_generate_password( 4, false, false ) );
 
-        // Save the code in plugin settings.
         update_option( $this->store_connection_auth_code_option_name, $auth_code );
+        update_option( $this->auth_code_time_option_name, time(), false );
+        delete_option( $this->auth_code_failures_option_name );
 
-        return new WP_REST_Response(
-            array(
-                'success'   => true,
-                'auth_code' => $auth_code,
-            ),
-            200
-        );
+        $response = array( 'success' => true );
+        if ( $this->dukkan_plugin_build_handshake_open() ) {
+            $response['auth_code'] = $auth_code;
+        }
+
+        return new WP_REST_Response( $response, 200 );
     }
 
     /**
@@ -324,13 +384,17 @@ class Dukkan_Plugin_Woo_Extended_API {
             return new WP_Error('missing_consumer_key', 'A consumer key is required.', array('status' => 400));
         }
 
-        $truncated = substr($consumer_key, -7);
         $table = $wpdb->prefix . 'woocommerce_api_keys';
 
-        // Find the key by its truncated suffix (WooCommerce stores substr($key, -7)).
+        // Match the FULL key (WooCommerce stores its hash). Matching only the
+        // last 7 characters let anyone with the static app key revoke a store's
+        // keys knowing just the short suffix shown in WP admin.
+        if (!function_exists('wc_api_hash')) {
+            return new WP_Error('woocommerce_api_keys_unavailable', 'WooCommerce API key helpers are unavailable.', array('status' => 500));
+        }
         $key_id = $wpdb->get_var($wpdb->prepare(
-            "SELECT key_id FROM {$table} WHERE truncated_key = %s LIMIT 1",
-            $truncated
+            "SELECT key_id FROM {$table} WHERE consumer_key = %s LIMIT 1",
+            wc_api_hash($consumer_key)
         ));
 
         if (empty($key_id)) {
