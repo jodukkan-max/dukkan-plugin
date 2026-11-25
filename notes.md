@@ -1,10 +1,16 @@
 # Dukkan Plugin — Work Log & Structure
 
-> Last updated: v1.0.71 — November 25, 2026 — own update control (replaces Easy Updates Manager)
+> Last updated: v1.0.72 — November 25, 2026 — Updates tab hidden
 
 ---
 
 ## Recent Changes
+
+### v1.0.72 — Dukkan > Updates tab hidden
+
+- The Updates tab is no longer shown in Dukkan settings (update rules are managed centrally); update control and the update log keep running. Show it again with `add_filter( 'dukkan_show_updates_tab', '__return_true' )`.
+- The plugins page auto-update column shows the Dukkan rule as plain text instead of a link to the hidden tab.
+- Rules stay editable with `wp dukkan-updates list | set | log`.
 
 ### v1.0.71 — Update control (replaces Easy Updates Manager) — `includes/class-dukkan-plugin-updates.php`, `admin/class-dukkan-plugin-updates-admin.php`
 

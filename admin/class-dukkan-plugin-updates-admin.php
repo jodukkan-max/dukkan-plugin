@@ -22,7 +22,19 @@ class Dukkan_Updates_Admin {
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue' ) );
 	}
 
+	/**
+	 * The tab is hidden: update rules are managed centrally (WP-CLI
+	 * `wp dukkan-updates`). Show it with
+	 * add_filter( 'dukkan_show_updates_tab', '__return_true' ).
+	 */
+	public static function visible(): bool {
+		return (bool) apply_filters( 'dukkan_show_updates_tab', false );
+	}
+
 	public function add_tab( $tabs ) {
+		if ( ! self::visible() ) {
+			return $tabs;
+		}
 		$tabs[ self::TAB ] = array(
 			'title' => __( 'Updates', 'dukkan-plugin' ),
 			'icon'  => 'dashicons-update',

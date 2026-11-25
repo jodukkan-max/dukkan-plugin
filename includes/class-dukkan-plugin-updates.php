@@ -442,6 +442,9 @@ class Dukkan_Updates {
 				$text = __( 'Manual updates (Dukkan).', 'dukkan-plugin' );
 			}
 		}
+		if ( ! class_exists( 'Dukkan_Updates_Admin' ) || ! Dukkan_Updates_Admin::visible() ) {
+			return '<span>' . esc_html( $text ) . '</span>';
+		}
 		return '<a href="' . $url . '">' . esc_html( $text ) . '</a>';
 	}
 }
