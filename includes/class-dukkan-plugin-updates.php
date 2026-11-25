@@ -50,6 +50,11 @@ class Dukkan_Updates {
 		if ( in_array( self::OLD_PLUGIN, (array) get_option( 'active_plugins', array() ), true ) ) {
 			return 'Easy Updates Manager is still active';
 		}
+		// A store that never had update rules keeps WordPress's own behaviour
+		// (otherwise every auto-update, Dukkan's included, would be turned off).
+		if ( false === get_site_option( self::OPTION, false ) ) {
+			return 'no update rules are saved on this store';
+		}
 		return '';
 	}
 

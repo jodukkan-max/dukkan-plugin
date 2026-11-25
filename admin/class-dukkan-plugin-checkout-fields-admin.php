@@ -35,7 +35,8 @@ class Dukkan_Checkout_Fields_Admin {
 	const VALIDATORS = array( 'email', 'phone', 'number', 'url', 'postcode', 'state' );
 
 	public function __construct() {
-		add_filter( 'dukkan_settings_tabs', array( $this, 'add_tab' ) );
+		// Late priority: Checkout Fields is the last tab.
+		add_filter( 'dukkan_settings_tabs', array( $this, 'add_tab' ), 999 );
 		add_action( 'dukkan_settings_tab_content_' . self::TAB, array( $this, 'render' ) );
 		add_action( 'admin_post_' . self::ACTION, array( $this, 'save' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue' ) );

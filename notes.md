@@ -1,10 +1,15 @@
 # Dukkan Plugin — Work Log & Structure
 
-> Last updated: v1.0.72 — November 25, 2026 — Updates tab hidden
+> Last updated: v1.0.73 — November 25, 2026 — Checkout Fields last tab; update control off without rules
 
 ---
 
 ## Recent Changes
+
+### v1.0.73 — Checkout Fields tab last; update control idle without saved rules
+
+- **Checkout Fields** is registered at priority 999 on `dukkan_settings_tabs`, so it is the last Dukkan settings tab.
+- **Update control** stays idle on a store with no `MPSUM` site option (`idle_reason()`: "no update rules are saved on this store"). Before, it ran with empty rules and turned off every auto-update, Dukkan's included (seen on annubalacoffee and thecoach-jo, which never had Easy Updates Manager; both also have `DUKKAN_UPDATES` false in wp-config).
 
 ### v1.0.72 — Dukkan > Updates tab hidden
 
