@@ -1,10 +1,20 @@
 # Dukkan Plugin — Work Log & Structure
 
-> Last updated: v1.0.70 — November 25, 2026 — own checkout fields (replaces Checkout Field Editor)
+> Last updated: v1.0.71 — November 25, 2026 — own update control (replaces Easy Updates Manager)
 
 ---
 
 ## Recent Changes
+
+### v1.0.71 — Update control (replaces Easy Updates Manager) — `includes/class-dukkan-plugin-updates.php`, `admin/class-dukkan-plugin-updates-admin.php`
+
+- **Drop-in replacement** for Easy Updates Manager 9.0.21: same storage (site option `MPSUM`: `core`, `plugins` / `plugins_automatic`, `themes` / `themes_automatic`, `advanced.excluded_users`) and the same log table `{base_prefix}eum_logs`, so each store keeps its rules and history. Idle while `stops-core-theme-and-plugin-updates` is active: switching a store = deactivating that plugin. Kill switch `define('DUKKAN_UPDATES', false)`.
+- Ported behaviour: all-updates off; core blocked / manual / auto-minor / auto-all (dev updates flag); plugin and theme modes off / on (manual) / automatic / automatic_off / individual; translations off / manual / automatic; blocked items removed from `update_plugins` / `update_themes` and from api.wordpress.org requests; blocked kinds report "checked now, no updates" (`eum_*_checked`, 6 h) and their update crons are cleared; `wp_update_plugins` triggers `wp_maybe_auto_update` in cron (how Dukkan auto-updates); auto-update result emails off; `file_mod_allowed` for the automatic updater.
+- **Update log**: plugin, theme, core and translation updates, manual and automatic, with result.
+- **Dukkan > Updates tab**: General rules, per-plugin and per-theme Allowed / Auto-update / Blocked, the log (latest 200, clear).
+- **WP-CLI**: `wp dukkan-updates status | list | set <plugin> allowed|auto|blocked | log [--limit]`.
+- Left out (unused on Dukkan stores): version-control checks, update-email sending, UpdraftCentral, ratings nag, admin-bar menu.
+- Note: running `WP_Automatic_Updater` from WP-CLI leaves an updated active plugin inactive (same with EUM); real updates run via web cron.
 
 ### v1.0.70 — Checkout fields (replaces Checkout Field Editor for WooCommerce) — `includes/class-dukkan-plugin-checkout-fields.php`, `admin/class-dukkan-plugin-checkout-fields-admin.php`
 
