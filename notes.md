@@ -1,10 +1,18 @@
 # Dukkan Plugin — Work Log & Structure
 
-> Last updated: v1.0.73 — November 25, 2026 — Checkout Fields last tab; update control off without rules
+> Last updated: v1.0.74 — November 25, 2026 — Generate with AI on the product editor
 
 ---
 
 ## Recent Changes
+
+### v1.0.74 — "Generate with AI" on the product editor — `admin/class-dukkan-plugin-product-ai-admin.php`, `admin/class-dukkan-plugin-product-photo-ai.php`, `admin/js/dp-product-ai.js`, `admin/css/dp-product-ai.css`
+
+- **Product name, description, short description**: a "Generate with AI" button under each field reads the product image (featured image, else the first gallery image) and lists suggestions with the app's exact prompts (5 names, 3 descriptions, 5 short descriptions); click one to fill the field. admin-ajax `dukkan_product_ai`, runs through `Dukkan_Plugin_AI_API::complete()`.
+- **Product photos** ("Let AI do it", same as the app), in the Product gallery box: ratio 1:1 / 3:4 / 2:3 and 1 or 2 photos. Per photo: DeepSeek writes the scene prompt (Firebase `ai_prompts/product_photo` → `prompt_writer`, read via the portal's `GET /api/ai/product-photo-prompt`, cached 5 min; built-in copy as fallback), then MAI makes the photo through the Dukkan AI gateway (`DUKKAN_AI_GATEWAY_URL` / `DUKKAN_AI_GATEWAY_TOKEN` in wp-config). Saved as JPEG in the Media Library, attached to the product, added to the gallery. admin-ajax `dukkan_product_ai_photo`.
+- Buttons stay disabled until the product has an image. Images are resized (1024 px for DeepSeek, 1536 px for MAI) and offloaded images are downloaded first. Keys never reach the browser. Kill switch `define('DUKKAN_PRODUCT_AI', false)`.
+- `Dukkan_Plugin_AI_API`: the DeepSeek call is now the shared static `complete()`; with no DeepSeek key it goes through the gateway's `/deepseek` route (like the app). The app's `/dukkan-ai/v1/suggest` route is unchanged.
+- Script and style versions include the file time, so a changed file is never served from cache.
 
 ### v1.0.73 — Checkout Fields tab last; update control idle without saved rules
 

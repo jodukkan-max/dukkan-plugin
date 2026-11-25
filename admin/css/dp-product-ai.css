@@ -1,0 +1,152 @@
+/* Dukkan — "Generate with AI" on the product editor. @since 1.0.74 */
+.dp-ai {
+	margin: 8px 0 12px;
+}
+#postexcerpt .dp-ai {
+	margin-bottom: 0;
+}
+.dp-ai-btn.button {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+}
+.dp-ai-btn .dashicons {
+	font-size: 16px;
+	width: 16px;
+	height: 16px;
+}
+.dp-ai-hint {
+	margin-inline-start: 10px;
+	color: #646970;
+	font-style: italic;
+	vertical-align: middle;
+}
+.dp-ai-hint.is-error {
+	color: #b32d2e;
+	font-style: normal;
+}
+.dp-ai-hint .spinner {
+	float: none;
+	margin: -2px 6px 0 0;
+}
+.dp-ai-results {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	margin-top: 8px;
+}
+.dp-ai-item {
+	display: block;
+	width: 100%;
+	text-align: start;
+	padding: 8px 12px;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	background: #fff;
+	cursor: pointer;
+	white-space: pre-line;
+	line-height: 1.5;
+	font-size: 13px;
+}
+.dp-ai-item:hover,
+.dp-ai-item:focus {
+	border-color: #2271b1;
+	background: #f0f6fc;
+	outline: none;
+}
+.dp-ai-item.is-used {
+	border-color: #00a32a;
+	background: #edfaef;
+}
+.dp-ai-close {
+	align-self: flex-start;
+}
+
+/* Product photos (in the "Product gallery" box). */
+.dp-ai-photo {
+	margin: 4px 0 6px;
+	padding-top: 10px;
+	border-top: 1px solid #f0f0f1;
+}
+.dp-ai-photo .dp-ai-hint {
+	display: block;
+	margin: 8px 0 0;
+}
+.dp-ai-label {
+	margin: 12px 0 6px;
+	font-weight: 600;
+}
+.dp-ai-ratios,
+.dp-ai-counts {
+	display: flex;
+	gap: 6px;
+}
+.dp-ai-ratio,
+.dp-ai-count {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 4px;
+	min-height: 52px;
+	padding: 6px 4px;
+	border: 1px solid #c3c4c7;
+	border-radius: 6px;
+	background: #f6f7f7;
+	cursor: pointer;
+	font-size: 12px;
+	color: #1d2327;
+}
+.dp-ai-ratio:hover,
+.dp-ai-count:hover {
+	border-color: #2271b1;
+}
+.dp-ai-ratio.is-on {
+	background: #1d2327;
+	border-color: #1d2327;
+	color: #fff;
+}
+.dp-ai-shape {
+	display: block;
+	border: 2px solid currentColor;
+	border-radius: 3px;
+	opacity: .8;
+}
+.dp-ai-count strong {
+	font-size: 18px;
+	line-height: 1;
+}
+.dp-ai-count {
+	background: #fff;
+}
+.dp-ai-note {
+	margin: 8px 0 0;
+	color: #646970;
+	font-size: 12px;
+}
+.dp-ai-photos {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 6px;
+	margin-top: 10px;
+}
+.dp-ai-tile {
+	position: relative;
+	background: #f0f0f1;
+	border-radius: 4px;
+	overflow: hidden;
+}
+.dp-ai-tile.is-loading .spinner {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	margin: -10px 0 0 -10px;
+	float: none;
+}
+.dp-ai-tile img {
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}

@@ -11,6 +11,8 @@
  * The key is read from, in order:
  *   1. the DUKKAN_DEEPSEEK_API_KEY constant (define it in wp-config.php)
  *   2. the dukkan_deepseek_api_key option
+ * With neither, requests go through the Dukkan AI gateway when
+ * DUKKAN_AI_GATEWAY_URL / DUKKAN_AI_GATEWAY_TOKEN are set (since 1.0.74).
  *
  * @link       https://dukkanjo.com
  * @since      1.0.65
@@ -134,7 +136,7 @@ class Dukkan_Plugin_AI_API {
 	 *
 	 * @return string Empty string when unconfigured.
 	 */
-	private function api_key() {
+	private static function api_key() {
 		if ( defined( 'DUKKAN_DEEPSEEK_API_KEY' ) ) {
 			return trim( (string) DUKKAN_DEEPSEEK_API_KEY );
 		}
@@ -148,7 +150,7 @@ class Dukkan_Plugin_AI_API {
 	 */
 	public function get_status() {
 		return rest_ensure_response( array(
-			'configured' => '' !== $this->api_key(),
+			'configured' => '' !== self::api_key() || ( defined( 'DUKKAN_AI_GATEWAY_TOKEN' ) && '' !== trim( (string) DUKKAN_AI_GATEWAY_TOKEN ) ),
 			'model'      => self::MODEL,
 		) );
 	}
@@ -160,20 +162,6 @@ class Dukkan_Plugin_AI_API {
 	 * @return WP_REST_Response|WP_Error
 	 */
 	public function create_suggestions( WP_REST_Request $request ) {
-		$api_key = $this->api_key();
-		if ( '' === $api_key ) {
-			return new WP_Error(
-				'dukkan_ai_not_configured',
-				__( 'AI is not configured on this store. Add DUKKAN_DEEPSEEK_API_KEY to wp-config.php.', 'dukkan-plugin' ),
-				array( 'status' => 501 )
-			);
-		}
-
-		$limited = $this->rate_limit_exceeded();
-		if ( is_wp_error( $limited ) ) {
-			return $limited;
-		}
-
 		$image = (string) $request['image'];
 		if ( strlen( $image ) > self::MAX_IMAGE_BYTES ) {
 			return new WP_Error(
@@ -193,9 +181,55 @@ class Dukkan_Plugin_AI_API {
 			);
 		}
 
-		$max_tokens  = (int) $request['max_tokens'];
+		$text = self::complete(
+			(string) $request['prompt'],
+			$image,
+			'image/jpeg',
+			(float) $request['temperature'],
+			(int) $request['max_tokens']
+		);
+		if ( is_wp_error( $text ) ) {
+			return $text;
+		}
+
+		return rest_ensure_response( array( 'text' => $text ) );
+	}
+
+	/**
+	 * Sends a prompt + base64 image to DeepSeek and returns the reply text.
+	 * Shared by the app's REST route and the product editor buttons.
+	 *
+	 * @since 1.0.74
+	 *
+	 * @param string $prompt      Instruction text.
+	 * @param string $image       Bare base64 image data.
+	 * @param string $mime        Image MIME type.
+	 * @param float  $temperature 0..1.5.
+	 * @param int    $max_tokens  256..8000.
+	 * @return string|WP_Error
+	 */
+	public static function complete( $prompt, $image, $mime, $temperature, $max_tokens ) {
+		$api_key = self::api_key();
+		// No DeepSeek key on this store: use the Dukkan AI gateway, like the app.
+		$gateway = '' === $api_key
+			&& defined( 'DUKKAN_AI_GATEWAY_URL' ) && defined( 'DUKKAN_AI_GATEWAY_TOKEN' )
+			&& '' !== trim( (string) DUKKAN_AI_GATEWAY_URL ) && '' !== trim( (string) DUKKAN_AI_GATEWAY_TOKEN );
+		if ( '' === $api_key && ! $gateway ) {
+			return new WP_Error(
+				'dukkan_ai_not_configured',
+				__( 'AI is not configured on this store. Add DUKKAN_DEEPSEEK_API_KEY to wp-config.php.', 'dukkan-plugin' ),
+				array( 'status' => 501 )
+			);
+		}
+
+		$limited = self::rate_limit_exceeded();
+		if ( is_wp_error( $limited ) ) {
+			return $limited;
+		}
+
+		$max_tokens  = (int) $max_tokens;
 		$max_tokens  = max( 256, min( 8000, $max_tokens ) );
-		$temperature = (float) $request['temperature'];
+		$temperature = (float) $temperature;
 		$temperature = max( 0.0, min( 1.5, $temperature ) );
 
 		$body = array(
@@ -206,11 +240,11 @@ class Dukkan_Plugin_AI_API {
 					'content' => array(
 						array(
 							'type' => 'text',
-							'text' => (string) $request['prompt'],
+							'text' => (string) $prompt,
 						),
 						array(
 							'type'      => 'image_url',
-							'image_url' => array( 'url' => 'data:image/jpeg;base64,' . $image ),
+							'image_url' => array( 'url' => 'data:' . $mime . ';base64,' . $image ),
 						),
 					),
 				),
@@ -225,11 +259,20 @@ class Dukkan_Plugin_AI_API {
 			'thinking'    => array( 'type' => 'disabled' ),
 		);
 
-		$response = wp_remote_post( self::ENDPOINT, array(
+		$endpoint = self::ENDPOINT;
+		$bearer   = $api_key;
+		if ( $gateway ) {
+			// The gateway's /deepseek route picks the model itself.
+			unset( $body['model'], $body['thinking'] );
+			$endpoint = rtrim( trim( (string) DUKKAN_AI_GATEWAY_URL ), '/' ) . '/deepseek';
+			$bearer   = trim( (string) DUKKAN_AI_GATEWAY_TOKEN );
+		}
+
+		$response = wp_remote_post( $endpoint, array(
 			'timeout' => 90,
 			'headers' => array(
 				'Content-Type'  => 'application/json',
-				'Authorization' => 'Bearer ' . $api_key,
+				'Authorization' => 'Bearer ' . $bearer,
 			),
 			'body'    => wp_json_encode( $body ),
 		) );
@@ -275,7 +318,7 @@ class Dukkan_Plugin_AI_API {
 			);
 		}
 
-		return rest_ensure_response( array( 'text' => $text ) );
+		return $text;
 	}
 
 	/**
@@ -283,7 +326,7 @@ class Dukkan_Plugin_AI_API {
 	 *
 	 * @return true|WP_Error
 	 */
-	private function rate_limit_exceeded() {
+	private static function rate_limit_exceeded() {
 		$user_id = get_current_user_id();
 		$key     = 'dukkan_ai_rl_' . ( $user_id ? 'u' . $user_id : 'ip' . md5( isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '' ) );
 

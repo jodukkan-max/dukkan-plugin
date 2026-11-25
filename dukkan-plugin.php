@@ -16,7 +16,7 @@
  * Plugin Name:       Dukkan
  * Plugin URI:        https://dukkanjo.com
  * Description:       WooCommerce companion plugin — REST APIs, product add-ons, dynamic pricing (simple, bulk, BOGO), loyalty points, AI chatbot, TranslatePress integration.
- * Version:           1.0.73
+ * Version:           1.0.74
  * Author:            Dukkan Ecommerce LLC
  * Author URI:        https://dukkanjo.com/
  * License:           GPL-2.0+
@@ -35,7 +35,7 @@ if ( ! defined( 'WPINC' ) ) {
  * Start at version 1.0.0 and use SemVer - https://semver.org
  * Rename this for your plugin and update it as you release new versions.
  */
-define( 'DUKKAN_PLUGIN_VERSION', '1.0.73' );
+define( 'DUKKAN_PLUGIN_VERSION', '1.0.74' );
 
 define( 'DUKKAN_PLUGIN_PATH', plugin_dir_path( __FILE__ ) );
 define( 'DUKKAN_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
@@ -149,4 +149,17 @@ Dukkan_Updates::boot();
 if ( is_admin() ) {
 	require_once plugin_dir_path( __FILE__ ) . 'admin/class-dukkan-plugin-updates-admin.php';
 	new Dukkan_Updates_Admin();
+}
+
+/**
+ * "Generate with AI" on the product editor: product name, description and
+ * short description, and product photos (same prompts and flow as the app).
+ *
+ * @since 1.0.74
+ */
+if ( is_admin() ) {
+	require_once plugin_dir_path( __FILE__ ) . 'admin/class-dukkan-plugin-product-ai-admin.php';
+	new Dukkan_Product_AI_Admin();
+	require_once plugin_dir_path( __FILE__ ) . 'admin/class-dukkan-plugin-product-photo-ai.php';
+	new Dukkan_Product_Photo_AI();
 }
