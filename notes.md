@@ -1,10 +1,19 @@
 # Dukkan Plugin — Work Log & Structure
 
-> Last updated: v1.0.69 — November 25, 2026 — own media offload to Cloudflare R2
+> Last updated: v1.0.70 — November 25, 2026 — own checkout fields (replaces Checkout Field Editor)
 
 ---
 
 ## Recent Changes
+
+### v1.0.70 — Checkout fields (replaces Checkout Field Editor for WooCommerce) — `includes/class-dukkan-plugin-checkout-fields.php`, `admin/class-dukkan-plugin-checkout-fields-admin.php`
+
+- **Drop-in replacement** for ThemeHigh's free plugin: reads the same options (`wc_fields_billing` / `wc_fields_shipping` / `wc_fields_additional`, `thwcfd_advanced_settings`) and hooks the classic checkout the same way (country-locale overrides, billing/shipping/checkout field filters at priority 1000, WC 9.8+ "hide shipping costs until an address is entered" fix, required-marker script). Field wrappers keep the `thwcfd-*` classes, so the checkout HTML is byte-identical. Idle while `woo-checkout-field-editor-pro` is active: switching a store = deactivating that plugin. Kill switch `define('DUKKAN_CHECKOUT_FIELDS', false)`.
+- **Arabic labels**: TranslatePress wraps gettext results in `#!trpst#…#!trpen#` markers; the old plugin compared the wrapped text, treated untranslated English as translated and never reached WooCommerce's Arabic. Labels are now compared without the markers, and the Dukkan wording WooCommerce lacks ("Full Name", "Full address", the address placeholder) has built-in Arabic.
+- **Custom fields**: saved to order meta, shown in order emails (`show_in_email`) and on the thank-you / My Account order page (`show_in_order`); number/url validation.
+- **Dukkan > Checkout Fields tab**: Billing / Shipping / Additional tables (drag to reorder, label, placeholder, width, required, enabled, default, validation, email/order display), add/delete custom fields (text, textarea, email, phone, number, URL, password, date, time, select, radio, checkbox), reset a section, Advanced country-override switches.
+- **WP-CLI**: `wp dukkan-checkout status | list [<section>] | set <field> [--label] [--placeholder] [--required] [--enabled] [--priority] [--width] | reset <section>`.
+- With no saved billing fields the Dukkan form is used (`Dukkan_Checkout_Fields::default_billing()`).
 
 ### v1.0.69 — Media offload to Cloudflare R2 (replaces Advanced Media Offloader) — `includes/class-dukkan-plugin-media-offload.php`
 

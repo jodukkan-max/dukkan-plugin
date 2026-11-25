@@ -1,0 +1,35 @@
+/* Dukkan > Checkout Fields tab. */
+.dukkan-cf__sections { margin: 12px 0 8px; }
+.dukkan-cf__head { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.dukkan-cf__head .button .dashicons { vertical-align: text-bottom; font-size: 16px; width: 16px; height: 16px; }
+
+.dukkan-cf__table { border-collapse: collapse; }
+.dukkan-cf__table th, .dukkan-cf__table td { vertical-align: middle; }
+.dukkan-cf__table input[type="text"], .dukkan-cf__table select { width: 100%; max-width: 100%; }
+.dukkan-cf__table .dukkan-cf__name { width: 100%; }
+.dukkan-cf__table select { min-width: 120px; }
+.dukkan-cf__table td:nth-child(2) { min-width: 170px; }
+.dukkan-cf__field { border-bottom: 1px solid #f0f0f1; }
+.dukkan-cf__field:nth-of-type(odd) .dukkan-cf__row { background: #fcfcfc; }
+.dukkan-cf__drag { width: 24px; cursor: move; color: #8c8f94; }
+.dukkan-cf__flag { width: 72px; text-align: center !important; }
+.dukkan-cf__actions { width: 64px; white-space: nowrap; text-align: end; }
+.dukkan-cf__actions .button-link { padding: 2px; color: #50575e; }
+.dukkan-cf__actions .button-link-delete { color: #b32d2e; }
+.dukkan-cf__row.is-disabled td:not(.dukkan-cf__flag):not(.dukkan-cf__actions):not(.dukkan-cf__drag) { opacity: .5; }
+.dukkan-cf__row.is-open { background: #f6f7f7 !important; }
+.dukkan-cf__toggle { text-decoration: none; }
+.dukkan-cf__badge { display: inline-block; margin-inline-start: 6px; padding: 0 6px; font-size: 11px; line-height: 18px; border-radius: 9px; background: #e7f0f7; color: #2271b1; }
+
+.dukkan-cf__more { display: none; }
+.dukkan-cf__more.is-open { display: table-row; background: #f6f7f7; }
+.dukkan-cf__more-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px 24px; padding: 4px 0 12px; }
+.dukkan-cf__more-grid > label { display: flex; flex-direction: column; gap: 4px; font-weight: 600; }
+.dukkan-cf__more-grid input[type="text"], .dukkan-cf__more-grid textarea { width: 100%; font-weight: 400; }
+.dukkan-cf__more-grid fieldset legend { font-weight: 600; margin-bottom: 4px; }
+.dukkan-cf__inline { display: inline-block; margin-inline-end: 12px; }
+.dukkan-cf__options.is-hidden { display: none; }
+
+.dukkan-cf__placeholder { height: 44px; background: #f0f6fc; outline: 1px dashed #72aee6; }
+.dukkan-cf__submit { display: flex; align-items: center; gap: 16px; }
+.dukkan-cf__submit .button-link-delete { background: none; border: 0; cursor: pointer; text-decoration: underline; }
