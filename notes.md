@@ -1,10 +1,20 @@
 # Dukkan Plugin — Work Log & Structure
 
-> Last updated: v1.0.68 — November 22, 2026 — security fix + website-builder (Elementor API) fixes
+> Last updated: v1.0.69 — November 25, 2026 — own media offload to Cloudflare R2
 
 ---
 
 ## Recent Changes
+
+### v1.0.69 — Media offload to Cloudflare R2 (replaces Advanced Media Offloader) — `includes/class-dukkan-plugin-media-offload.php`
+
+- **Drop-in replacement** with the old plugin's storage contract: same `ADVMO_CLOUDFLARE_R2_*` constants, `advmo_settings` option and `advmo_*` post meta, so existing CDN URLs stay identical and nothing is migrated. Idle while `advanced-media-offloader` is active: switching a store = deactivating that plugin. Kill switch `define('DUKKAN_MEDIA_OFFLOAD', false)`.
+- **No AWS SDK**: own SigV4 client on PHP cURL (path-style R2, `UNSIGNED-PAYLOAD` PUTs streamed from disk, a photo's files uploaded in parallel with `curl_multi`). HEAD uses `CURLOPT_NOBODY` only (a custom HEAD verb hangs on 200 responses).
+- **Serving**: `wp_get_attachment_url`, srcset, `wp_content_img_tag`, `attachment_url_to_postid`; SVGs that are only on R2 are cached locally for readers (Elementor inline icons); image edits fetch the original back from R2.
+- **Delayed offload**: a new upload stays local for `dukkan_media_offload_delay` seconds (default 10, 0 = at once; `DUKKAN_MEDIA_OFFLOAD_DELAY` overrides), counted from when the request arrived. A detached `wp dukkan-media run-due --until=<due>` (flock per site) sends it, so no PHP-FPM worker waits; the WP-Cron event `dukkan_media_offload_sweep` is the safety net, and failed uploads retry after 2/4/8/16 minutes.
+- **Saved addresses**: after a delayed (or CLI) offload, local URLs of the photo (all sizes; http/https, www, JSON-escaped) in `_elementor_data`, `_elementor_page_settings` and post content are replaced by CDN URLs. Elementor CSS is rebuilt for the changed pages, and the pages showing the photo (product / variation parent, its post, category image) are purged once per request via the `dukkan-auto-purge` mu-plugin.
+- **WP-CLI**: `wp dukkan-media status | offload [--all] [--dry-run] | verify | fix-links [--all] | delay [<s>] | run-due`.
+- Server side (not in the zip): nginx redirects a missing local upload to the CDN (`snippets/security.conf` uploads block + `conf.d/dukkan-media-cdn.conf`, map built by `/opt/wp-automation/media-cdn-map.sh`).
 
 ### v1.0.68 — Website builder (Elementor API) fixes — `api/class-dukkan-plugin-elementor-api.php`
 
