@@ -50,6 +50,35 @@ class Dukkan_Product_AI_Admin {
 		);
 	}
 
+	/**
+	 * The store's main language: TranslatePress's default language when it is
+	 * active, else the site language (e.g. 'ar', 'en_US').
+	 *
+	 * @since 1.0.75
+	 * @return string
+	 */
+	public static function store_language() {
+		$trp = get_option( 'trp_settings' );
+		if ( is_array( $trp ) && ! empty( $trp['default-language'] ) ) {
+			return (string) $trp['default-language'];
+		}
+		return (string) get_locale();
+	}
+
+	/**
+	 * Extra instruction so suggestions come in the store's main language:
+	 * Arabic for Arabic stores (same rule as the app), nothing otherwise.
+	 *
+	 * @since 1.0.75
+	 * @return string
+	 */
+	public static function language_instruction() {
+		if ( 0 !== strpos( strtolower( self::store_language() ), 'ar' ) ) {
+			return '';
+		}
+		return ' Write every suggestion in Arabic (clear Modern Standard Arabic for an online store in Jordan). Keep brand names, model names and numbers as they are. The JSON array must contain the Arabic texts.';
+	}
+
 	public function __construct() {
 		if ( defined( 'DUKKAN_PRODUCT_AI' ) && ! DUKKAN_PRODUCT_AI ) {
 			return;
@@ -138,8 +167,9 @@ class Dukkan_Product_AI_Admin {
 			wp_send_json_error( array( 'message' => $data->get_error_message() ), 400 );
 		}
 
-		$cfg  = $fields[ $field ];
-		$text = Dukkan_Plugin_AI_API::complete( $cfg['prompt'], $data['base64'], $data['mime'], $cfg['temperature'], $cfg['max_tokens'] );
+		$cfg    = $fields[ $field ];
+		$prompt = $cfg['prompt'] . self::language_instruction();
+		$text   = Dukkan_Plugin_AI_API::complete( $prompt, $data['base64'], $data['mime'], $cfg['temperature'], $cfg['max_tokens'] );
 		if ( is_wp_error( $text ) ) {
 			wp_send_json_error( array( 'message' => $text->get_error_message() ), 502 );
 		}

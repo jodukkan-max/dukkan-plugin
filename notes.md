@@ -1,10 +1,15 @@
 # Dukkan Plugin — Work Log & Structure
 
-> Last updated: v1.0.74 — November 25, 2026 — Generate with AI on the product editor
+> Last updated: v1.0.75 — November 26, 2026 — AI text in Arabic on Arabic stores
 
 ---
 
 ## Recent Changes
+
+### v1.0.75 — "Generate with AI" writes Arabic on Arabic stores — `admin/class-dukkan-plugin-product-ai-admin.php`
+
+- When the store's main language is Arabic (TranslatePress `default-language`, else the site locale), the product name, description and short description suggestions are written in Arabic (Modern Standard Arabic for Jordan), keeping brand names, model names and numbers. English stores are unchanged. Same rule as the app.
+- New helpers `Dukkan_Product_AI_Admin::store_language()` and `::language_instruction()`. AI product photos are unchanged (their prompts stay English for the image model).
 
 ### v1.0.74 — "Generate with AI" on the product editor — `admin/class-dukkan-plugin-product-ai-admin.php`, `admin/class-dukkan-plugin-product-photo-ai.php`, `admin/js/dp-product-ai.js`, `admin/css/dp-product-ai.css`
 
