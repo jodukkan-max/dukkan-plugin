@@ -1,10 +1,15 @@
 # Dukkan Plugin — Work Log & Structure
 
-> Last updated: v1.0.75 — November 26, 2026 — AI text in Arabic on Arabic stores
+> Last updated: v1.0.76 — November 28, 2026 — Elementor API accent colours + media texts, TranslatePress settings over REST
 
 ---
 
 ## Recent Changes
+
+### v1.0.76 — Elementor API + TranslatePress — `api/class-dukkan-plugin-elementor-api.php`, `api/class-dukkan-plugin-translatepress.php`
+
+- **Elementor API:** the product-card style endpoint also returns Rey's accent colours (`accent.color/hover/text/text_hover`; hover and text computed like rey-core when not set). Template media imported into a store keep their media-library texts (title / caption / description) that image-carousel captions show; an earlier copy still named after its file gets the texts too.
+- **TranslatePress:** saving language settings from the app rejects unknown language codes (400) instead of silently keeping the old settings, and loads the wp-admin helpers `sanitize_settings()` needs over REST. Settings responses include the language limits (`max_languages`: 2 on the free edition, `can_unpublish`), so the app shows the same options as wp-admin.
 
 ### v1.0.75 — "Generate with AI" writes Arabic on Arabic stores — `admin/class-dukkan-plugin-product-ai-admin.php`
 

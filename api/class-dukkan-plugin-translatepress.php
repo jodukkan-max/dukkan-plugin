@@ -162,7 +162,9 @@ class Dukkan_Plugin_Translatepress {
 			'callback' => array($this, 'dukkan_plugin_get_elementor_templates'),
 			'permission_callback' => array( $this, 'check_permissions' ),
 		));
+
 	}
+
 
 	public function dukkan_plugin_trp_format_string($string){
 		$replace = [
@@ -689,6 +691,29 @@ class Dukkan_Plugin_Translatepress {
 			return new WP_Error( 'tp_sanitize_missing', 'TranslatePress sanitize_settings() unavailable', array( 'status' => 500 ) );
 		}
 
+		// Reject unknown language codes up front. TranslatePress would
+		// otherwise keep the old settings and we would report "success".
+		$codes = array_merge(
+			isset( $params['default-language'] ) ? array( $params['default-language'] ) : array(),
+			(array) ( $params['translation-languages'] ?? array() ),
+			(array) ( $params['publish-languages'] ?? array() )
+		);
+		if ( function_exists( 'trp_is_valid_language_code' ) ) {
+			foreach ( array_unique( $codes ) as $code ) {
+				if ( ! trp_is_valid_language_code( $code ) ) {
+					return new WP_Error( 'invalid_language_code', 'Invalid language code: ' . sanitize_text_field( $code ), array( 'status' => 400 ) );
+				}
+			}
+		}
+
+		// sanitize_settings() is written for wp-admin: it calls
+		// add_settings_error() and wp_download_language_pack(), which REST
+		// requests do not load.
+		require_once ABSPATH . 'wp-admin/includes/template.php';
+		require_once ABSPATH . 'wp-admin/includes/file.php';
+		require_once ABSPATH . 'wp-admin/includes/misc.php';
+		require_once ABSPATH . 'wp-admin/includes/translation-install.php';
+
 		$settings_new = $settings_obj->sanitize_settings( $params );
 
 		if ( ! is_array( $settings_new ) ) {
@@ -721,9 +746,29 @@ class Dukkan_Plugin_Translatepress {
 		}
 
 		return [
-			'status' => 'success',
-			'settings' => $settings
+			'status'   => 'success',
+			'settings' => $settings,
+			'limits'   => $this->trp_language_limits(),
 		];
+	}
+
+	/**
+	 * What the store's TranslatePress edition allows on the General tab, so
+	 * the app shows the same options as wp-admin:
+	 * - max_languages: 2 on the free edition (TranslatePress shows its
+	 *   "Adding more than two languages is a paid feature" notice), null when
+	 *   an add-on removes that notice.
+	 * - can_unpublish: true only when an add-on replaces the hidden
+	 *   "publish" input with an Active checkbox; otherwise every language is
+	 *   always published.
+	 */
+	private function trp_language_limits() {
+		$show_upgrade_notice = apply_filters( 'trp_show_language_upgrade_notice', true );
+		$hidden_publish      = apply_filters( 'trp_language_selector_show_publish_hidden_input', true, '', false );
+		return array(
+			'max_languages' => $show_upgrade_notice ? 2 : null,
+			'can_unpublish' => ! $hidden_publish,
+		);
 	}
 
 	public function dukkan_plugin_get_translations($request){

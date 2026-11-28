@@ -1128,7 +1128,27 @@ class Dukkan_Plugin_Elementor_API {
 		$title_color = is_array( $title_typo ) && ! empty( $title_typo['color'] ) ? (string) $title_typo['color'] : '#252525';
 		$price_color_raw = (string) get_theme_mod( 'loop_price_color', '' );
 
+		// Rey accent colours, computed like rey-core `inc/styles.php`: hover is
+		// 20% darker and text the readable colour when not set (needs the Rey
+		// Colors helper; otherwise only the set values are returned).
+		$accent       = (string) get_theme_mod( 'style_accent_color', '#212529' );
+		$accent_hover = (string) get_theme_mod( 'style_accent_color_hover', '' );
+		$accent_text  = (string) get_theme_mod( 'style_accent_color_text', '' );
+		$has_colors   = class_exists( '\\ReyCore\\Libs\\Colors' );
+		if ( '' === $accent_hover && '' !== $accent && false === strpos( $accent, 'var' ) && $has_colors ) {
+			$accent_hover = (string) \ReyCore\Libs\Colors::adjust_color_brightness( $accent, -20 );
+		}
+		if ( '' === $accent_text && '' !== $accent && false === strpos( $accent, 'var' ) && $has_colors ) {
+			$accent_text = (string) \ReyCore\Libs\Colors::readable_colour( $accent );
+		}
+
 		return rest_ensure_response( array(
+			'accent'   => array(
+				'color'      => $resolve_color( $accent, '#212529' ),
+				'hover'      => $resolve_color( $accent_hover, '' ),
+				'text'       => $resolve_color( $accent_text, '' ),
+				'text_hover' => $resolve_color( (string) get_theme_mod( 'style_accent_color_text_hover', '' ), '' ),
+			),
 			'skin'     => (string) get_theme_mod( 'loop_skin', 'basic' ),
 			'image'    => array(
 				'width'  => $thumb_width,
@@ -2323,7 +2343,13 @@ class Dukkan_Plugin_Elementor_API {
 			$id    = is_numeric( $data['id'] ) ? (int) $data['id'] : 0;
 			$local = $id > 0 && 'attachment' === get_post_type( $id ) && $this->same_media_file( $data['url'], (string) wp_get_attachment_url( $id ) );
 			if ( ! $local ) {
-				$new_id = $this->import_media( $data['url'] );
+				// Templates carry the media library texts (title / caption /
+				// description) that image-carousel captions show.
+				$new_id = $this->import_media( $data['url'], array(
+					'title'       => isset( $data['title'] ) && is_string( $data['title'] ) ? $data['title'] : '',
+					'caption'     => isset( $data['caption'] ) && is_string( $data['caption'] ) ? $data['caption'] : '',
+					'description' => isset( $data['description'] ) && is_string( $data['description'] ) ? $data['description'] : '',
+				) );
 				if ( $new_id ) {
 					$data['id']  = $new_id;
 					$data['url'] = (string) wp_get_attachment_url( $new_id );
@@ -2344,13 +2370,26 @@ class Dukkan_Plugin_Elementor_API {
 	 * URL, an existing local file, or a new copy downloaded now. 0 on failure.
 	 *
 	 * @param string $url
+	 * @param array  $texts Optional `title`, `caption`, `description` for the copy.
 	 * @return int
 	 */
-	private function import_media( $url ) {
+	private function import_media( $url, $texts = array() ) {
 		static $done = array(), $budget = 40;
 		if ( isset( $done[ $url ] ) ) {
 			return $done[ $url ];
 		}
+		$texts     = wp_parse_args( (array) $texts, array( 'title' => '', 'caption' => '', 'description' => '' ) );
+		$post_data = array();
+		if ( '' !== $texts['title'] ) {
+			$post_data['post_title'] = sanitize_text_field( $texts['title'] );
+		}
+		if ( '' !== $texts['caption'] ) {
+			$post_data['post_excerpt'] = sanitize_textarea_field( $texts['caption'] );
+		}
+		if ( '' !== $texts['description'] ) {
+			$post_data['post_content'] = sanitize_textarea_field( $texts['description'] );
+		}
+		$file_title = pathinfo( rawurldecode( wp_basename( (string) wp_parse_url( $url, PHP_URL_PATH ) ) ), PATHINFO_FILENAME );
 		$previous = get_posts( array(
 			'post_type'      => 'attachment',
 			'post_status'    => 'inherit',
@@ -2360,7 +2399,12 @@ class Dukkan_Plugin_Elementor_API {
 			'posts_per_page' => 1,
 		) );
 		if ( $previous ) {
-			return $done[ $url ] = (int) $previous[0];
+			$prev_id = (int) $previous[0];
+			// An earlier copy still named after its file gets the texts now.
+			if ( $post_data && get_the_title( $prev_id ) === $file_title ) {
+				wp_update_post( array_merge( array( 'ID' => $prev_id ), $post_data ) );
+			}
+			return $done[ $url ] = $prev_id;
 		}
 		$existing = attachment_url_to_postid( $url );
 		if ( $existing ) {
@@ -2381,7 +2425,7 @@ class Dukkan_Plugin_Elementor_API {
 			'name'     => sanitize_file_name( rawurldecode( wp_basename( (string) wp_parse_url( $url, PHP_URL_PATH ) ) ) ),
 			'tmp_name' => $tmp,
 		);
-		$id = media_handle_sideload( $file, 0 );
+		$id = media_handle_sideload( $file, 0, null, $post_data );
 		if ( is_wp_error( $id ) ) {
 			@unlink( $tmp );
 			return $done[ $url ] = 0;
